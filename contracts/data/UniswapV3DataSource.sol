@@ -10,7 +10,7 @@ import "@uniswap/v3-periphery/contracts/libraries/PoolAddress.sol";
 
 contract UniswapV3DataSource is IDataSource {
 
-    uint32 immutable public observationPeriod = 10;
+    uint32 immutable public observationPeriod;
 
     uint24 immutable public uniswapPoolFee;
 
@@ -18,10 +18,11 @@ contract UniswapV3DataSource is IDataSource {
 
     address immutable private _baseToken;
 
-    constructor(address uniswapFactory_, address baseToken_, uint24 uniswapPoolFee_) {
+    constructor(address uniswapFactory_, address baseToken_, uint24 uniswapPoolFee_, uint32 observationPeriod_) {
         uniswapFactory = uniswapFactory_;
         _baseToken = baseToken_;
         uniswapPoolFee = uniswapPoolFee_;
+        observationPeriod = observationPeriod_;
     }
 
     function baseToken() override virtual public view returns (address) {
