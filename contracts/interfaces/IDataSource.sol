@@ -5,10 +5,10 @@ abstract contract IDataSource {
 
     function baseToken() virtual public view returns (address);
 
-    function fetchPrice(address token) virtual public returns(bool success, uint256 price);
+    function fetchPrice(address token) virtual public view returns(bool success, uint256 price);
 
-    function fetchLiquidity(address token) virtual public returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity);
+    function fetchLiquidity(address token) virtual public view returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity);
 
-    function fetchPriceAndLiquidity(address token) virtual public returns(bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity);
+    function fetchPriceAndLiquidity(address token) virtual public view returns(bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity);
 
 }
