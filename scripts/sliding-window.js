@@ -34,8 +34,8 @@ async function createUniswapV2DataSource(factory, baseToken) {
   return createContract("UniswapV2DataSource", factory, baseToken);
 }
 
-async function createUniswapV3DataSource(factory, baseToken, poolFee) {
-  return createContract("UniswapV3DataSource", factory, baseToken, poolFee);
+async function createUniswapV3DataSource(factory, baseToken, poolFee, observationPeriod) {
+  return createContract("UniswapV3DataSource", factory, baseToken, poolFee, observationPeriod);
 }
 
 async function createSushiswapDataSource(factory, baseToken) {
@@ -55,10 +55,11 @@ async function main() {
   const weightedLiquidityAggregationStrategy = await createContract("WeightedLiquidityAggregationStrategy", false); // Weight by base liquidity
 
   const observationPeriodSeconds = 16;
+  const observationGranularity = 2;
 
-  const uniswapV2Oracle = await createContract("SlidingWindowOracle", uniswapV2DataSource.address, priceStrategy.address, liquidityStrategy.address, baseToken, observationPeriodSeconds, 8);
-  const uniswapV3Oracle = await createContract("SlidingWindowOracle", uniswapV3DataSource.address, priceStrategy.address, liquidityStrategy.address, baseToken, observationPeriodSeconds, 8);
-  const sushiswapOracle = await createContract("SlidingWindowOracle", sushiswapDataSource.address, priceStrategy.address, liquidityStrategy.address, baseToken, observationPeriodSeconds, 8);
+  const uniswapV2Oracle = await createContract("SlidingWindowOracle", uniswapV2DataSource.address, priceStrategy.address, liquidityStrategy.address, baseToken, observationPeriodSeconds, observationGranularity);
+  const uniswapV3Oracle = await createContract("SlidingWindowOracle", uniswapV3DataSource.address, priceStrategy.address, liquidityStrategy.address, baseToken, observationPeriodSeconds, observationGranularity);
+  const sushiswapOracle = await createContract("SlidingWindowOracle", sushiswapDataSource.address, priceStrategy.address, liquidityStrategy.address, baseToken, observationPeriodSeconds, observationGranularity);
 
   const aggregatedOracle = await createContract("AggregatedOracle", weightedLiquidityAggregationStrategy.address,
     [ uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address ]);
