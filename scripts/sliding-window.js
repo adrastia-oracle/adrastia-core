@@ -47,7 +47,7 @@ async function main() {
   const baseToken = wethAddress;
 
   const uniswapV2DataSource = await createUniswapV2DataSource(uniswapV2FactoryAddress, baseToken);
-  const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 3000);
+  const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 3000, 10);
   const sushiswapDataSource = await createSushiswapDataSource(sushiswapFactoryAddress, baseToken);
 
   const priceStrategy = await createContract("TwapStrategy");
