@@ -75,10 +75,9 @@ contract SlidingWindowOracle is IOracle {
         if (shouldUpdate) {
             IDataSource ds = IDataSource(dataSource);
 
-            (bool priceSuccess, uint256 price) = ds.fetchPrice(token);
-            (bool liquiditySuccess, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchLiquidity(token);
+            (bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchPriceAndLiquidity(token);
 
-            if (priceSuccess && liquiditySuccess) {
+            if (success) {
                 ObservationLibrary.Observation storage observation;
 
                 observation.price = price;

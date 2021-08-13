@@ -35,10 +35,10 @@ contract UniswapV2DataSource is IDataSource {
         return _baseToken;
     }
 
-    function fetchPrice(address token) override virtual external returns(bool success, uint256 price) {
+    function fetchPriceAndLiquidity(address token) override virtual public returns(bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) {
         address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, baseToken());
         if (pairAddress == address(0))
-            return (false, 0);
+            return (false, 0, 0, 0);
 
         PriceObservation storage lastObservation = lastObservations[token];
 
@@ -50,35 +50,47 @@ contract UniswapV2DataSource is IDataSource {
 
             IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
 
-            (,,lastObservation.timestamp) = pair.getReserves();
+            (uint256 reserve0, uint256 reserve1, uint32 timestamp) = pair.getReserves();
+            if (timestamp == 0)
+                return (false, 0, 0, 0); // No prior information from the pair, return failure
 
-            if (lastObservation.timestamp == 0)
-                return (false, 0); // No prior information from the pair, return failure
+            if (pair.token0() == token) {
+                tokenLiquidity = reserve0;
+                baseLiquidity = reserve1;
+            } else {
+                tokenLiquidity = reserve1;
+                baseLiquidity = reserve0;
+            }
 
+            lastObservation.timestamp = timestamp;
             lastObservation.price0Cumulative = pair.price0CumulativeLast();
             lastObservation.price1Cumulative = pair.price1CumulativeLast();
+        } else {
+            IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
+
+            (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+
+            if (pair.token0() == token) {
+                tokenLiquidity = reserve0;
+                baseLiquidity = reserve1;
+            } else {
+                tokenLiquidity = reserve1;
+                baseLiquidity = reserve0;
+            }
         }
 
         uint32 timeElapsed = blockTimestamp - lastObservation.timestamp; // overflow is desired
         if (timeElapsed == 0)
-            return (false, 0); // No time has passed since last observation so we cannot calculate price
+            return (false, 0, 0, 0); // No time has passed since last observation so we cannot calculate price
 
         /*
          * At this point, we can calculate all needed information
          */
 
-        uint256 priceCumulativeStart;
-        uint256 priceCumulativeEnd;
-
-        if (IUniswapV2Pair(pairAddress).token0() == token) {
-            priceCumulativeStart = lastObservation.price0Cumulative;
-            priceCumulativeEnd = price0Cumulative;
-        } else {
-            priceCumulativeStart = lastObservation.price1Cumulative;
-            priceCumulativeEnd = price1Cumulative;
-        }
-
-        price = computeAmountOut(priceCumulativeStart, priceCumulativeEnd, timeElapsed, computeWholeUnitAmount(token));
+        if (IUniswapV2Pair(pairAddress).token0() == token)
+            price = computeAmountOut(lastObservation.price0Cumulative, price0Cumulative, timeElapsed, computeWholeUnitAmount(token));
+        else
+            price = computeAmountOut(lastObservation.price1Cumulative, price1Cumulative, timeElapsed, computeWholeUnitAmount(token));
         
         success = true;
 
@@ -91,24 +103,12 @@ contract UniswapV2DataSource is IDataSource {
          lastObservation.price1Cumulative = price1Cumulative;
     }
 
-    function fetchLiquidity(address token) override virtual external returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity) {
-        address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, baseToken());
-        if (pairAddress == address(0))
-            return (true, 0, 0); // Return true to signal zero liquidity
+    function fetchPrice(address token) override virtual public returns(bool success, uint256 price) {
+        (success, price,,) = fetchPriceAndLiquidity(token);
+    }
 
-        IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
-
-        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
-
-        if (pair.token0() == token) {
-            tokenLiquidity = reserve0;
-            baseLiquidity = reserve1;
-        } else {
-            tokenLiquidity = reserve1;
-            baseLiquidity = reserve0;
-        }
-
-        success = true;
+    function fetchLiquidity(address token) override virtual public returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity) {
+        (success,, tokenLiquidity, baseLiquidity) = fetchPriceAndLiquidity(token);
     }
 
     function computeWholeUnitAmount(address token) private view returns(uint256 amount) {

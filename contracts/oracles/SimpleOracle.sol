@@ -12,7 +12,7 @@ import "../libraries/ObservationLibrary.sol";
 
 import "hardhat/console.sol";
 
-contract SlidingWindowOracle is IOracle {
+contract SimpleOracle is IOracle {
 
     address public immutable dataSource;
 
@@ -29,10 +29,9 @@ contract SlidingWindowOracle is IOracle {
     function update(address token) override external {
         IDataSource ds = IDataSource(dataSource);
 
-        (bool priceSuccess, uint256 price) = ds.fetchPrice(token);
-        (bool liquiditySuccess, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchLiquidity(token);
+        (bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchPriceAndLiquidity(token);
 
-        if (priceSuccess && liquiditySuccess) {
+        if (success) {
             ObservationLibrary.Observation storage observation = observations[token];
 
             observation.price = price;

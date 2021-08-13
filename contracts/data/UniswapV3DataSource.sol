@@ -28,7 +28,20 @@ contract UniswapV3DataSource is IDataSource {
         return _baseToken;
     }
 
-    function fetchPrice(address token) override virtual external returns(bool success, uint256 price) {
+    function fetchPriceAndLiquidity(address token) override virtual public returns(bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) {
+        address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, baseToken(), uniswapPoolFee));
+
+        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, OBSERVATION_PERIOD);
+
+        price = OracleLibrary.getQuoteAtTick(timeWeightedAverageTick, uint128(10**(ERC20(token).decimals())), token, baseToken());
+
+        tokenLiquidity = ERC20(token).balanceOf(poolAddress);
+        baseLiquidity = ERC20(baseToken()).balanceOf(poolAddress);
+
+        success = true;
+    }
+
+    function fetchPrice(address token) override virtual public returns(bool success, uint256 price) {
         address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, baseToken(), uniswapPoolFee));
 
         int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, OBSERVATION_PERIOD);
@@ -37,7 +50,7 @@ contract UniswapV3DataSource is IDataSource {
         success = true;
     }
 
-    function fetchLiquidity(address token) override virtual external returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity) {
+    function fetchLiquidity(address token) override virtual public returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity) {
         address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, baseToken(), uniswapPoolFee));
 
         tokenLiquidity = ERC20(token).balanceOf(poolAddress);
