@@ -31,6 +31,15 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         return oracles;
     }
 
+    function needsUpdate(address token) override virtual public view returns(bool) {
+        for (uint256 i = 0; i < oracles.length; ++i) {
+            if (IOracle(oracles[i]).needsUpdate(token))
+                return true;
+        }
+
+        return false;
+    }
+
     function update(address token) override external {
         for (uint256 i = 0; i < oracles.length; ++i)
             IOracle(oracles[i]).update(token);

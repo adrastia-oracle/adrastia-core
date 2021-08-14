@@ -19,6 +19,10 @@ contract CachingCompositeOracle is IOracle {
         oracle = oracle_;
     }
 
+    function needsUpdate(address token) override virtual public view returns(bool) {
+        return IOracle(oracle).needsUpdate(token);
+    }
+
     function update(address token) override virtual external {
         IOracle(oracle).update(token);
 

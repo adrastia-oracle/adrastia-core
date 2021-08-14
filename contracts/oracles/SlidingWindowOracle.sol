@@ -52,6 +52,19 @@ contract SlidingWindowOracle is IOracle {
         granularity = granularity_;
     }
 
+    function needsUpdate(address token) override virtual public view returns(bool) {
+        BufferMetadata storage meta = observationBufferData[token];
+        if (meta.size == 0)
+            return true;
+
+        // We have observations, so check if enough time has passed since the last observation
+        ObservationLibrary.Observation storage lastObservation = getLastObservation(token, meta);
+
+        uint timeElapsed = block.timestamp - lastObservation.timestamp;
+
+        return timeElapsed > periodSize;
+    }
+
     function update(address token) override external {
         BufferMetadata storage meta = observationBufferData[token];
 
@@ -60,17 +73,7 @@ contract SlidingWindowOracle is IOracle {
             meta.maxSize = granularity;
         }
 
-        bool shouldUpdate = meta.size == 0;
-        if (!shouldUpdate) {
-            // We have observations, so check if enough time has passed since the last observation
-            ObservationLibrary.Observation storage lastObservation = getLastObservation(token, meta);
-
-            uint timeElapsed = block.timestamp - lastObservation.timestamp;
-
-            shouldUpdate = timeElapsed > periodSize;
-        }
-
-        if (shouldUpdate) {
+        if (needsUpdate(token)) {
             IDataSource ds = IDataSource(dataSource);
 
             (bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchPriceAndLiquidity(token);

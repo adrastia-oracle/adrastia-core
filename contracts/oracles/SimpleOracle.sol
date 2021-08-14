@@ -24,6 +24,12 @@ contract SimpleOracle is IOracle {
         baseToken = baseToken_;
     }
 
+    function needsUpdate(address token) override virtual public view returns(bool) {
+        token; // Silence un-used warning
+
+        return false; // TODO ?
+    }
+
     function update(address token) override external {
         IDataSource ds = IDataSource(dataSource);
 
