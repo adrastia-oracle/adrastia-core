@@ -50,8 +50,16 @@ contract SimpleOracle is IOracle {
     function consult(address token) override virtual public view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
-        return (observation.price, observation.tokenLiquidity, observation.baseLiquidity);
+        price = consultation.price;
+        tokenLiquidity = consultation.tokenLiquidity;
+        baseLiquidity = consultation.baseLiquidity;
+    }
+
+    function consultFresh(address token) override virtual public view
+        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    {
+        (,price, tokenLiquidity, baseLiquidity) = IDataSource(dataSource).fetchPriceAndLiquidity(token);
     }
 }

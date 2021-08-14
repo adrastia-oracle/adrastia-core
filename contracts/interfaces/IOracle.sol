@@ -10,4 +10,7 @@ abstract contract IOracle {
     function consult(address token) virtual external view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity);
 
+    function consultFresh(address token) virtual external view
+        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity);
+
 }

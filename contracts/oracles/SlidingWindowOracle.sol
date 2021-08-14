@@ -90,7 +90,7 @@ contract SlidingWindowOracle is IOracle {
 
                 ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
-                (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consult(token);
+                (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
                 consultation.timestamp = block.timestamp;
             }
 
@@ -99,6 +99,16 @@ contract SlidingWindowOracle is IOracle {
     }
 
     function consult(address token) override virtual public view
+        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        price = consultation.price;
+        tokenLiquidity = consultation.tokenLiquidity;
+        baseLiquidity = consultation.baseLiquidity;
+    }
+
+    function consultFresh(address token) override virtual public view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
         BufferMetadata storage meta = observationBufferData[token];

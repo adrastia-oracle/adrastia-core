@@ -39,4 +39,10 @@ contract CachingCompositeOracle is IOracle {
         return (marketData.lastPrice, marketData.lastTokenLiquidity, marketData.lastBaseLiquidity);
     }
 
+    function consultFresh(address token) override virtual public view
+        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    {
+        (price, tokenLiquidity, baseLiquidity) = IOracle(oracle).consultFresh(token);
+    }
+
 }
