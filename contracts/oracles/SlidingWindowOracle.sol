@@ -3,6 +3,8 @@ pragma solidity  >=0.5 <0.8;
 
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 import "../interfaces/IOracle.sol";
 import "../interfaces/IDataSource.sol";
 import "../interfaces/IPriceStrategy.sol";
@@ -13,6 +15,8 @@ import "../libraries/ObservationLibrary.sol";
 import "hardhat/console.sol";
 
 contract SlidingWindowOracle is IOracle {
+
+    using SafeMath for uint256;
 
     struct BufferMetadata {
         uint256 start;
@@ -25,10 +29,6 @@ contract SlidingWindowOracle is IOracle {
 
     address public immutable baseToken;
 
-    address public immutable priceStrategy;
-
-    address public immutable liquidityStrategy;
-
     uint256 public immutable windowSize;
     
     uint8 public immutable granularity;
@@ -39,7 +39,7 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => BufferMetadata) public observationBufferData;
 
-    constructor(address dataSource_, address priceStrategy_, address liquidityStrategy_, address baseToken_, uint windowSize_, uint8 granularity_) {
+    constructor(address dataSource_, address baseToken_, uint windowSize_, uint8 granularity_) {
         require(IDataSource(dataSource_).baseToken() == baseToken_);
         require(granularity_ > 1, 'SlidingWindowOracle: Granularity must be at least 1.');
         require(
@@ -47,8 +47,6 @@ contract SlidingWindowOracle is IOracle {
             'SlidingWindowOracle: Window is not evenly divisible by granularity.'
         );
         dataSource = dataSource_;
-        priceStrategy = priceStrategy_;
-        liquidityStrategy = liquidityStrategy_;
         baseToken = baseToken_;
         windowSize = windowSize_;
         granularity = granularity_;
@@ -99,10 +97,33 @@ contract SlidingWindowOracle is IOracle {
         if (meta.size == 0)
             return (0, 0, 0);
 
-        ObservationLibrary.Observation[] memory observations = getObservations(token, meta);
+        mapping(uint256 => ObservationLibrary.Observation) storage buffer = observationBuffers[token];
 
-        price = IPriceStrategy(priceStrategy).computePrice(observations);
-        (tokenLiquidity, baseLiquidity) = ILiquidityStrategy(liquidityStrategy).computeLiquidity(observations);
+        uint256 currentTime = block.timestamp;
+        uint256 timeSum = 0;
+
+        uint256 weightedPriceSum = 0;
+        uint256 weightedTokenSum = 0;
+        uint256 weightedBaseSum = 0;
+
+        for (uint256 i = 0; i < meta.size; ++i) {
+            uint256 index = (meta.start + i) % meta.maxSize;
+
+            ObservationLibrary.Observation storage observation = buffer[index];
+
+            uint256 timeElapsed = currentTime.sub(observation.timestamp);
+            if (timeElapsed == 0)
+                timeElapsed = 1;
+
+            timeSum = timeSum.add(timeElapsed);
+            weightedPriceSum = weightedPriceSum.add(observation.price.mul(timeElapsed));
+            weightedTokenSum = weightedTokenSum.add(observation.tokenLiquidity.mul(timeElapsed));
+            weightedBaseSum = weightedBaseSum.add(observation.baseLiquidity.mul(timeElapsed));
+        }
+
+        price = weightedPriceSum.div(timeSum);
+        tokenLiquidity = weightedTokenSum.div(timeSum);
+        baseLiquidity = weightedBaseSum.div(timeSum);
     }
 
     /**
