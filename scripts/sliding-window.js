@@ -50,8 +50,6 @@ async function main() {
   const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 3000, 10);
   const sushiswapDataSource = await createSushiswapDataSource(sushiswapFactoryAddress, baseToken);
 
-  const weightedLiquidityAggregationStrategy = await createContract("WeightedLiquidityAggregationStrategy", false); // Weight by base liquidity
-
   const observationPeriodSeconds = 16;
   const observationGranularity = 2;
 
@@ -59,8 +57,7 @@ async function main() {
   const uniswapV3Oracle = await createContract("SlidingWindowOracle", uniswapV3DataSource.address, baseToken, observationPeriodSeconds, observationGranularity);
   const sushiswapOracle = await createContract("SlidingWindowOracle", sushiswapDataSource.address, baseToken, observationPeriodSeconds, observationGranularity);
 
-  const aggregatedOracle = await createContract("AggregatedOracle", weightedLiquidityAggregationStrategy.address,
-    [ uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address ]);
+  const aggregatedOracle = await createContract("AggregatedOracle", [ uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address ]);
 
   const cachedAggregatedOracle = await createContract("CachingCompositeOracle", aggregatedOracle.address);
 
