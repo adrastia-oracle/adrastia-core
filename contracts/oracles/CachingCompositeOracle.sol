@@ -27,7 +27,7 @@ contract CachingCompositeOracle is IOracle {
         (marketData.lastPrice, marketData.lastTokenLiquidity, marketData.lastBaseLiquidity) = IOracle(oracle).consult(token);
     }
 
-    function consult(address token) override virtual external view
+    function consult(address token) override virtual public view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
         MarketData storage marketData = cachedMarketData[token];

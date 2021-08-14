@@ -41,7 +41,7 @@ contract SimpleOracle is IOracle {
         // TODO: Handle cases where calls are not successful
     }
 
-    function consult(address token) override virtual external view
+    function consult(address token) override virtual public view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
         ObservationLibrary.Observation storage observation = observations[token];

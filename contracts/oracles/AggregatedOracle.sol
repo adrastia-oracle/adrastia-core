@@ -19,6 +19,8 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
 
     address[] public oracles;
 
+    mapping(address => ObservationLibrary.Observation) public storedConsultations;
+
     constructor(address[] memory oracles_) {
         require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
 
@@ -32,9 +34,14 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
     function update(address token) override external {
         for (uint256 i = 0; i < oracles.length; ++i)
             IOracle(oracles[i]).update(token);
+
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consult(token);
+        consultation.timestamp = block.timestamp;
     }
 
-    function consult(address token) override virtual external view
+    function consult(address token) override virtual public view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
         require(oracles.length > 0, "No underlying oracles.");

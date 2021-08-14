@@ -37,6 +37,8 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => BufferMetadata) public observationBufferData;
 
+    mapping(address => ObservationLibrary.Observation) public storedConsultations;
+
     constructor(address dataSource_, address baseToken_, uint windowSize_, uint8 granularity_) {
         require(IDataSource(dataSource_).baseToken() == baseToken_);
         require(granularity_ > 1, 'SlidingWindowOracle: Granularity must be at least 1.');
@@ -82,13 +84,18 @@ contract SlidingWindowOracle is IOracle {
                 observation.timestamp = block.timestamp;
 
                 appendBuffer(token, observation);
+
+                ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+                (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consult(token);
+                consultation.timestamp = block.timestamp;
             }
 
             // TODO: Handle cases where calls are not successful
         }
     }
 
-    function consult(address token) override virtual external view
+    function consult(address token) override virtual public view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
         BufferMetadata storage meta = observationBufferData[token];
