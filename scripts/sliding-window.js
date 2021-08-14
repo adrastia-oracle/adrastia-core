@@ -59,14 +59,12 @@ async function main() {
 
   const aggregatedOracle = await createContract("AggregatedOracle", [ uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address ]);
 
-  const cachedAggregatedOracle = await createContract("CachingCompositeOracle", aggregatedOracle.address);
-
   while (true) {
     await uniswapV2Oracle.update(token);
     await uniswapV3Oracle.update(token);
     await sushiswapOracle.update(token);
 
-    await cachedAggregatedOracle.update(token);
+    await aggregatedOracle.update(token);
 
     try {
       const result = await uniswapV2Oracle.consult(token);
@@ -98,18 +96,6 @@ async function main() {
       console.log(estimation.toString());
 
       const result = await aggregatedOracle.consult(token);
-
-      console.log("Aggregate Price =", result['price'].toString(), ", Token Liquidity =", result['tokenLiquidity'].toString(), ", Base Liquidity =", result['baseLiquidity'].toString());
-    } catch (e) {
-      console.log(e);
-    }
-
-    try {
-      const estimation = await cachedAggregatedOracle.estimateGas.consult(token);
-
-      console.log(estimation.toString());
-
-      const result = await cachedAggregatedOracle.consult(token);
 
       console.log("Aggregate Price =", result['price'].toString(), ", Token Liquidity =", result['tokenLiquidity'].toString(), ", Base Liquidity =", result['baseLiquidity'].toString());
     } catch (e) {
