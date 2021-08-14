@@ -60,11 +60,15 @@ async function main() {
   const aggregatedOracle = await createContract("AggregatedOracle", [ uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address ]);
 
   while (true) {
-    await uniswapV2Oracle.update(token);
-    await uniswapV3Oracle.update(token);
-    await sushiswapOracle.update(token);
+    try {
+      const estimation = await aggregatedOracle.estimateGas.update(token);
 
-    await aggregatedOracle.update(token);
+      console.log("Aggregate update gas =", estimation.toString());
+
+      await aggregatedOracle.update(token);
+    } catch (e) {
+      console.log(e);
+    }
 
     try {
       const result = await uniswapV2Oracle.consult(token);
@@ -93,7 +97,7 @@ async function main() {
     try {
       const estimation = await aggregatedOracle.estimateGas.consult(token);
 
-      console.log(estimation.toString());
+      console.log("Aggregate consult gas =", estimation.toString());
 
       const result = await aggregatedOracle.consult(token);
 
