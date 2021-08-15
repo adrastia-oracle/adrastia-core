@@ -18,25 +18,21 @@ contract UniswapV3DataSource is IDataSource {
 
     address immutable public uniswapFactory;
 
-    address immutable private _baseToken;
+    address immutable public override quoteToken;
 
-    constructor(address uniswapFactory_, address baseToken_, uint24 uniswapPoolFee_, uint32 observationPeriod_) {
+    constructor(address uniswapFactory_, address quoteToken_, uint24 uniswapPoolFee_, uint32 observationPeriod_) {
         uniswapFactory = uniswapFactory_;
-        _baseToken = baseToken_;
+        quoteToken = quoteToken_;
         uniswapPoolFee = uniswapPoolFee_;
         observationPeriod = observationPeriod_;
     }
 
-    function baseToken() override virtual public view returns (address) {
-        return _baseToken;
-    }
-
     function fetchPriceAndLiquidity(address token) override virtual public view returns(bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) {
-        address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, baseToken(), uniswapPoolFee));
+        address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, quoteToken, uniswapPoolFee));
 
         int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, observationPeriod);
 
-        price = OracleLibrary.getQuoteAtTick(timeWeightedAverageTick, uint128(10**(ERC20(token).decimals())), token, baseToken());
+        price = OracleLibrary.getQuoteAtTick(timeWeightedAverageTick, uint128(10**(ERC20(token).decimals())), token, quoteToken);
 
         uint128 liquidity = IUniswapV3Pool(poolAddress).liquidity();
 

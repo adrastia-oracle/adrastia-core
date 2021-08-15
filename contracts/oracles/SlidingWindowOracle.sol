@@ -25,7 +25,7 @@ contract SlidingWindowOracle is IOracle {
 
     address public immutable dataSource;
 
-    address public immutable baseToken;
+    address public immutable quoteToken;
 
     uint256 public immutable windowSize;
     
@@ -39,15 +39,15 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
-    constructor(address dataSource_, address baseToken_, uint windowSize_, uint8 granularity_) {
-        require(IDataSource(dataSource_).baseToken() == baseToken_);
+    constructor(address dataSource_, address quoteToken_, uint windowSize_, uint8 granularity_) {
+        require(IDataSource(dataSource_).quoteToken() == quoteToken_);
         require(granularity_ > 1, 'SlidingWindowOracle: Granularity must be at least 1.');
         require(
             (periodSize = windowSize_ / granularity_) * granularity_ == windowSize_,
             'SlidingWindowOracle: Window is not evenly divisible by granularity.'
         );
         dataSource = dataSource_;
-        baseToken = baseToken_;
+        quoteToken = quoteToken_;
         windowSize = windowSize_;
         granularity = granularity_;
     }

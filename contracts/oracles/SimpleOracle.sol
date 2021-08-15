@@ -14,14 +14,14 @@ contract SimpleOracle is IOracle {
 
     address public immutable dataSource;
 
-    address public immutable baseToken;
+    address public immutable quoteToken;
 
     mapping(address => ObservationLibrary.Observation) public observations;
 
-    constructor(address dataSource_, address baseToken_) {
-        require(IDataSource(dataSource_).baseToken() == baseToken_);
+    constructor(address dataSource_, address quoteToken_) {
+        require(IDataSource(dataSource_).quoteToken() == quoteToken_);
         dataSource = dataSource_;
-        baseToken = baseToken_;
+        quoteToken = quoteToken_;
     }
 
     function needsUpdate(address token) override virtual public view returns(bool) {

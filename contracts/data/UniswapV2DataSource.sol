@@ -17,19 +17,15 @@ contract UniswapV2DataSource is IDataSource {
 
     address immutable public uniswapFactory;
 
-    address immutable private _baseToken;
+    address immutable public override quoteToken;
 
-    constructor(address uniswapFactory_, address baseToken_) {
+    constructor(address uniswapFactory_, address quoteToken_) {
         uniswapFactory = uniswapFactory_;
-        _baseToken = baseToken_;
-    }
-
-    function baseToken() override virtual public view returns (address) {
-        return _baseToken;
+        quoteToken = quoteToken_;
     }
 
     function fetchPriceAndLiquidity(address token) override virtual public view returns(bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) {
-        address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, baseToken());
+        address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
         if (pairAddress == address(0))
             return (false, 0, 0, 0);
 

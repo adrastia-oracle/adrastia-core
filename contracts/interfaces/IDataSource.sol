@@ -3,7 +3,7 @@ pragma solidity  >=0.5 <0.8;
 
 abstract contract IDataSource {
 
-    function baseToken() virtual public view returns (address);
+    function quoteToken() virtual external view returns (address);
 
     function fetchPrice(address token) virtual public view returns(bool success, uint256 price);
 
