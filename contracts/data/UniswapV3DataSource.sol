@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PoolAddress.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
 contract UniswapV3DataSource is IDataSource {
 
@@ -36,27 +38,31 @@ contract UniswapV3DataSource is IDataSource {
 
         price = OracleLibrary.getQuoteAtTick(timeWeightedAverageTick, uint128(10**(ERC20(token).decimals())), token, baseToken());
 
-        tokenLiquidity = ERC20(token).balanceOf(poolAddress);
-        baseLiquidity = ERC20(baseToken()).balanceOf(poolAddress);
+        uint128 liquidity = IUniswapV3Pool(poolAddress).liquidity();
+
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(timeWeightedAverageTick);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(timeWeightedAverageTick + 1);
+
+        uint256 amount0 = LiquidityAmounts.getAmount0ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+        uint256 amount1 = LiquidityAmounts.getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+
+        if (IUniswapV3Pool(poolAddress).token0() == token) {
+            tokenLiquidity = amount0;
+            baseLiquidity = amount1;
+        } else {
+            tokenLiquidity = amount1;
+            baseLiquidity = amount0;
+        }
 
         success = true;
     }
 
     function fetchPrice(address token) override virtual public view returns(bool success, uint256 price) {
-        address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, baseToken(), uniswapPoolFee));
-
-        int24 timeWeightedAverageTick = OracleLibrary.consult(poolAddress, observationPeriod);
-
-        price = OracleLibrary.getQuoteAtTick(timeWeightedAverageTick, uint128(10**(ERC20(token).decimals())), token, baseToken());
-        success = true;
+        (success, price,,) = fetchPriceAndLiquidity(token);
     }
 
     function fetchLiquidity(address token) override virtual public view returns(bool success, uint256 tokenLiquidity, uint256 baseLiquidity) {
-        address poolAddress = PoolAddress.computeAddress(uniswapFactory, PoolAddress.getPoolKey(token, baseToken(), uniswapPoolFee));
-
-        tokenLiquidity = ERC20(token).balanceOf(poolAddress);
-        baseLiquidity = ERC20(baseToken()).balanceOf(poolAddress);
-        success = true;
+        (success,, tokenLiquidity, baseLiquidity) = fetchPriceAndLiquidity(token);
     }
 
 }
