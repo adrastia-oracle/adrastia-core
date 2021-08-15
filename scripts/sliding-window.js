@@ -43,8 +43,8 @@ async function createSushiswapDataSource(factory, baseToken) {
 }
 
 async function main() {
-  const token = "0xe53ec727dbdeb9e2d5456c3be40cff031ab40a55";
-  const baseToken = wethAddress;
+  const token = wethAddress;
+  const baseToken = usdcAddress;
 
   const uniswapV2DataSource = await createUniswapV2DataSource(uniswapV2FactoryAddress, baseToken);
   const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 3000, 10);
