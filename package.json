@@ -1,9 +1,29 @@
 {
-  "name": "pythia-oracle-library",
+  "name": "@pythia-oracle/pythia-library",
   "version": "0.0.1",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
   "license": "MIT",
+  "keywords": [
+    "pythia",
+    "oracle",
+    "library",
+    "ethereum",
+    "solidity",
+    "evm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pythia-oracle/pythia-library"
+  },
+  "files": [
+    "contracts",
+    "artifacts/contracts/**/*.json",
+    "!artifacts/contracts/**/*.dbg.json"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
     "@uniswap/lib": "^4.0.1-alpha",
@@ -20,5 +40,9 @@
     "ethers": "^5.0.0",
     "hardhat": "2.5.0",
     "hardhat-gas-reporter": "^1.0.4"
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
   }
 }
