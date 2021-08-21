@@ -26,11 +26,11 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "3.4.0",
-    "@uniswap/lib": "^4.0.1-alpha",
+    "@uniswap-mirror/lib": "^4.0.1-alpha",
+    "@uniswap-mirror/v3-core": "^1.0.0-strict",
+    "@uniswap-mirror/v3-periphery": "^1.1.1-strict",
     "@uniswap/v2-core": "^1.0.1",
-    "@uniswap/v2-periphery": "^1.1.0-beta.0",
-    "@uniswap/v3-core": "^1.0.0",
-    "@uniswap/v3-periphery": "^1.1.1"
+    "@uniswap/v2-periphery": "^1.1.0-beta.0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",

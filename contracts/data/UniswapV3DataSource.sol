@@ -5,10 +5,10 @@ import "../interfaces/IDataSource.sol";
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import "@uniswap/v3-periphery/contracts/libraries/PoolAddress.sol";
-import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import "@uniswap-mirror/v3-periphery/contracts/libraries/OracleLibrary.sol";
+import "@uniswap-mirror/v3-periphery/contracts/libraries/PoolAddress.sol";
+import "@uniswap-mirror/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import '@uniswap-mirror/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
 contract UniswapV3DataSource is IDataSource {
 
