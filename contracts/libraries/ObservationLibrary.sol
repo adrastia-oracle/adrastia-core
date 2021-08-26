@@ -12,4 +12,16 @@ library ObservationLibrary {
         uint256 baseLiquidity;
     }
 
+    struct LiquidityObservation {
+        uint256 tokenLiquidity;
+        uint256 quoteTokenLiquidity;
+        uint256 timestamp;
+    }
+
+    struct CumulativeLiquidityObservation {
+        uint256 cumulativeTokenLiquidity;
+        uint256 cumulativeQuoteTokenLiquidity;
+        uint256 timestamp;
+    }
+
 }
