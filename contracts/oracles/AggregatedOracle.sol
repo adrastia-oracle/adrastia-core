@@ -85,6 +85,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 numerator = numerator.add(oracleQuoteTokenLiquidity);
                 denominator = denominator.add(oracleQuoteTokenLiquidity.div(oraclePrice));
 
+                 // These should never overflow: supply of an asset cannot be greater than uint256.max
                 tokenLiquidity = tokenLiquidity.add(oracleTokenLiquidity);
                 quoteTokenLiquidity = quoteTokenLiquidity.add(oracleQuoteTokenLiquidity);
             }
