@@ -61,26 +61,36 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
     }
 
     function consultFresh(address token) override virtual public view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+        returns (uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
         require(oracles.length > 0, "No underlying oracles.");
 
         uint oracleCount = oracles.length;
 
+        /*
+         * Compute harmonic sum
+         */
+
+        uint256 numerator; // sum of weights
+        uint256 denominator; // sum of weights divided by prices
+
         uint256 oraclePrice;
         uint256 oracleTokenLiquidity;
-        uint256 oracleBaseLiquidity;
+        uint256 oracleQuoteTokenLiquidity;
 
         for (uint256 i = 0; i < oracleCount; ++i) {
-            (oraclePrice, oracleTokenLiquidity, oracleBaseLiquidity) = IOracle(oracles[i]).consult(token);
+            (oraclePrice, oracleTokenLiquidity, oracleQuoteTokenLiquidity) = IOracle(oracles[i]).consult(token);
 
-            price = price.add(oraclePrice.mul(oracleBaseLiquidity));
+            if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
+                numerator = numerator.add(oracleQuoteTokenLiquidity);
+                denominator = denominator.add(oracleQuoteTokenLiquidity.div(oraclePrice));
 
-            tokenLiquidity = tokenLiquidity.add(oracleTokenLiquidity);
-            baseLiquidity = baseLiquidity.add(oracleBaseLiquidity);
+                tokenLiquidity = tokenLiquidity.add(oracleTokenLiquidity);
+                quoteTokenLiquidity = quoteTokenLiquidity.add(oracleQuoteTokenLiquidity);
+            }
         }
 
-        price = baseLiquidity == 0 ? 0 : price.div(baseLiquidity);
+        price = denominator == 0 ? 0 : numerator.div(denominator);
     }
 
 }
