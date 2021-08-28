@@ -18,22 +18,36 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
 
     address immutable public dataSource;
     uint256 immutable public updateThreshold;
+    uint256 immutable public minUpdateDelay;
+    uint256 immutable public maxUpdateDelay;
 
     address immutable public override quoteToken;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
 
-    constructor(address dataSource_, uint256 updateTheshold_) {
+    constructor(address dataSource_, uint256 updateTheshold_, uint256 minUpdateDelay_, uint256 maxUpdateDelay_) {
         dataSource = dataSource_;
         quoteToken = IDataSource(dataSource_).quoteToken();
         updateThreshold = updateTheshold_;
+        minUpdateDelay = minUpdateDelay_;
+        maxUpdateDelay = maxUpdateDelay_;
     }
 
     function needsUpdate(address token) override virtual public view returns(bool) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
-        if (lastObservation.timestamp == 0) // No observation -> needs update
-            return true;
+
+        uint256 deltaTime = block.timestamp.sub(lastObservation.timestamp);
+        if (deltaTime < minUpdateDelay)
+            return false; // Ensures updates occur at most once every minUpdateDelay (seconds)
+        else if (deltaTime >= maxUpdateDelay)
+            return true; // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+
+        /*
+         * maxUpdateDelay > deltaTime >= minUpdateDelay
+         *
+         * Check if the % change in liquidity warrents an update (saves gas vs. always updating on change)
+         */
 
         (bool success, uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = IDataSource(dataSource).fetchLiquidity(token);
         if (!success)
@@ -51,33 +65,36 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
             if (!success)
                 return;
 
-            ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
+            ObservationLibrary.LiquidityObservation storage observation = observations[token];
             AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
 
-            if (lastObservation.timestamp == 0) {
-                // Initialize
-
-                accumulation.cumulativeTokenLiquidity = lastObservation.tokenLiquidity = tokenLiquidity;
-                accumulation.cumulativeQuoteTokenLiquidity = lastObservation.quoteTokenLiquidity = quoteTokenLiquidity;
-                accumulation.timestamp = lastObservation.timestamp = block.timestamp;
+            if (observation.timestamp == 0) {
+                /*
+                 * Initialize
+                 */
+                accumulation.cumulativeTokenLiquidity = observation.tokenLiquidity = tokenLiquidity;
+                accumulation.cumulativeQuoteTokenLiquidity = observation.quoteTokenLiquidity = quoteTokenLiquidity;
+                accumulation.timestamp = observation.timestamp = block.timestamp;
 
                 return;
             }
 
-            // Update
+            /*
+             * Update
+             */
 
-            uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+            uint256 deltaTime = block.timestamp.sub(accumulation.timestamp);
 
             if (deltaTime != 0) {
                 // TODO: Handle overflows
                 accumulation.cumulativeTokenLiquidity += tokenLiquidity * deltaTime;
                 accumulation.cumulativeQuoteTokenLiquidity += quoteTokenLiquidity * deltaTime;
                 accumulation.timestamp = block.timestamp;
-            }
 
-            lastObservation.tokenLiquidity = tokenLiquidity;
-            lastObservation.quoteTokenLiquidity = quoteTokenLiquidity;
-            lastObservation.timestamp = block.timestamp;
+                observation.tokenLiquidity = tokenLiquidity;
+                observation.quoteTokenLiquidity = quoteTokenLiquidity;
+                observation.timestamp = block.timestamp;
+            }
         }
     }
 
@@ -85,6 +102,12 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
         returns(AccumulationLibrary.LiquidityAccumulator memory)
     {
         return accumulations[token];
+    }
+
+    function getLastObservation(address token) override virtual public view
+        returns(ObservationLibrary.LiquidityObservation memory)
+    {
+        return observations[token];
     }
 
     function calculateLiquidity(AccumulationLibrary.LiquidityAccumulator memory firstAccumulation, AccumulationLibrary.LiquidityAccumulator memory secondAccumulation) override virtual public pure
