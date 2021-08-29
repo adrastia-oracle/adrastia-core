@@ -34,8 +34,8 @@ async function createUniswapV2DataSource(factory, baseToken) {
   return createContract("UniswapV2DataSource", factory, baseToken);
 }
 
-async function createUniswapV3DataSource(factory, baseToken, poolFee, observationPeriod) {
-  return createContract("UniswapV3DataSource", factory, baseToken, poolFee, observationPeriod);
+async function createUniswapV3DataSource(factory, baseToken, observationPeriod) {
+  return createContract("UniswapV3DataSource", factory, baseToken, observationPeriod);
 }
 
 async function createSushiswapDataSource(factory, baseToken) {
@@ -47,7 +47,7 @@ async function main() {
   const baseToken = usdcAddress;
 
   const uniswapV2DataSource = await createUniswapV2DataSource(uniswapV2FactoryAddress, baseToken);
-  const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 3000, 10);
+  const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 10);
   const sushiswapDataSource = await createSushiswapDataSource(sushiswapFactoryAddress, baseToken);
 
   const observationPeriodSeconds = 16;
