@@ -18,10 +18,4 @@ library ObservationLibrary {
         uint256 timestamp;
     }
 
-    struct CumulativeLiquidityObservation {
-        uint256 cumulativeTokenLiquidity;
-        uint256 cumulativeQuoteTokenLiquidity;
-        uint256 timestamp;
-    }
-
 }
