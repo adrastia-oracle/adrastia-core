@@ -18,4 +18,9 @@ library ObservationLibrary {
         uint256 timestamp;
     }
 
+    struct PriceObservation {
+        uint256 price;
+        uint256 timestamp;
+    }
+
 }
