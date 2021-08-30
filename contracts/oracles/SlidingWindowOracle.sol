@@ -1,9 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
-
-pragma experimental ABIEncoderV2;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
+pragma solidity  ^0.8;
 
 import "../interfaces/IOracle.sol";
 
@@ -12,8 +8,6 @@ import "../libraries/ObservationLibrary.sol";
 import "hardhat/console.sol";
 
 contract SlidingWindowOracle is IOracle {
-
-    using SafeMath for uint256;
 
     struct BufferMetadata {
         uint256 start;
@@ -72,7 +66,7 @@ contract SlidingWindowOracle is IOracle {
             // Ensure the underlying oracle is always up-to-date
             IOracle(underlyingOracle).update(token);
 
-            ObservationLibrary.Observation storage observation;
+            ObservationLibrary.Observation memory observation;
 
             (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = IOracle(underlyingOracle).consult(token);
             observation.timestamp = block.timestamp;
@@ -117,26 +111,26 @@ contract SlidingWindowOracle is IOracle {
 
             ObservationLibrary.Observation storage observation = buffer[index];
 
-            uint256 timeElapsed = currentTime.sub(observation.timestamp);
+            uint256 timeElapsed = currentTime - observation.timestamp;
             if (timeElapsed == 0)
                 timeElapsed = 1;
 
-            timeSum = timeSum.add(timeElapsed);
-            weightedPriceSum = weightedPriceSum.add(observation.price.mul(timeElapsed));
-            weightedTokenSum = weightedTokenSum.add(observation.tokenLiquidity.mul(timeElapsed));
-            weightedBaseSum = weightedBaseSum.add(observation.baseLiquidity.mul(timeElapsed));
+            timeSum += timeElapsed;
+            weightedPriceSum += observation.price * timeElapsed;
+            weightedTokenSum += observation.tokenLiquidity * timeElapsed;
+            weightedBaseSum += observation.baseLiquidity * timeElapsed;
         }
 
-        price = weightedPriceSum.div(timeSum);
-        tokenLiquidity = weightedTokenSum.div(timeSum);
-        baseLiquidity = weightedBaseSum.div(timeSum);
+        price = weightedPriceSum / timeSum;
+        tokenLiquidity = weightedTokenSum / timeSum;
+        baseLiquidity = weightedBaseSum / timeSum;
     }
 
     /**
      * Internal buffer strategies
      */
 
-    function appendBuffer(address token, ObservationLibrary.Observation storage value) internal {
+    function appendBuffer(address token, ObservationLibrary.Observation memory value) internal {
         BufferMetadata storage meta = observationBufferData[token];
 
         observationBuffers[token][meta.end] = value;

@@ -1,9 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
-
-pragma experimental ABIEncoderV2;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
+pragma solidity  ^0.8;
 
 import "../interfaces/IOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
@@ -13,8 +9,6 @@ import "../libraries/ObservationLibrary.sol";
 import "hardhat/console.sol";
 
 contract AggregatedOracle is IOracle, IAggregatedOracle {
-
-    using SafeMath for uint256;
 
     address[] public oracles;
 
@@ -81,16 +75,16 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
             (oraclePrice, oracleTokenLiquidity, oracleQuoteTokenLiquidity) = IOracle(oracles[i]).consult(token);
 
             if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
-                numerator = numerator.add(oracleQuoteTokenLiquidity);
-                denominator = denominator.add(oracleQuoteTokenLiquidity.div(oraclePrice));
+                numerator += oracleQuoteTokenLiquidity;
+                denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
                  // These should never overflow: supply of an asset cannot be greater than uint256.max
-                tokenLiquidity = tokenLiquidity.add(oracleTokenLiquidity);
-                quoteTokenLiquidity = quoteTokenLiquidity.add(oracleQuoteTokenLiquidity);
+                tokenLiquidity += oracleTokenLiquidity;
+                quoteTokenLiquidity += oracleQuoteTokenLiquidity;
             }
         }
 
-        price = denominator == 0 ? 0 : numerator.div(denominator);
+        price = denominator == 0 ? 0 : numerator / denominator;
     }
 
 }

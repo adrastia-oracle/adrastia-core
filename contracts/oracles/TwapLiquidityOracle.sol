@@ -1,7 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
-
-pragma experimental ABIEncoderV2;
+pragma solidity  ^0.8;
 
 import "../interfaces/ILiquidityOracle.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
@@ -9,13 +7,9 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-
 import "hardhat/console.sol";
 
 contract TwapLiquidityOracle is ILiquidityOracle {
-
-    using SafeMath for uint256;
 
     address public immutable liquidityAccumulator;
 
@@ -34,7 +28,7 @@ contract TwapLiquidityOracle is ILiquidityOracle {
     }
 
     function needsUpdate(address token) override virtual public view returns(bool) {
-        uint256 deltaTime = block.timestamp.sub(observations[token].timestamp);
+        uint256 deltaTime = block.timestamp - observations[token].timestamp;
 
         return deltaTime >= period;
     }
