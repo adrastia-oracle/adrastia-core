@@ -26,11 +26,9 @@ contract SlidingWindowOracle is IOracle {
 
     address public immutable quoteToken;
 
-    uint256 public immutable windowSize;
-    
-    uint8 public immutable granularity;
+    uint256 public immutable period;
 
-    uint256 public immutable periodSize;
+    uint8 public immutable numPeriods;
 
     mapping(address => mapping(uint256 => ObservationLibrary.Observation)) public observationBuffers;
 
@@ -38,17 +36,15 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
-    constructor(address underlyingOracle_, address quoteToken_, uint windowSize_, uint8 granularity_) {
-        // Ensure quote tokens match
-        require(granularity_ > 1, 'SlidingWindowOracle: Granularity must be at least 1.');
-        require(
-            (periodSize = windowSize_ / granularity_) * granularity_ == windowSize_,
-            'SlidingWindowOracle: Window is not evenly divisible by granularity.'
-        );
+    constructor(address underlyingOracle_, address quoteToken_, uint256 period_, uint8 numPeriods_) {
+        // TODO: Ensure quote tokens match
+        require(period_ != 0, "SlidingWindowOracle: INVALID_PERIOD");
+        require(numPeriods_ > 1, "SlidingWindowOracle: INVALID_NUM_PERIODS");
+
         underlyingOracle = underlyingOracle_;
         quoteToken = quoteToken_;
-        windowSize = windowSize_;
-        granularity = granularity_;
+        period = period_;
+        numPeriods = numPeriods_;
     }
 
     function needsUpdate(address token) override virtual public view returns(bool) {
@@ -61,7 +57,7 @@ contract SlidingWindowOracle is IOracle {
 
         uint timeElapsed = block.timestamp - lastObservation.timestamp;
 
-        return timeElapsed > periodSize;
+        return timeElapsed > period;
     }
 
     function update(address token) override external {
@@ -69,7 +65,7 @@ contract SlidingWindowOracle is IOracle {
 
         if (meta.maxSize == 0) {
             // No buffer for the token so we 'initialize' the buffer
-            meta.maxSize = granularity;
+            meta.maxSize = numPeriods;
         }
 
         if (needsUpdate(token)) {

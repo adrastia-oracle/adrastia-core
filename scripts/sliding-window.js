@@ -53,10 +53,10 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
 }
 
 async function createSlidingWindowOracle(underlyingOracle, quoteToken) {
-  const windowSize = 16;
-  const granularity = 2;
+  const period = 16;
+  const numPeriods = 2;
 
-  const oracle = createContract("SlidingWindowOracle", underlyingOracle, quoteToken, windowSize, granularity);
+  const oracle = createContract("SlidingWindowOracle", underlyingOracle, quoteToken, period, numPeriods);
 
   return oracle;
 }
