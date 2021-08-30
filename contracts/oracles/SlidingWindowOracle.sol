@@ -108,7 +108,7 @@ contract SlidingWindowOracle is IOracle {
         baseLiquidity = consultation.baseLiquidity;
     }
 
-    function consultFresh(address token) override virtual public view
+    function consultFresh(address token) internal view
         returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
     {
         BufferMetadata storage meta = observationBufferData[token];

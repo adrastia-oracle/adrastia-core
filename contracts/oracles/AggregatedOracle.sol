@@ -60,7 +60,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         baseLiquidity = consultation.baseLiquidity;
     }
 
-    function consultFresh(address token) override virtual public view
+    function consultFresh(address token) internal view
         returns (uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
         require(oracles.length > 0, "No underlying oracles.");
