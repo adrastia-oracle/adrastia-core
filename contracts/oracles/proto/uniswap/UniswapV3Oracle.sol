@@ -3,10 +3,10 @@ pragma solidity  >=0.5 <0.8;
 
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IOracle.sol";
-import "../interfaces/IDataSource.sol";
+import "../../../interfaces/IOracle.sol";
+import "../../../interfaces/IDataSource.sol";
 
-import "../libraries/ObservationLibrary.sol";
+import "../../../libraries/ObservationLibrary.sol";
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";

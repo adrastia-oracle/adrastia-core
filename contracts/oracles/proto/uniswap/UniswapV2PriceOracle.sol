@@ -3,10 +3,10 @@ pragma solidity  >=0.5 <0.8;
 
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IPriceOracle.sol";
+import "../../../interfaces/IPriceOracle.sol";
 
-import "../libraries/AccumulationLibrary.sol";
-import "../libraries/ObservationLibrary.sol";
+import "../../../libraries/AccumulationLibrary.sol";
+import "../../../libraries/ObservationLibrary.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
