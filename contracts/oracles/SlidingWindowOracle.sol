@@ -6,7 +6,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../interfaces/IOracle.sol";
-import "../interfaces/IDataSource.sol";
 
 import "../libraries/ObservationLibrary.sol";
 
@@ -23,7 +22,7 @@ contract SlidingWindowOracle is IOracle {
         uint256 maxSize;
     }
 
-    address public immutable dataSource;
+    address public immutable underlyingOracle;
 
     address public immutable quoteToken;
 
@@ -39,14 +38,14 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
-    constructor(address dataSource_, address quoteToken_, uint windowSize_, uint8 granularity_) {
-        require(IDataSource(dataSource_).quoteToken() == quoteToken_);
+    constructor(address underlyingOracle_, address quoteToken_, uint windowSize_, uint8 granularity_) {
+        // Ensure quote tokens match
         require(granularity_ > 1, 'SlidingWindowOracle: Granularity must be at least 1.');
         require(
             (periodSize = windowSize_ / granularity_) * granularity_ == windowSize_,
             'SlidingWindowOracle: Window is not evenly divisible by granularity.'
         );
-        dataSource = dataSource_;
+        underlyingOracle = underlyingOracle_;
         quoteToken = quoteToken_;
         windowSize = windowSize_;
         granularity = granularity_;
@@ -74,27 +73,20 @@ contract SlidingWindowOracle is IOracle {
         }
 
         if (needsUpdate(token)) {
-            IDataSource ds = IDataSource(dataSource);
+            // Ensure the underlying oracle is always up-to-date
+            IOracle(underlyingOracle).update(token);
 
-            (bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchPriceAndLiquidity(token);
+            ObservationLibrary.Observation storage observation;
 
-            if (success) {
-                ObservationLibrary.Observation storage observation;
+            (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = IOracle(underlyingOracle).consult(token);
+            observation.timestamp = block.timestamp;
 
-                observation.price = price;
-                observation.tokenLiquidity = tokenLiquidity;
-                observation.baseLiquidity = baseLiquidity;
-                observation.timestamp = block.timestamp;
+            appendBuffer(token, observation);
 
-                appendBuffer(token, observation);
+            ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
-                ObservationLibrary.Observation storage consultation = storedConsultations[token];
-
-                (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
-                consultation.timestamp = block.timestamp;
-            }
-
-            // TODO: Handle cases where calls are not successful
+            (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
+            consultation.timestamp = block.timestamp;
         }
     }
 
