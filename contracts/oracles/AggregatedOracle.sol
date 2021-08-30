@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../interfaces/IOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
-import "../interfaces/IDataSource.sol";
 
 import "../libraries/ObservationLibrary.sol";
 

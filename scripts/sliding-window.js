@@ -30,18 +30,6 @@ async function createContract(name, ...deploymentArgs) {
   return contract;
 }
 
-async function createUniswapV2DataSource(factory, baseToken) {
-  return createContract("UniswapV2DataSource", factory, baseToken);
-}
-
-async function createUniswapV3DataSource(factory, baseToken, observationPeriod) {
-  return createContract("UniswapV3DataSource", factory, baseToken, observationPeriod);
-}
-
-async function createSushiswapDataSource(factory, baseToken) {
-  return createContract("UniswapV2DataSource", factory, baseToken);
-}
-
 async function createUniswapV2Oracle(factory, quoteToken, period) {
   const updateTheshold = 2000000; // 2% change -> update
   const minUpdateDelay = 5; // At least 5 seconds between every update

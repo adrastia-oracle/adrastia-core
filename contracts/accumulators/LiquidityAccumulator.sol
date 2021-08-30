@@ -3,7 +3,6 @@ pragma solidity  >=0.5 <0.8;
 
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IDataSource.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
