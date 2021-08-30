@@ -10,13 +10,12 @@ import "../libraries/ObservationLibrary.sol";
 import "@uniswap-mirror/v3-core/contracts/libraries/FullMath.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract LiquidityAccumulator is ILiquidityAccumulator {
+abstract contract LiquidityAccumulator is ILiquidityAccumulator {
 
     using SafeMath for uint256;
 
     uint256 constant public CHANGE_PRECISION = 10**8;
 
-    address immutable public dataSource;
     uint256 immutable public updateThreshold;
     uint256 immutable public minUpdateDelay;
     uint256 immutable public maxUpdateDelay;
@@ -26,9 +25,8 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
 
-    constructor(address dataSource_, uint256 updateTheshold_, uint256 minUpdateDelay_, uint256 maxUpdateDelay_) {
-        dataSource = dataSource_;
-        quoteToken = IDataSource(dataSource_).quoteToken();
+    constructor(address quoteToken_, uint256 updateTheshold_, uint256 minUpdateDelay_, uint256 maxUpdateDelay_) {
+        quoteToken = quoteToken_;
         updateThreshold = updateTheshold_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
@@ -49,9 +47,7 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
          * Check if the % change in liquidity warrents an update (saves gas vs. always updating on change)
          */
 
-        (bool success, uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = IDataSource(dataSource).fetchLiquidity(token);
-        if (!success)
-            return false;
+        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
         uint256 tokenLiquidityChange = calculateChange(tokenLiquidity, lastObservation.tokenLiquidity);
         uint256 quoteTokenLiquidityChange = calculateChange(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity);
@@ -61,9 +57,7 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
 
     function update(address token) override virtual external {
         if (needsUpdate(token)) {
-            (bool success, uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = IDataSource(dataSource).fetchLiquidity(token);
-            if (!success)
-                return;
+            (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
             ObservationLibrary.LiquidityObservation storage observation = observations[token];
             AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
@@ -132,5 +126,7 @@ contract LiquidityAccumulator is ILiquidityAccumulator {
 
         return FullMath.mulDiv(delta, CHANGE_PRECISION, b);
     }
+
+    function fetchLiquidity(address token) virtual internal view returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
 
 }

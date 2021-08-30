@@ -43,13 +43,11 @@ async function createSushiswapDataSource(factory, baseToken) {
 }
 
 async function createUniswapV2Oracle(factory, quoteToken, period) {
-  const dataSource = await createUniswapV2DataSource(factory, quoteToken);
-
   const updateTheshold = 2000000; // 2% change -> update
   const minUpdateDelay = 5; // At least 5 seconds between every update
   const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
 
-  const liquidityAccumulator = await createContract("LiquidityAccumulator", dataSource.address, updateTheshold, minUpdateDelay, maxUpdateDelay);
+  const liquidityAccumulator = await createContract("UniswapV2LiquidityAccumulator", factory, quoteToken, updateTheshold, minUpdateDelay, maxUpdateDelay);
 
   const liquidityOracle = await createContract("TwapLiquidityOracle", liquidityAccumulator.address, quoteToken, period);
 
