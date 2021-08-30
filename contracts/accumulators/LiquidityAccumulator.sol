@@ -7,7 +7,7 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
 import "@uniswap-mirror/v3-core/contracts/libraries/FullMath.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-v3/contracts/math/SafeMath.sol";
 
 abstract contract LiquidityAccumulator is ILiquidityAccumulator {
 

@@ -7,8 +7,8 @@ import "../../../interfaces/IOracle.sol";
 
 import "../../../libraries/ObservationLibrary.sol";
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-v3/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin-v3/contracts/math/SafeMath.sol";
 
 import "@uniswap-mirror/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import "@uniswap-mirror/v3-periphery/contracts/libraries/WeightedOracleLibrary.sol";

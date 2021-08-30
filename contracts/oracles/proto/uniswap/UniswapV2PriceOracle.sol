@@ -14,7 +14,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 import "@uniswap/v2-periphery/contracts/libraries/UniswapV2OracleLibrary.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin-v3/contracts/math/SafeMath.sol";
 
 contract UniswapV2PriceOracle is IPriceOracle {
 
