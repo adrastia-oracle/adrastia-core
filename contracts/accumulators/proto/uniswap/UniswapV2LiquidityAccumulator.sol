@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
+pragma solidity >=0.5.0 <0.8.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -10,14 +10,25 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
-
     address immutable uniswapFactory;
 
-    constructor(address uniswapFactory_, address quoteToken_, uint256 updateTheshold_, uint256 minUpdateDelay_, uint256 maxUpdateDelay_) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    constructor(
+        address uniswapFactory_,
+        address quoteToken_,
+        uint256 updateTheshold_,
+        uint256 minUpdateDelay_,
+        uint256 maxUpdateDelay_
+    ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
     }
 
-    function fetchLiquidity(address token) override virtual internal view returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
+    function fetchLiquidity(address token)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
         // TODO: Inline this
         address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
 
@@ -35,5 +46,4 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
             quoteTokenLiquidity = reserve0;
         }
     }
-
 }

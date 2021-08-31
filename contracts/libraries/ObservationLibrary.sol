@@ -1,10 +1,9 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.9;
+pragma solidity >=0.5.0 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
 library ObservationLibrary {
-
     struct Observation {
         uint256 timestamp;
         uint256 price;
@@ -22,5 +21,4 @@ library ObservationLibrary {
         uint256 price;
         uint256 timestamp;
     }
-
 }

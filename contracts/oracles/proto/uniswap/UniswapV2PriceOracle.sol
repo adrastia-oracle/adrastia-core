@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
+pragma solidity >=0.5.0 <0.8.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -17,7 +17,6 @@ import "@uniswap/v2-periphery/contracts/libraries/UniswapV2OracleLibrary.sol";
 import "@openzeppelin-v3/contracts/math/SafeMath.sol";
 
 contract UniswapV2PriceOracle is IPriceOracle {
-
     using SafeMath for uint256;
 
     using FixedPoint for *;
@@ -34,30 +33,37 @@ contract UniswapV2PriceOracle is IPriceOracle {
 
     uint256 immutable period;
 
-    mapping (address => AccumulationLibrary.PriceAccumulator) accumulations;
+    mapping(address => AccumulationLibrary.PriceAccumulator) accumulations;
     mapping(address => ObservationLibrary.PriceObservation) observations;
 
-    constructor(address uniswapFactory_, address quoteToken_, uint256 period_) {
+    constructor(
+        address uniswapFactory_,
+        address quoteToken_,
+        uint256 period_
+    ) {
         uniswapFactory = uniswapFactory_;
         quoteToken = quoteToken_;
         period = period_;
     }
 
-    function needsUpdate(address token) override virtual public view returns(bool) {
+    function needsUpdate(address token) public view virtual override returns (bool) {
         uint256 deltaTime = block.timestamp.sub(observations[token].timestamp);
 
         return deltaTime >= period;
     }
 
-    function update(address token) override virtual external {
+    function update(address token) external virtual override {
         if (needsUpdate(token)) {
             address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
 
             AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
 
             // Get current accumulations from Uniswap's price accumulator
-            (uint256 cumulativeQuoteTokenPrice, uint256 cumulativeTokenPrice, uint32 blockTimestamp) =
-                UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
+            (
+                uint256 cumulativeQuoteTokenPrice,
+                uint256 cumulativeTokenPrice,
+                uint32 blockTimestamp
+            ) = UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
 
             if (token < quoteToken) {
                 // Rearrange the values so that token0 in the underlying is always 'token'
@@ -72,8 +78,8 @@ contract UniswapV2PriceOracle is IPriceOracle {
                 IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
 
                 // This is the timestamp when price0CumulativeLast and price1CumulativeLast was set
-                (,, uint32 timestamp) = pair.getReserves();
-                
+                (, , uint32 timestamp) = pair.getReserves();
+
                 require(timestamp != 0, "UniswapV2PriceOracle: MISSING_RESERVES_TIMESTAMP");
 
                 if (token < quoteToken) {
@@ -92,7 +98,12 @@ contract UniswapV2PriceOracle is IPriceOracle {
                 ObservationLibrary.PriceObservation storage observation = observations[token];
 
                 // Store price and current time
-                observation.price = computeAmountOut(accumulation.cumulativeTokenPrice, cumulativeTokenPrice, timeElapsed, computeWholeUnitAmount(token));
+                observation.price = computeAmountOut(
+                    accumulation.cumulativeTokenPrice,
+                    cumulativeTokenPrice,
+                    timeElapsed,
+                    computeWholeUnitAmount(token)
+                );
                 observation.timestamp = block.timestamp;
 
                 // Store current accumulations and the timestamp of them
@@ -107,21 +118,23 @@ contract UniswapV2PriceOracle is IPriceOracle {
         }
     }
 
-    function consultPrice(address token) override virtual external view returns (uint256 price) {
+    function consultPrice(address token) external view virtual override returns (uint256 price) {
         require(observations[token].timestamp != 0, "UniswapV2PriceOracle: MISSING_OBSERVATION");
 
         return observations[token].price;
     }
 
-    function computeWholeUnitAmount(address token) private view returns(uint256 amount) {
-        amount = uint256(10) ** IERC20(token).decimals();
+    function computeWholeUnitAmount(address token) private view returns (uint256 amount) {
+        amount = uint256(10)**IERC20(token).decimals();
     }
 
     // given the cumulative prices of the start and end of a period, and the length of the period, compute the average
     // price in terms of how much amount out is received for the amount in
     function computeAmountOut(
-        uint256 priceCumulativeStart, uint256 priceCumulativeEnd,
-        uint256 timeElapsed, uint256 amountIn
+        uint256 priceCumulativeStart,
+        uint256 priceCumulativeEnd,
+        uint256 timeElapsed,
+        uint256 amountIn
     ) private pure returns (uint256 amountOut) {
         // overflow is desired.
         FixedPoint.uq112x112 memory priceAverage = FixedPoint.uq112x112(
@@ -129,5 +142,4 @@ contract UniswapV2PriceOracle is IPriceOracle {
         );
         amountOut = priceAverage.mul(amountIn).decode144();
     }
-
 }

@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  ^0.8;
+pragma solidity ^0.8;
 
 import "../interfaces/IOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
@@ -9,7 +9,6 @@ import "../libraries/ObservationLibrary.sol";
 import "hardhat/console.sol";
 
 contract AggregatedOracle is IOracle, IAggregatedOracle {
-
     address[] public oracles;
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
@@ -20,22 +19,20 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         oracles = oracles_;
     }
 
-    function getOracles() override virtual external view returns(address[] memory) {
+    function getOracles() external view virtual override returns (address[] memory) {
         return oracles;
     }
 
-    function needsUpdate(address token) override virtual public view returns(bool) {
+    function needsUpdate(address token) public view virtual override returns (bool) {
         for (uint256 i = 0; i < oracles.length; ++i) {
-            if (IOracle(oracles[i]).needsUpdate(token))
-                return true;
+            if (IOracle(oracles[i]).needsUpdate(token)) return true;
         }
 
         return false;
     }
 
-    function update(address token) override external {
-        for (uint256 i = 0; i < oracles.length; ++i)
-            IOracle(oracles[i]).update(token);
+    function update(address token) external override {
+        for (uint256 i = 0; i < oracles.length; ++i) IOracle(oracles[i]).update(token);
 
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
@@ -43,8 +40,16 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         consultation.timestamp = block.timestamp;
     }
 
-    function consult(address token) override virtual public view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    function consult(address token)
+        public
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
@@ -53,12 +58,18 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         baseLiquidity = consultation.baseLiquidity;
     }
 
-    function consultFresh(address token) internal view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    function consultFresh(address token)
+        internal
+        view
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 quoteTokenLiquidity
+        )
     {
         require(oracles.length > 0, "No underlying oracles.");
 
-        uint oracleCount = oracles.length;
+        uint256 oracleCount = oracles.length;
 
         /*
          * Compute harmonic sum
@@ -78,7 +89,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 numerator += oracleQuoteTokenLiquidity;
                 denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
-                 // These should never overflow: supply of an asset cannot be greater than uint256.max
+                // These should never overflow: supply of an asset cannot be greater than uint256.max
                 tokenLiquidity += oracleTokenLiquidity;
                 quoteTokenLiquidity += oracleQuoteTokenLiquidity;
             }
@@ -86,5 +97,4 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
 
         price = denominator == 0 ? 0 : numerator / denominator;
     }
-
 }

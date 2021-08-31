@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
+pragma solidity >=0.5.0 <0.8.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -10,35 +10,38 @@ import "@uniswap-mirror/v3-core/contracts/libraries/FullMath.sol";
 import "@openzeppelin-v3/contracts/math/SafeMath.sol";
 
 abstract contract LiquidityAccumulator is ILiquidityAccumulator {
-
     using SafeMath for uint256;
 
-    uint256 constant public CHANGE_PRECISION = 10**8;
+    uint256 public constant CHANGE_PRECISION = 10**8;
 
-    uint256 immutable public updateThreshold;
-    uint256 immutable public minUpdateDelay;
-    uint256 immutable public maxUpdateDelay;
+    uint256 public immutable updateThreshold;
+    uint256 public immutable minUpdateDelay;
+    uint256 public immutable maxUpdateDelay;
 
-    address immutable public override quoteToken;
+    address public immutable override quoteToken;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
 
-    constructor(address quoteToken_, uint256 updateTheshold_, uint256 minUpdateDelay_, uint256 maxUpdateDelay_) {
+    constructor(
+        address quoteToken_,
+        uint256 updateTheshold_,
+        uint256 minUpdateDelay_,
+        uint256 maxUpdateDelay_
+    ) {
         quoteToken = quoteToken_;
         updateThreshold = updateTheshold_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
 
-    function needsUpdate(address token) override virtual public view returns(bool) {
+    function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
         uint256 deltaTime = block.timestamp.sub(lastObservation.timestamp);
-        if (deltaTime < minUpdateDelay)
-            return false; // Ensures updates occur at most once every minUpdateDelay (seconds)
-        else if (deltaTime >= maxUpdateDelay)
-            return true; // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        if (deltaTime < minUpdateDelay) return false;
+        // Ensures updates occur at most once every minUpdateDelay (seconds)
+        else if (deltaTime >= maxUpdateDelay) return true; // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
 
         /*
          * maxUpdateDelay > deltaTime >= minUpdateDelay
@@ -54,7 +57,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         return tokenLiquidityChange >= updateThreshold || quoteTokenLiquidityChange >= updateThreshold;
     }
 
-    function update(address token) override virtual external {
+    function update(address token) external virtual override {
         if (needsUpdate(token)) {
             (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
@@ -91,29 +94,41 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         }
     }
 
-    function getAccumulation(address token) override virtual public view
-        returns(AccumulationLibrary.LiquidityAccumulator memory)
+    function getAccumulation(address token)
+        public
+        view
+        virtual
+        override
+        returns (AccumulationLibrary.LiquidityAccumulator memory)
     {
         return accumulations[token];
     }
 
-    function getLastObservation(address token) override virtual public view
-        returns(ObservationLibrary.LiquidityObservation memory)
+    function getLastObservation(address token)
+        public
+        view
+        virtual
+        override
+        returns (ObservationLibrary.LiquidityObservation memory)
     {
         return observations[token];
     }
 
-    function calculateLiquidity(AccumulationLibrary.LiquidityAccumulator memory firstAccumulation, AccumulationLibrary.LiquidityAccumulator memory secondAccumulation) override virtual public pure
-        returns(uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
+    function calculateLiquidity(
+        AccumulationLibrary.LiquidityAccumulator memory firstAccumulation,
+        AccumulationLibrary.LiquidityAccumulator memory secondAccumulation
+    ) public pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
         uint256 deltaTime = secondAccumulation.timestamp.sub(firstAccumulation.timestamp);
         require(deltaTime != 0, "LiquidityAccumulator: delta time cannot be 0.");
 
-        tokenLiquidity = (secondAccumulation.cumulativeTokenLiquidity.sub(firstAccumulation.cumulativeTokenLiquidity)).div(deltaTime);
-        quoteTokenLiquidity = (secondAccumulation.cumulativeQuoteTokenLiquidity.sub(firstAccumulation.cumulativeQuoteTokenLiquidity)).div(deltaTime);
+        tokenLiquidity = (secondAccumulation.cumulativeTokenLiquidity.sub(firstAccumulation.cumulativeTokenLiquidity))
+            .div(deltaTime);
+        quoteTokenLiquidity = (
+            secondAccumulation.cumulativeQuoteTokenLiquidity.sub(firstAccumulation.cumulativeQuoteTokenLiquidity)
+        ).div(deltaTime);
     }
 
-    function calculateChange(uint256 a, uint256 b) internal pure returns(uint256) {
+    function calculateChange(uint256 a, uint256 b) internal pure returns (uint256) {
         // Ensure a is never smaller than b
         if (a < b) {
             uint256 temp = a;
@@ -126,6 +141,9 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         return FullMath.mulDiv(delta, CHANGE_PRECISION, b);
     }
 
-    function fetchLiquidity(address token) virtual internal view returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
-
+    function fetchLiquidity(address token)
+        internal
+        view
+        virtual
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
 }

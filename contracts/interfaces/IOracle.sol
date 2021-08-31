@@ -1,13 +1,18 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.9;
+pragma solidity >=0.5.0 <0.9.0;
 
 abstract contract IOracle {
+    function needsUpdate(address token) public view virtual returns (bool);
 
-    function needsUpdate(address token) virtual public view returns(bool);
+    function update(address token) external virtual;
 
-    function update(address token) virtual external;
-
-    function consult(address token) virtual external view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity);
-
+    function consult(address token)
+        external
+        view
+        virtual
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        );
 }

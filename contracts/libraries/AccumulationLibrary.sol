@@ -1,10 +1,9 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.9;
+pragma solidity >=0.5.0 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
 library AccumulationLibrary {
-
     struct LiquidityAccumulator {
         uint256 cumulativeTokenLiquidity;
         uint256 cumulativeQuoteTokenLiquidity;
@@ -16,5 +15,4 @@ library AccumulationLibrary {
         uint256 cumulativeQuoteTokenPrice;
         uint256 timestamp;
     }
-
 }

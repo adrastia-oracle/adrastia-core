@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  ^0.8;
+pragma solidity ^0.8;
 
 import "../interfaces/ILiquidityOracle.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
@@ -10,7 +10,6 @@ import "../libraries/ObservationLibrary.sol";
 import "hardhat/console.sol";
 
 contract TwapLiquidityOracle is ILiquidityOracle {
-
     address public immutable liquidityAccumulator;
 
     address public immutable quoteToken;
@@ -20,25 +19,31 @@ contract TwapLiquidityOracle is ILiquidityOracle {
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
 
-    constructor(address liquidityAccumulator_, address quoteToken_, uint256 period_) {
+    constructor(
+        address liquidityAccumulator_,
+        address quoteToken_,
+        uint256 period_
+    ) {
         require(ILiquidityAccumulator(liquidityAccumulator_).quoteToken() == quoteToken_);
         liquidityAccumulator = liquidityAccumulator_;
         quoteToken = quoteToken_;
         period = period_;
     }
 
-    function needsUpdate(address token) override virtual public view returns(bool) {
+    function needsUpdate(address token) public view virtual override returns (bool) {
         uint256 deltaTime = block.timestamp - observations[token].timestamp;
 
         return deltaTime >= period;
     }
 
-    function update(address token) override external {
+    function update(address token) external override {
         if (needsUpdate(token)) {
             // Always keep the liquidity accumulator up-to-date
             ILiquidityAccumulator(liquidityAccumulator).update(token);
 
-            AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(liquidityAccumulator).getAccumulation(token);
+            AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
+                liquidityAccumulator
+            ).getAccumulation(token);
 
             uint256 lastAccumulationTime = accumulations[token].timestamp;
 
@@ -49,7 +54,9 @@ contract TwapLiquidityOracle is ILiquidityOracle {
                     // We have two accumulations -> calculate liquidity from them
                     ObservationLibrary.LiquidityObservation storage observation = observations[token];
 
-                    (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(liquidityAccumulator).calculateLiquidity(accumulations[token], freshAccumulation);
+                    (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                        liquidityAccumulator
+                    ).calculateLiquidity(accumulations[token], freshAccumulation);
                     observation.timestamp = block.timestamp;
                 } else {
                     // Only one accumulation, so we use the accumulator's last observation
@@ -64,7 +71,11 @@ contract TwapLiquidityOracle is ILiquidityOracle {
         }
     }
 
-    function consultLiquidity(address token) override virtual public view
+    function consultLiquidity(address token)
+        public
+        view
+        virtual
+        override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
         ObservationLibrary.LiquidityObservation storage observation = observations[token];

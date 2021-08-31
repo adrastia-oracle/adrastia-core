@@ -1,4 +1,4 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional 
+// We require the Hardhat Runtime Environment explicitly here. This is optional
 // but useful for running the script in a standalone fashion through `node <script>`.
 //
 // When running the script with `hardhat run <script>` you'll find the Hardhat
@@ -16,57 +16,57 @@ const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const grtAddress = "0xc944e90c64b2c07662a292be6244bdf05cda44a7";
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function createContract(name, ...deploymentArgs) {
-  const contractFactory = await ethers.getContractFactory(name);
+    const contractFactory = await ethers.getContractFactory(name);
 
-  const contract = await contractFactory.deploy(...deploymentArgs);
+    const contract = await contractFactory.deploy(...deploymentArgs);
 
-  await contract.deployed();
+    await contract.deployed();
 
-  return contract;
+    return contract;
 }
 
 async function main() {
-  const factoryAddress = uniswapV2FactoryAddress;
+    const factoryAddress = uniswapV2FactoryAddress;
 
-  const token = wethAddress;
-  const quoteToken = usdcAddress;
+    const token = wethAddress;
+    const quoteToken = usdcAddress;
 
-  const period = 10; // 10 seconds
+    const period = 10; // 10 seconds
 
-  const oracle = await createContract("UniswapV2PriceOracle", factoryAddress, quoteToken, period);
+    const oracle = await createContract("UniswapV2PriceOracle", factoryAddress, quoteToken, period);
 
-  while (true) {
-    try {
-      const estimation = await oracle.estimateGas.update(token);
+    while (true) {
+        try {
+            const estimation = await oracle.estimateGas.update(token);
 
-      console.log("Update gas =", estimation.toString());
+            console.log("Update gas =", estimation.toString());
 
-      await oracle.update(token);
-    } catch (e) {
-      console.log(e);
+            await oracle.update(token);
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            const result = await oracle.consultPrice(token);
+
+            console.log("Price =", result.toString());
+        } catch (e) {
+            console.log(e);
+        }
+
+        await sleep(1000);
     }
-
-    try {
-      const result = await oracle.consultPrice(token);
-
-      console.log("Price =", result.toString());
-    } catch (e) {
-      console.log(e);
-    }
-
-    await sleep(1000);
-  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 main()
-  .then(() => process.exit(0))
-  .catch(error => {
-    console.error(error);
-    process.exit(1);
-  });
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });

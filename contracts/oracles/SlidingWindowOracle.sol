@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  ^0.8;
+pragma solidity ^0.8;
 
 import "../interfaces/IOracle.sol";
 
@@ -8,7 +8,6 @@ import "../libraries/ObservationLibrary.sol";
 import "hardhat/console.sol";
 
 contract SlidingWindowOracle is IOracle {
-
     struct BufferMetadata {
         uint256 start;
         uint256 end;
@@ -30,7 +29,12 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
-    constructor(address underlyingOracle_, address quoteToken_, uint256 period_, uint8 numPeriods_) {
+    constructor(
+        address underlyingOracle_,
+        address quoteToken_,
+        uint256 period_,
+        uint8 numPeriods_
+    ) {
         // TODO: Ensure quote tokens match
         require(period_ != 0, "SlidingWindowOracle: INVALID_PERIOD");
         require(numPeriods_ > 1, "SlidingWindowOracle: INVALID_NUM_PERIODS");
@@ -41,20 +45,19 @@ contract SlidingWindowOracle is IOracle {
         numPeriods = numPeriods_;
     }
 
-    function needsUpdate(address token) override virtual public view returns(bool) {
+    function needsUpdate(address token) public view virtual override returns (bool) {
         BufferMetadata storage meta = observationBufferData[token];
-        if (meta.size == 0)
-            return true;
+        if (meta.size == 0) return true;
 
         // We have observations, so check if enough time has passed since the last observation
         ObservationLibrary.Observation storage lastObservation = getLastObservation(token, meta);
 
-        uint timeElapsed = block.timestamp - lastObservation.timestamp;
+        uint256 timeElapsed = block.timestamp - lastObservation.timestamp;
 
         return timeElapsed > period;
     }
 
-    function update(address token) override external {
+    function update(address token) external override {
         BufferMetadata storage meta = observationBufferData[token];
 
         if (meta.maxSize == 0) {
@@ -68,7 +71,8 @@ contract SlidingWindowOracle is IOracle {
 
             ObservationLibrary.Observation memory observation;
 
-            (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = IOracle(underlyingOracle).consult(token);
+            (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = IOracle(underlyingOracle)
+                .consult(token);
             observation.timestamp = block.timestamp;
 
             appendBuffer(token, observation);
@@ -80,8 +84,16 @@ contract SlidingWindowOracle is IOracle {
         }
     }
 
-    function consult(address token) override virtual public view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    function consult(address token)
+        public
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
@@ -90,12 +102,17 @@ contract SlidingWindowOracle is IOracle {
         baseLiquidity = consultation.baseLiquidity;
     }
 
-    function consultFresh(address token) internal view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    function consultFresh(address token)
+        internal
+        view
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
     {
         BufferMetadata storage meta = observationBufferData[token];
-        if (meta.size == 0)
-            return (0, 0, 0);
+        if (meta.size == 0) return (0, 0, 0);
 
         mapping(uint256 => ObservationLibrary.Observation) storage buffer = observationBuffers[token];
 
@@ -112,8 +129,7 @@ contract SlidingWindowOracle is IOracle {
             ObservationLibrary.Observation storage observation = buffer[index];
 
             uint256 timeElapsed = currentTime - observation.timestamp;
-            if (timeElapsed == 0)
-                timeElapsed = 1;
+            if (timeElapsed == 0) timeElapsed = 1;
 
             timeSum += timeElapsed;
             weightedPriceSum += observation.price * timeElapsed;
@@ -144,13 +160,17 @@ contract SlidingWindowOracle is IOracle {
         }
     }
 
-    function getObservations(address token) public view returns(ObservationLibrary.Observation[] memory) {
+    function getObservations(address token) public view returns (ObservationLibrary.Observation[] memory) {
         BufferMetadata storage meta = observationBufferData[token];
 
         return getObservations(token, meta);
     }
 
-    function getObservations(address token, BufferMetadata storage meta) internal view returns(ObservationLibrary.Observation[] memory) {
+    function getObservations(address token, BufferMetadata storage meta)
+        internal
+        view
+        returns (ObservationLibrary.Observation[] memory)
+    {
         ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](meta.size);
 
         mapping(uint256 => ObservationLibrary.Observation) storage buffer = observationBuffers[token];
@@ -164,11 +184,19 @@ contract SlidingWindowOracle is IOracle {
         return observations;
     }
 
-    function getLastObservation(address token, BufferMetadata storage meta) internal view returns(ObservationLibrary.Observation storage) {
+    function getLastObservation(address token, BufferMetadata storage meta)
+        internal
+        view
+        returns (ObservationLibrary.Observation storage)
+    {
         return observationBuffers[token][(meta.end == 0 ? meta.maxSize : meta.end) - 1];
     }
 
-    function getFirstObservation(address token, BufferMetadata storage meta) internal view returns(ObservationLibrary.Observation storage) {
+    function getFirstObservation(address token, BufferMetadata storage meta)
+        internal
+        view
+        returns (ObservationLibrary.Observation storage)
+    {
         return observationBuffers[token][meta.start];
     }
 }
