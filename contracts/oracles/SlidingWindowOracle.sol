@@ -5,8 +5,6 @@ import "../interfaces/IOracle.sol";
 
 import "../libraries/ObservationLibrary.sol";
 
-import "hardhat/console.sol";
-
 contract SlidingWindowOracle is IOracle {
     struct BufferMetadata {
         uint256 start;
