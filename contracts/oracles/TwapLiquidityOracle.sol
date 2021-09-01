@@ -7,8 +7,6 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
-import "hardhat/console.sol";
-
 contract TwapLiquidityOracle is ILiquidityOracle {
     address public immutable liquidityAccumulator;
 
