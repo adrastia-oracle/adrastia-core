@@ -11,12 +11,15 @@ import "hardhat/console.sol";
 contract AggregatedOracle is IOracle, IAggregatedOracle {
     address[] public oracles;
 
+    uint256 immutable period;
+
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
-    constructor(address[] memory oracles_) {
+    constructor(address[] memory oracles_, uint256 period_) {
         require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
 
         oracles = oracles_;
+        period = period_;
     }
 
     function getOracles() external view virtual override returns (address[] memory) {
@@ -24,20 +27,21 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
     }
 
     function needsUpdate(address token) public view virtual override returns (bool) {
-        for (uint256 i = 0; i < oracles.length; ++i) {
-            if (IOracle(oracles[i]).needsUpdate(token)) return true;
-        }
+        uint256 deltaTime = block.timestamp - storedConsultations[token].timestamp;
 
-        return false;
+        return deltaTime >= period;
     }
 
     function update(address token) external override {
-        for (uint256 i = 0; i < oracles.length; ++i) IOracle(oracles[i]).update(token);
+        if (needsUpdate(token)) {
+            // Ensure all underlying oracles are up-to-date
+            for (uint256 i = 0; i < oracles.length; ++i) IOracle(oracles[i]).update(token);
 
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+            ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
-        (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
-        consultation.timestamp = block.timestamp;
+            (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
+            consultation.timestamp = block.timestamp;
+        }
     }
 
     function consult(address token)

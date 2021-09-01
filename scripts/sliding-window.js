@@ -91,7 +91,7 @@ async function main() {
         uniswapV2Oracle.address,
         uniswapV3Oracle.address,
         sushiswapOracle.address,
-    ]);
+    ], oraclePeriod);
 
     while (true) {
         try {
