@@ -15,4 +15,14 @@ abstract contract IOracle {
             uint256 tokenLiquidity,
             uint256 baseLiquidity
         );
+
+    function consult(address token, uint256 maxAge)
+        external
+        view
+        virtual
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        );
 }

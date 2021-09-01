@@ -7,4 +7,6 @@ abstract contract IPriceOracle {
     function update(address token) external virtual returns (bool);
 
     function consultPrice(address token) external view virtual returns (uint256 price);
+
+    function consultPrice(address token, uint256 maxAge) external view virtual returns (uint256 price);
 }

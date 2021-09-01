@@ -51,7 +51,7 @@ async function main() {
         }
 
         try {
-            const result = await oracle.consultPrice(token);
+            const result = await oracle['consultPrice(address)'](token);
 
             console.log("Price =", result.toString());
         } catch (e) {

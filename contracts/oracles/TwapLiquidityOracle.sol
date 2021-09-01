@@ -87,4 +87,20 @@ contract TwapLiquidityOracle is ILiquidityOracle {
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
+
+    function consultLiquidity(address token, uint256 maxAge)
+        public
+        view
+        virtual
+        override
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "TwapLiquidityOracle: NO_OBSERVATION");
+        require(block.timestamp <= observation.timestamp + maxAge, "TwapLiquidityOracle: RATE_TOO_OLD");
+
+        tokenLiquidity = observation.tokenLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
+    }
 }

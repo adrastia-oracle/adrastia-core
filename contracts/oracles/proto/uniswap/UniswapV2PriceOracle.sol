@@ -128,6 +128,15 @@ contract UniswapV2PriceOracle is IPriceOracle {
         return observations[token].price;
     }
 
+    function consultPrice(address token, uint256 maxAge) external view virtual override returns (uint256 price) {
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "UniswapV2PriceOracle: MISSING_OBSERVATION");
+        require(block.timestamp <= observation.timestamp.add(maxAge), "UniswapV2PriceOracle: RATE_TOO_OLD");
+
+        return observation.price;
+    }
+
     function computeWholeUnitAmount(address token) private view returns (uint256 amount) {
         amount = uint256(10)**IERC20(token).decimals();
     }

@@ -40,4 +40,19 @@ contract CompositeOracle is IOracle {
         price = IPriceOracle(priceOracle).consultPrice(token);
         (tokenLiquidity, quoteTokenLiquidity) = ILiquidityOracle(liquidityOracle).consultLiquidity(token);
     }
+
+    function consult(address token, uint256 maxAge)
+        external
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 quoteTokenLiquidity
+        )
+    {
+        price = IPriceOracle(priceOracle).consultPrice(token, maxAge);
+        (tokenLiquidity, quoteTokenLiquidity) = ILiquidityOracle(liquidityOracle).consultLiquidity(token, maxAge);
+    }
 }

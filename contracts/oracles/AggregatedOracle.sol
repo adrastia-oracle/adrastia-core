@@ -72,6 +72,26 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         baseLiquidity = consultation.baseLiquidity;
     }
 
+    function consult(address token, uint256 maxAge)
+        public
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
+    {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
+
+        price = consultation.price;
+        tokenLiquidity = consultation.tokenLiquidity;
+        baseLiquidity = consultation.baseLiquidity;
+    }
+
     function consultFresh(address token)
         internal
         view

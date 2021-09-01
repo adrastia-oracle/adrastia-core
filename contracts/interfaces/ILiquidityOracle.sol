@@ -11,4 +11,10 @@ abstract contract ILiquidityOracle {
         view
         virtual
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
+
+    function consultLiquidity(address token, uint256 maxAge)
+        external
+        view
+        virtual
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
 }

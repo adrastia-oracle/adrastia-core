@@ -75,6 +75,27 @@ contract UniswapV3Oracle is IOracle {
         baseLiquidity = observation.baseLiquidity;
     }
 
+    function consult(address token, uint256 maxAge)
+        external
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
+    {
+        ObservationLibrary.Observation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "UniswapV3Oracle: MISSING_OBSERVATION");
+        require(block.timestamp <= observation.timestamp.add(maxAge), "UniswapV3Oracle: RATE_TOO_OLD");
+
+        price = observation.price;
+        tokenLiquidity = observation.tokenLiquidity;
+        baseLiquidity = observation.baseLiquidity;
+    }
+
     function consultFresh(address token)
         internal
         view

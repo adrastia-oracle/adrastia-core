@@ -105,7 +105,7 @@ async function main() {
         }
 
         try {
-            const result = await uniswapV2Oracle.consult(token);
+            const result = await uniswapV2Oracle['consult(address)'](token);
 
             console.log(
                 "UniswapV2 Price =",
@@ -120,7 +120,7 @@ async function main() {
         }
 
         try {
-            const result = await uniswapV3Oracle.consult(token);
+            const result = await uniswapV3Oracle['consult(address)'](token);
 
             console.log(
                 "UniswapV3 Price =",
@@ -135,7 +135,7 @@ async function main() {
         }
 
         try {
-            const result = await sushiswapOracle.consult(token);
+            const result = await sushiswapOracle['consult(address)'](token);
 
             console.log(
                 "Sushiswap Price =",
@@ -150,11 +150,11 @@ async function main() {
         }
 
         try {
-            const estimation = await aggregatedOracle.estimateGas.consult(token);
+            const estimation = await aggregatedOracle.estimateGas['consult(address)'](token);
 
             console.log("Aggregate consult gas =", estimation.toString());
 
-            const result = await aggregatedOracle.consult(token);
+            const result = await aggregatedOracle['consult(address)'](token);
 
             console.log(
                 "Aggregate Price =",
