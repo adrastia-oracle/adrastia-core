@@ -82,7 +82,7 @@ contract TwapLiquidityOracle is ILiquidityOracle {
     {
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
 
-        require(observation.timestamp != 0, "TwapLiquidityOracle: NO_OBSERVATION");
+        require(observation.timestamp != 0, "TwapLiquidityOracle: MISSING_OBSERVATION");
 
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
@@ -97,7 +97,7 @@ contract TwapLiquidityOracle is ILiquidityOracle {
     {
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
 
-        require(observation.timestamp != 0, "TwapLiquidityOracle: NO_OBSERVATION");
+        require(observation.timestamp != 0, "TwapLiquidityOracle: MISSING_OBSERVATION");
         require(block.timestamp <= observation.timestamp + maxAge, "TwapLiquidityOracle: RATE_TOO_OLD");
 
         tokenLiquidity = observation.tokenLiquidity;

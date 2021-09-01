@@ -99,6 +99,8 @@ contract SlidingWindowOracle is IOracle {
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
+
         price = consultation.price;
         tokenLiquidity = consultation.tokenLiquidity;
         baseLiquidity = consultation.baseLiquidity;
@@ -117,6 +119,7 @@ contract SlidingWindowOracle is IOracle {
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
         require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
 
         price = consultation.price;

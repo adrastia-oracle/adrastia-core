@@ -67,6 +67,8 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
+        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
+
         price = consultation.price;
         tokenLiquidity = consultation.tokenLiquidity;
         baseLiquidity = consultation.baseLiquidity;
@@ -85,6 +87,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
+        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
         require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
 
         price = consultation.price;
