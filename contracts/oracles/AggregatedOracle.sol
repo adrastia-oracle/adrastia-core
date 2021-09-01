@@ -38,6 +38,8 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 // so we put update in a try-catch block
                 try IOracle(oracles[i]).update(token) {} catch Error(string memory reason) {
                     // TODO: Log reason
+                } catch (bytes memory err) {
+                    // TODO: Log this
                 }
             }
 
@@ -108,6 +110,8 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 }
             } catch Error(string memory reason) {
                 // TODO: Log reason
+            } catch (bytes memory err) {
+                // TODO: Log this
             }
         }
 
