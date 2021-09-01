@@ -33,7 +33,13 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
     function update(address token) external override returns (bool) {
         if (needsUpdate(token)) {
             // Ensure all underlying oracles are up-to-date
-            for (uint256 i = 0; i < oracles.length; ++i) IOracle(oracles[i]).update(token);
+            for (uint256 i = 0; i < oracles.length; ++i) {
+                // We don't want any problematic underlying oracles to prevent this oracle from updating
+                // so we put update in a try-catch block
+                try IOracle(oracles[i]).update(token) {} catch Error(string memory reason) {
+                    // TODO: Log reason
+                }
+            }
 
             ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
