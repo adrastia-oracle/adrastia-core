@@ -14,9 +14,6 @@ import "@uniswap-mirror/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import "@uniswap-mirror/v3-periphery/contracts/libraries/WeightedOracleLibrary.sol";
 import "@uniswap-mirror/v3-periphery/contracts/libraries/PoolAddress.sol";
 import "@uniswap-mirror/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import "@uniswap-mirror/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-
-import "hardhat/console.sol";
 
 contract UniswapV3Oracle is IOracle {
     using SafeMath for uint256;
