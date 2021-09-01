@@ -6,8 +6,6 @@ import "../interfaces/IAggregatedOracle.sol";
 
 import "../libraries/ObservationLibrary.sol";
 
-import "hardhat/console.sol";
-
 contract AggregatedOracle is IOracle, IAggregatedOracle {
     address[] public oracles;
 
