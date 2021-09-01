@@ -11,7 +11,7 @@ abstract contract ILiquidityAccumulator {
 
     function needsUpdate(address token) public view virtual returns (bool);
 
-    function update(address token) external virtual;
+    function update(address token) external virtual returns (bool);
 
     function getAccumulation(address token)
         public

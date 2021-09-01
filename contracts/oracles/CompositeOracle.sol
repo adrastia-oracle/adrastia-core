@@ -19,9 +19,11 @@ contract CompositeOracle is IOracle {
         return IPriceOracle(priceOracle).needsUpdate(token) || ILiquidityOracle(liquidityOracle).needsUpdate(token);
     }
 
-    function update(address token) external virtual override {
-        IPriceOracle(priceOracle).update(token);
-        ILiquidityOracle(liquidityOracle).update(token);
+    function update(address token) external virtual override returns (bool) {
+        bool priceUpdated = IPriceOracle(priceOracle).update(token);
+        bool liquidityUpdated = ILiquidityOracle(liquidityOracle).update(token);
+
+        return priceUpdated || liquidityUpdated;
     }
 
     function consult(address token)

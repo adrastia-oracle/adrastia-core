@@ -57,7 +57,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         return tokenLiquidityChange >= updateThreshold || quoteTokenLiquidityChange >= updateThreshold;
     }
 
-    function update(address token) external virtual override {
+    function update(address token) external virtual override returns (bool) {
         if (needsUpdate(token)) {
             (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
@@ -72,7 +72,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
                 accumulation.cumulativeQuoteTokenLiquidity = observation.quoteTokenLiquidity = quoteTokenLiquidity;
                 accumulation.timestamp = observation.timestamp = block.timestamp;
 
-                return;
+                return true;
             }
 
             /*
@@ -90,8 +90,12 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
                 observation.tokenLiquidity = tokenLiquidity;
                 observation.quoteTokenLiquidity = quoteTokenLiquidity;
                 observation.timestamp = block.timestamp;
+
+                return true;
             }
         }
+
+        return false;
     }
 
     function getAccumulation(address token)

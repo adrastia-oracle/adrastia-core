@@ -36,7 +36,7 @@ contract TwapLiquidityOracle is ILiquidityOracle {
         return deltaTime >= period;
     }
 
-    function update(address token) external override {
+    function update(address token) external override returns (bool) {
         if (needsUpdate(token)) {
             // Always keep the liquidity accumulator up-to-date
             ILiquidityAccumulator(liquidityAccumulator).update(token);
@@ -67,8 +67,12 @@ contract TwapLiquidityOracle is ILiquidityOracle {
                 }
 
                 accumulations[token] = freshAccumulation;
+
+                return true;
             }
         }
+
+        return false;
     }
 
     function consultLiquidity(address token)

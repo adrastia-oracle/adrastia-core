@@ -32,7 +32,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         return deltaTime >= period;
     }
 
-    function update(address token) external override {
+    function update(address token) external override returns (bool) {
         if (needsUpdate(token)) {
             // Ensure all underlying oracles are up-to-date
             for (uint256 i = 0; i < oracles.length; ++i) IOracle(oracles[i]).update(token);
@@ -41,7 +41,11 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
 
             (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
             consultation.timestamp = block.timestamp;
+
+            return true;
         }
+
+        return false;
     }
 
     function consult(address token)

@@ -57,7 +57,7 @@ contract SlidingWindowOracle is IOracle {
         return timeElapsed > period;
     }
 
-    function update(address token) external override {
+    function update(address token) external override returns (bool) {
         BufferMetadata storage meta = observationBufferData[token];
 
         if (meta.maxSize == 0) {
@@ -81,7 +81,11 @@ contract SlidingWindowOracle is IOracle {
 
             (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
             consultation.timestamp = block.timestamp;
+
+            return true;
         }
+
+        return false;
     }
 
     function consult(address token)

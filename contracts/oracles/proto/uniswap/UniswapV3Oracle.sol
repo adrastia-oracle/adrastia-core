@@ -45,13 +45,17 @@ contract UniswapV3Oracle is IOracle {
         return deltaTime >= period;
     }
 
-    function update(address token) external virtual override {
+    function update(address token) external virtual override returns (bool) {
         if (needsUpdate(token)) {
             ObservationLibrary.Observation storage observation = observations[token];
 
             (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = consultFresh(token);
             observation.timestamp = block.timestamp;
+
+            return true;
         }
+
+        return false;
     }
 
     function consult(address token)

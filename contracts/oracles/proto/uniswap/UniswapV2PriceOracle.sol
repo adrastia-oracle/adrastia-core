@@ -52,7 +52,7 @@ contract UniswapV2PriceOracle is IPriceOracle {
         return deltaTime >= period;
     }
 
-    function update(address token) external virtual override {
+    function update(address token) external virtual override returns (bool) {
         if (needsUpdate(token)) {
             address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
 
@@ -115,7 +115,11 @@ contract UniswapV2PriceOracle is IPriceOracle {
                 // We update the timestamp so that the oracle doesn't update again for another period
                 observations[token].timestamp = block.timestamp;
             }
+
+            return true;
         }
+
+        return false;
     }
 
     function consultPrice(address token) external view virtual override returns (uint256 price) {
