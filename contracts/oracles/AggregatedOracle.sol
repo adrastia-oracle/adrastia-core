@@ -110,6 +110,8 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
 
         uint256 oracleCount = oracles.length;
 
+        uint256 validResponses;
+
         /*
          * Compute harmonic mean
          */
@@ -128,6 +130,8 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 uint256 oracleQuoteTokenLiquidity
             ) {
                 if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
+                    ++validResponses;
+
                     denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
                     // These should never overflow: supply of an asset cannot be greater than uint256.max
@@ -140,6 +144,9 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 // TODO: Log this
             }
         }
+
+        // TODO: Allow specification for the minimum number of valid consultations
+        require(validResponses >= 1, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
         price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
     }
