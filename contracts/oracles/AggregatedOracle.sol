@@ -6,6 +6,8 @@ import "../interfaces/IAggregatedOracle.sol";
 
 import "../libraries/ObservationLibrary.sol";
 
+import "hardhat/console.sol";
+
 contract AggregatedOracle is IOracle, IAggregatedOracle {
     address[] public oracles;
 
@@ -112,8 +114,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
          * Compute harmonic mean
          */
 
-        uint256 numerator; // sum of weights
-        uint256 denominator; // sum of weights divided by prices
+        uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
         for (uint256 i = 0; i < oracleCount; ++i) {
             // We don't want problematic underlying oracles to prevent us from calculating the aggregated
@@ -127,7 +128,6 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 uint256 oracleQuoteTokenLiquidity
             ) {
                 if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
-                    numerator += oracleQuoteTokenLiquidity;
                     denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
                     // These should never overflow: supply of an asset cannot be greater than uint256.max
@@ -141,6 +141,6 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
             }
         }
 
-        price = denominator == 0 ? 0 : numerator / denominator;
+        price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
     }
 }
