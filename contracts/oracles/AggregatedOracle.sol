@@ -84,26 +84,30 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
         uint256 oracleCount = oracles.length;
 
         /*
-         * Compute harmonic sum
+         * Compute harmonic mean
          */
 
         uint256 numerator; // sum of weights
         uint256 denominator; // sum of weights divided by prices
 
-        uint256 oraclePrice;
-        uint256 oracleTokenLiquidity;
-        uint256 oracleQuoteTokenLiquidity;
-
         for (uint256 i = 0; i < oracleCount; ++i) {
-            (oraclePrice, oracleTokenLiquidity, oracleQuoteTokenLiquidity) = IOracle(oracles[i]).consult(token);
+            // We don't want problematic underlying oracles to prevent us from calculating the aggregated
+            // results from the other working oracles, so we use a try-catch block
+            try IOracle(oracles[i]).consult(token) returns (
+                uint256 oraclePrice,
+                uint256 oracleTokenLiquidity,
+                uint256 oracleQuoteTokenLiquidity
+            ) {
+                if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
+                    numerator += oracleQuoteTokenLiquidity;
+                    denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
-            if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
-                numerator += oracleQuoteTokenLiquidity;
-                denominator += oracleQuoteTokenLiquidity / oraclePrice;
-
-                // These should never overflow: supply of an asset cannot be greater than uint256.max
-                tokenLiquidity += oracleTokenLiquidity;
-                quoteTokenLiquidity += oracleQuoteTokenLiquidity;
+                    // These should never overflow: supply of an asset cannot be greater than uint256.max
+                    tokenLiquidity += oracleTokenLiquidity;
+                    quoteTokenLiquidity += oracleQuoteTokenLiquidity;
+                }
+            } catch Error(string memory reason) {
+                // TODO: Log reason
             }
         }
 
