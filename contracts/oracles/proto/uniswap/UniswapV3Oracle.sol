@@ -1,23 +1,18 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >=0.5.0 <0.8.0;
-
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8;
 
 import "../../../interfaces/IOracle.sol";
 
 import "../../../libraries/ObservationLibrary.sol";
 
-import "@openzeppelin-v3/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin-v3/contracts/math/SafeMath.sol";
+import "../../../libraries/uniswap-v3-periphery/OracleLibrary.sol";
+import "../../../libraries/uniswap-v3-periphery/WeightedOracleLibrary.sol";
+import "../../../libraries/uniswap-v3-periphery/PoolAddress.sol";
+import "../../../libraries/uniswap-v3-periphery/LiquidityAmounts.sol";
 
-import "@uniswap-mirror/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import "@uniswap-mirror/v3-periphery/contracts/libraries/WeightedOracleLibrary.sol";
-import "@uniswap-mirror/v3-periphery/contracts/libraries/PoolAddress.sol";
-import "@uniswap-mirror/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 
 contract UniswapV3Oracle is IOracle {
-    using SafeMath for uint256;
-
     address immutable uniswapFactory;
 
     address immutable quoteToken;
@@ -37,7 +32,7 @@ contract UniswapV3Oracle is IOracle {
     }
 
     function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp.sub(observations[token].timestamp);
+        uint256 deltaTime = block.timestamp - observations[token].timestamp;
 
         return deltaTime >= period;
     }
@@ -89,7 +84,7 @@ contract UniswapV3Oracle is IOracle {
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "UniswapV3Oracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp.add(maxAge), "UniswapV3Oracle: RATE_TOO_OLD");
+        require(block.timestamp <= observation.timestamp - maxAge, "UniswapV3Oracle: RATE_TOO_OLD");
 
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
@@ -134,7 +129,7 @@ contract UniswapV3Oracle is IOracle {
 
         price = OracleLibrary.getQuoteAtTick(
             timeWeightedAverageTick,
-            uint128(10**(ERC20(token).decimals())),
+            uint128(10**(IERC20(token).decimals())),
             token,
             quoteToken
         );

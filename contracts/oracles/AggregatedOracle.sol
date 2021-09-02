@@ -122,7 +122,7 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
             // We don't want problematic underlying oracles to prevent us from calculating the aggregated
             // results from the other working oracles, so we use a try-catch block
             //
-            // We use period as the max age just in-case the update of the particular underlying oracle failed
+            // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed
             // -> We don't want to use old data.
             try IOracle(oracles[i]).consult(token, period) returns (
                 uint256 oraclePrice,
