@@ -77,7 +77,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
 
             if (deltaTime != 0) {
                 unchecked {
-                    // TODO: Investigate what happens when overflow occurs
+                    // Overflow is desired and results in correct functionality
                     accumulation.cumulativeTokenLiquidity += tokenLiquidity * deltaTime;
                     accumulation.cumulativeQuoteTokenLiquidity += quoteTokenLiquidity * deltaTime;
                     accumulation.timestamp = block.timestamp;
@@ -122,7 +122,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         require(deltaTime != 0, "LiquidityAccumulator: delta time cannot be 0.");
 
         unchecked {
-            // TODO: Investigate what happens when overflow occurs
+            // Underflow is desired and results in correct functionality
             tokenLiquidity =
                 (secondAccumulation.cumulativeTokenLiquidity - firstAccumulation.cumulativeTokenLiquidity) /
                 deltaTime;
