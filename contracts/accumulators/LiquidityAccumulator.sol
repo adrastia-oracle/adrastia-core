@@ -1,17 +1,12 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >=0.5.0 <0.8.0;
+pragma solidity ^0.8;
 
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
-import "@uniswap-mirror/v3-core/contracts/libraries/FullMath.sol";
-import "@openzeppelin-v3/contracts/math/SafeMath.sol";
-
 abstract contract LiquidityAccumulator is ILiquidityAccumulator {
-    using SafeMath for uint256;
-
     uint256 public constant CHANGE_PRECISION = 10**8;
 
     uint256 public immutable updateThreshold;
@@ -38,7 +33,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
     function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
-        uint256 deltaTime = block.timestamp.sub(lastObservation.timestamp);
+        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
         if (deltaTime < minUpdateDelay) return false;
         // Ensures updates occur at most once every minUpdateDelay (seconds)
         else if (deltaTime >= maxUpdateDelay) return true; // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
@@ -51,10 +46,9 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
 
         (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
-        uint256 tokenLiquidityChange = calculateChange(tokenLiquidity, lastObservation.tokenLiquidity);
-        uint256 quoteTokenLiquidityChange = calculateChange(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity);
-
-        return tokenLiquidityChange >= updateThreshold || quoteTokenLiquidityChange >= updateThreshold;
+        return
+            changeThresholdSurpassed(tokenLiquidity, lastObservation.tokenLiquidity, updateThreshold) ||
+            changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
     }
 
     function update(address token) external virtual override returns (bool) {
@@ -79,17 +73,19 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
              * Update
              */
 
-            uint256 deltaTime = block.timestamp.sub(accumulation.timestamp);
+            uint256 deltaTime = block.timestamp - accumulation.timestamp;
 
             if (deltaTime != 0) {
-                // TODO: Handle overflows
-                accumulation.cumulativeTokenLiquidity += tokenLiquidity * deltaTime;
-                accumulation.cumulativeQuoteTokenLiquidity += quoteTokenLiquidity * deltaTime;
-                accumulation.timestamp = block.timestamp;
+                unchecked {
+                    // TODO: Investigate what happens when overflow occurs
+                    accumulation.cumulativeTokenLiquidity += tokenLiquidity * deltaTime;
+                    accumulation.cumulativeQuoteTokenLiquidity += quoteTokenLiquidity * deltaTime;
+                    accumulation.timestamp = block.timestamp;
 
-                observation.tokenLiquidity = tokenLiquidity;
-                observation.quoteTokenLiquidity = quoteTokenLiquidity;
-                observation.timestamp = block.timestamp;
+                    observation.tokenLiquidity = tokenLiquidity;
+                    observation.quoteTokenLiquidity = quoteTokenLiquidity;
+                    observation.timestamp = block.timestamp;
+                }
 
                 return true;
             }
@@ -122,17 +118,25 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         AccumulationLibrary.LiquidityAccumulator memory firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator memory secondAccumulation
     ) public pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
-        uint256 deltaTime = secondAccumulation.timestamp.sub(firstAccumulation.timestamp);
+        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "LiquidityAccumulator: delta time cannot be 0.");
 
-        tokenLiquidity = (secondAccumulation.cumulativeTokenLiquidity.sub(firstAccumulation.cumulativeTokenLiquidity))
-            .div(deltaTime);
-        quoteTokenLiquidity = (
-            secondAccumulation.cumulativeQuoteTokenLiquidity.sub(firstAccumulation.cumulativeQuoteTokenLiquidity)
-        ).div(deltaTime);
+        unchecked {
+            // TODO: Investigate what happens when overflow occurs
+            tokenLiquidity =
+                (secondAccumulation.cumulativeTokenLiquidity - firstAccumulation.cumulativeTokenLiquidity) /
+                deltaTime;
+            quoteTokenLiquidity =
+                (secondAccumulation.cumulativeQuoteTokenLiquidity - firstAccumulation.cumulativeQuoteTokenLiquidity) /
+                deltaTime;
+        }
     }
 
-    function calculateChange(uint256 a, uint256 b) internal pure returns (uint256) {
+    function changeThresholdSurpassed(
+        uint256 a,
+        uint256 b,
+        uint256 updateTheshold
+    ) internal pure returns (bool) {
         // Ensure a is never smaller than b
         if (a < b) {
             uint256 temp = a;
@@ -140,9 +144,27 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
             b = temp;
         }
 
-        uint256 delta = a - b; // Safe: a is never smaller than b
+        // a >= b
 
-        return FullMath.mulDiv(delta, CHANGE_PRECISION, b);
+        if (a == 0) {
+            // a == b == 0 (since a >= b), therefore no change
+            return false;
+        }
+
+        unchecked {
+            uint256 delta = a - b; // a >= b, therefore no underflow
+            uint256 preciseDelta = delta * CHANGE_PRECISION;
+
+            // If the delta is so large that multiplying by CHANGE_PRECISION overflows, we assume that
+            // the change threshold has been surpassed.
+            // If our assumption is incorrect, the accumulator will be extra-up-to-date, which won't
+            // really break anything, but will cost more gas in keeping this accumulator updated.
+            if (preciseDelta < delta) return true;
+
+            uint256 change = preciseDelta / b;
+
+            return change >= updateTheshold;
+        }
     }
 
     function fetchLiquidity(address token)
