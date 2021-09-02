@@ -1,24 +1,19 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >=0.5.0 <0.8.0;
-
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8;
 
 import "../../../interfaces/IPriceOracle.sol";
 
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
 
+import "../../../libraries/uniswap-lib/FixedPoint.sol";
+import "../../../libraries/uniswap-v2-periphery/UniswapV2OracleLibrary.sol";
+
 import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
-import "@uniswap/v2-periphery/contracts/libraries/UniswapV2OracleLibrary.sol";
-
-import "@openzeppelin-v3/contracts/math/SafeMath.sol";
 
 contract UniswapV2PriceOracle is IPriceOracle {
-    using SafeMath for uint256;
-
     using FixedPoint for *;
 
     struct PriceObservation {
@@ -47,7 +42,7 @@ contract UniswapV2PriceOracle is IPriceOracle {
     }
 
     function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp.sub(observations[token].timestamp);
+        uint256 deltaTime = block.timestamp - observations[token].timestamp;
 
         return deltaTime >= period;
     }
@@ -132,7 +127,7 @@ contract UniswapV2PriceOracle is IPriceOracle {
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
         require(observation.timestamp != 0, "UniswapV2PriceOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp.add(maxAge), "UniswapV2PriceOracle: RATE_TOO_OLD");
+        require(block.timestamp <= observation.timestamp + maxAge, "UniswapV2PriceOracle: RATE_TOO_OLD");
 
         return observation.price;
     }
