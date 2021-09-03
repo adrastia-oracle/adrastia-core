@@ -1,14 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "../interfaces/IOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
 
 import "../libraries/ObservationLibrary.sol";
 
-import "hardhat/console.sol";
-
-contract AggregatedOracle is IOracle, IAggregatedOracle {
+contract AggregatedOracle is IAggregatedOracle {
     address[] public oracles;
 
     uint256 immutable period;
