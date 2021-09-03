@@ -39,9 +39,9 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                 // We don't want any problematic underlying oracles to prevent this oracle from updating
                 // so we put update in a try-catch block
                 try IOracle(oracles[i]).update(token) {} catch Error(string memory reason) {
-                    // TODO: Log reason
+                    emit UpdateErrorWithReason(token, reason);
                 } catch (bytes memory err) {
-                    // TODO: Log this
+                    emit UpdateError(token, err);
                 }
             }
 
@@ -99,7 +99,6 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
 
     function consultFresh(address token)
         internal
-        view
         returns (
             uint256 price,
             uint256 tokenLiquidity,
@@ -139,9 +138,9 @@ contract AggregatedOracle is IOracle, IAggregatedOracle {
                     quoteTokenLiquidity += oracleQuoteTokenLiquidity;
                 }
             } catch Error(string memory reason) {
-                // TODO: Log reason
+                emit ConsultErrorWithReason(token, reason);
             } catch (bytes memory err) {
-                // TODO: Log this
+                emit ConsultError(token, err);
             }
         }
 
