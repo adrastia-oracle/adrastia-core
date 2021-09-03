@@ -3,15 +3,13 @@ pragma solidity >=0.5.0 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./IUpdateByToken.sol";
+
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
-abstract contract ILiquidityAccumulator {
+abstract contract ILiquidityAccumulator is IUpdateByToken {
     function quoteToken() external view virtual returns (address);
-
-    function needsUpdate(address token) public view virtual returns (bool);
-
-    function update(address token) external virtual returns (bool);
 
     function getAccumulation(address token)
         public

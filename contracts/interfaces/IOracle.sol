@@ -1,11 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-abstract contract IOracle {
-    function needsUpdate(address token) public view virtual returns (bool);
+import "./IUpdateByToken.sol";
 
-    function update(address token) external virtual returns (bool);
-
+abstract contract IOracle is IUpdateByToken {
     function consult(address token)
         external
         view
