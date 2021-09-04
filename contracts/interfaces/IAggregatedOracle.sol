@@ -1,8 +1,16 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
+pragma solidity >=0.5.0 <0.9.0;
 
-abstract contract IAggregatedOracle {
+import "./IOracle.sol";
 
-    function getOracles() virtual external view returns(address[] memory);
+abstract contract IAggregatedOracle is IOracle {
+    event UpdateErrorWithReason(address indexed token, string reason);
 
+    event UpdateError(address indexed token, bytes err);
+
+    event ConsultErrorWithReason(address indexed token, string reason);
+
+    event ConsultError(address indexed token, bytes err);
+
+    function getOracles() external view virtual returns (address[] memory);
 }

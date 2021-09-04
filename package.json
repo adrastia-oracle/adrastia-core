@@ -1,6 +1,6 @@
 {
   "name": "@pythia-oracle/pythia-library",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
   "license": "MIT",
@@ -25,12 +25,11 @@
     "node": ">=14"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "3.4.0",
-    "@uniswap/lib": "^4.0.1-alpha",
+    "@openzeppelin-v3/contracts": "npm:@openzeppelin/contracts@3.4.2",
+    "@openzeppelin-v4/contracts": "npm:@openzeppelin/contracts@4.3.1",
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
-    "@uniswap/v3-core": "^1.0.0",
-    "@uniswap/v3-periphery": "^1.1.1"
+    "@uniswap/v3-core": "^1.0.0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -39,7 +38,9 @@
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.0",
     "hardhat": "2.5.0",
-    "hardhat-gas-reporter": "^1.0.4"
+    "hardhat-gas-reporter": "^1.0.4",
+    "prettier": "^2.3.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.17"
   },
   "scripts": {
     "compile": "hardhat compile",

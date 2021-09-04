@@ -1,21 +1,11 @@
 //SPDX-License-Identifier: MIT
-pragma solidity  >=0.5 <0.8;
-
-pragma experimental ABIEncoderV2;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
+pragma solidity ^0.8;
 
 import "../interfaces/IOracle.sol";
-import "../interfaces/IDataSource.sol";
 
 import "../libraries/ObservationLibrary.sol";
 
-import "hardhat/console.sol";
-
 contract SlidingWindowOracle is IOracle {
-
-    using SafeMath for uint256;
-
     struct BufferMetadata {
         uint256 start;
         uint256 end;
@@ -23,15 +13,13 @@ contract SlidingWindowOracle is IOracle {
         uint256 maxSize;
     }
 
-    address public immutable dataSource;
+    address public immutable underlyingOracle;
 
     address public immutable quoteToken;
 
-    uint256 public immutable windowSize;
-    
-    uint8 public immutable granularity;
+    uint256 public immutable period;
 
-    uint256 public immutable periodSize;
+    uint8 public immutable numPeriods;
 
     mapping(address => mapping(uint256 => ObservationLibrary.Observation)) public observationBuffers;
 
@@ -39,81 +27,117 @@ contract SlidingWindowOracle is IOracle {
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
-    constructor(address dataSource_, address quoteToken_, uint windowSize_, uint8 granularity_) {
-        require(IDataSource(dataSource_).quoteToken() == quoteToken_);
-        require(granularity_ > 1, 'SlidingWindowOracle: Granularity must be at least 1.');
-        require(
-            (periodSize = windowSize_ / granularity_) * granularity_ == windowSize_,
-            'SlidingWindowOracle: Window is not evenly divisible by granularity.'
-        );
-        dataSource = dataSource_;
+    constructor(
+        address underlyingOracle_,
+        address quoteToken_,
+        uint256 period_,
+        uint8 numPeriods_
+    ) {
+        // TODO: Ensure quote tokens match
+        require(period_ != 0, "SlidingWindowOracle: INVALID_PERIOD");
+        require(numPeriods_ > 1, "SlidingWindowOracle: INVALID_NUM_PERIODS");
+
+        underlyingOracle = underlyingOracle_;
         quoteToken = quoteToken_;
-        windowSize = windowSize_;
-        granularity = granularity_;
+        period = period_;
+        numPeriods = numPeriods_;
     }
 
-    function needsUpdate(address token) override virtual public view returns(bool) {
+    function needsUpdate(address token) public view virtual override returns (bool) {
         BufferMetadata storage meta = observationBufferData[token];
-        if (meta.size == 0)
-            return true;
+        if (meta.size == 0) return true;
 
         // We have observations, so check if enough time has passed since the last observation
         ObservationLibrary.Observation storage lastObservation = getLastObservation(token, meta);
 
-        uint timeElapsed = block.timestamp - lastObservation.timestamp;
+        uint256 timeElapsed = block.timestamp - lastObservation.timestamp;
 
-        return timeElapsed > periodSize;
+        return timeElapsed > period;
     }
 
-    function update(address token) override external {
+    function update(address token) external override returns (bool) {
         BufferMetadata storage meta = observationBufferData[token];
 
         if (meta.maxSize == 0) {
             // No buffer for the token so we 'initialize' the buffer
-            meta.maxSize = granularity;
+            meta.maxSize = numPeriods;
         }
 
         if (needsUpdate(token)) {
-            IDataSource ds = IDataSource(dataSource);
+            // Ensure the underlying oracle is always up-to-date
+            IOracle(underlyingOracle).update(token);
 
-            (bool success, uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity) = ds.fetchPriceAndLiquidity(token);
+            ObservationLibrary.Observation memory observation;
 
-            if (success) {
-                ObservationLibrary.Observation storage observation;
+            (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = IOracle(underlyingOracle)
+                .consult(token);
+            observation.timestamp = block.timestamp;
 
-                observation.price = price;
-                observation.tokenLiquidity = tokenLiquidity;
-                observation.baseLiquidity = baseLiquidity;
-                observation.timestamp = block.timestamp;
+            appendBuffer(token, observation);
 
-                appendBuffer(token, observation);
+            ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
-                ObservationLibrary.Observation storage consultation = storedConsultations[token];
+            (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
+            consultation.timestamp = block.timestamp;
 
-                (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
-                consultation.timestamp = block.timestamp;
-            }
-
-            // TODO: Handle cases where calls are not successful
+            return true;
         }
+
+        return false;
     }
 
-    function consult(address token) override virtual public view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    function consult(address token)
+        public
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
 
         price = consultation.price;
         tokenLiquidity = consultation.tokenLiquidity;
         baseLiquidity = consultation.baseLiquidity;
     }
 
-    function consultFresh(address token) override virtual public view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 baseLiquidity)
+    function consult(address token, uint256 maxAge)
+        public
+        view
+        virtual
+        override
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
+    {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
+        require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
+
+        price = consultation.price;
+        tokenLiquidity = consultation.tokenLiquidity;
+        baseLiquidity = consultation.baseLiquidity;
+    }
+
+    function consultFresh(address token)
+        internal
+        view
+        returns (
+            uint256 price,
+            uint256 tokenLiquidity,
+            uint256 baseLiquidity
+        )
     {
         BufferMetadata storage meta = observationBufferData[token];
-        if (meta.size == 0)
-            return (0, 0, 0);
+        if (meta.size == 0) return (0, 0, 0);
 
         mapping(uint256 => ObservationLibrary.Observation) storage buffer = observationBuffers[token];
 
@@ -129,26 +153,25 @@ contract SlidingWindowOracle is IOracle {
 
             ObservationLibrary.Observation storage observation = buffer[index];
 
-            uint256 timeElapsed = currentTime.sub(observation.timestamp);
-            if (timeElapsed == 0)
-                timeElapsed = 1;
+            uint256 timeElapsed = currentTime - observation.timestamp;
+            if (timeElapsed == 0) timeElapsed = 1;
 
-            timeSum = timeSum.add(timeElapsed);
-            weightedPriceSum = weightedPriceSum.add(observation.price.mul(timeElapsed));
-            weightedTokenSum = weightedTokenSum.add(observation.tokenLiquidity.mul(timeElapsed));
-            weightedBaseSum = weightedBaseSum.add(observation.baseLiquidity.mul(timeElapsed));
+            timeSum += timeElapsed;
+            weightedPriceSum += observation.price * timeElapsed;
+            weightedTokenSum += observation.tokenLiquidity * timeElapsed;
+            weightedBaseSum += observation.baseLiquidity * timeElapsed;
         }
 
-        price = weightedPriceSum.div(timeSum);
-        tokenLiquidity = weightedTokenSum.div(timeSum);
-        baseLiquidity = weightedBaseSum.div(timeSum);
+        price = weightedPriceSum / timeSum;
+        tokenLiquidity = weightedTokenSum / timeSum;
+        baseLiquidity = weightedBaseSum / timeSum;
     }
 
     /**
      * Internal buffer strategies
      */
 
-    function appendBuffer(address token, ObservationLibrary.Observation storage value) internal {
+    function appendBuffer(address token, ObservationLibrary.Observation memory value) internal {
         BufferMetadata storage meta = observationBufferData[token];
 
         observationBuffers[token][meta.end] = value;
@@ -162,13 +185,17 @@ contract SlidingWindowOracle is IOracle {
         }
     }
 
-    function getObservations(address token) public view returns(ObservationLibrary.Observation[] memory) {
+    function getObservations(address token) public view returns (ObservationLibrary.Observation[] memory) {
         BufferMetadata storage meta = observationBufferData[token];
 
         return getObservations(token, meta);
     }
 
-    function getObservations(address token, BufferMetadata storage meta) internal view returns(ObservationLibrary.Observation[] memory) {
+    function getObservations(address token, BufferMetadata storage meta)
+        internal
+        view
+        returns (ObservationLibrary.Observation[] memory)
+    {
         ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](meta.size);
 
         mapping(uint256 => ObservationLibrary.Observation) storage buffer = observationBuffers[token];
@@ -182,11 +209,19 @@ contract SlidingWindowOracle is IOracle {
         return observations;
     }
 
-    function getLastObservation(address token, BufferMetadata storage meta) internal view returns(ObservationLibrary.Observation storage) {
+    function getLastObservation(address token, BufferMetadata storage meta)
+        internal
+        view
+        returns (ObservationLibrary.Observation storage)
+    {
         return observationBuffers[token][(meta.end == 0 ? meta.maxSize : meta.end) - 1];
     }
 
-    function getFirstObservation(address token, BufferMetadata storage meta) internal view returns(ObservationLibrary.Observation storage) {
+    function getFirstObservation(address token, BufferMetadata storage meta)
+        internal
+        view
+        returns (ObservationLibrary.Observation storage)
+    {
         return observationBuffers[token][meta.start];
     }
 }

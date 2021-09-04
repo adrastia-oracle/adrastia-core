@@ -1,4 +1,4 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional 
+// We require the Hardhat Runtime Environment explicitly here. This is optional
 // but useful for running the script in a standalone fashion through `node <script>`.
 //
 // When running the script with `hardhat run <script>` you'll find the Hardhat
@@ -17,104 +17,166 @@ const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const grtAddress = "0xc944e90c64b2c07662a292be6244bdf05cda44a7";
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function createContract(name, ...deploymentArgs) {
-  const contractFactory = await ethers.getContractFactory(name);
+    const contractFactory = await ethers.getContractFactory(name);
 
-  const contract = await contractFactory.deploy(...deploymentArgs);
+    const contract = await contractFactory.deploy(...deploymentArgs);
 
-  await contract.deployed();
+    await contract.deployed();
 
-  return contract;
+    return contract;
 }
 
-async function createUniswapV2DataSource(factory, baseToken) {
-  return createContract("UniswapV2DataSource", factory, baseToken);
+async function createUniswapV2Oracle(factory, quoteToken, period) {
+    const updateTheshold = 2000000; // 2% change -> update
+    const minUpdateDelay = 5; // At least 5 seconds between every update
+    const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
+
+    const liquidityAccumulator = await createContract(
+        "UniswapV2LiquidityAccumulator",
+        factory,
+        quoteToken,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
+
+    const liquidityOracle = await createContract(
+        "TwapLiquidityOracle",
+        liquidityAccumulator.address,
+        quoteToken,
+        period
+    );
+
+    const priceOracle = await createContract("UniswapV2PriceOracle", factory, quoteToken, period);
+
+    const oracle = await createContract("CompositeOracle", priceOracle.address, liquidityOracle.address);
+
+    return oracle;
 }
 
-async function createUniswapV3DataSource(factory, baseToken, poolFee, observationPeriod) {
-  return createContract("UniswapV3DataSource", factory, baseToken, poolFee, observationPeriod);
+async function createUniswapV3Oracle(factory, quoteToken, period) {
+    const oracle = createContract("UniswapV3Oracle", factory, quoteToken, period);
+
+    return oracle;
 }
 
-async function createSushiswapDataSource(factory, baseToken) {
-  return createContract("UniswapV2DataSource", factory, baseToken);
+async function createSlidingWindowOracle(underlyingOracle, quoteToken) {
+    const period = 16;
+    const numPeriods = 2;
+
+    const oracle = createContract("SlidingWindowOracle", underlyingOracle, quoteToken, period, numPeriods);
+
+    return oracle;
 }
 
 async function main() {
-  const token = wethAddress;
-  const baseToken = usdcAddress;
+    const token = wethAddress;
+    const baseToken = usdcAddress;
 
-  const uniswapV2DataSource = await createUniswapV2DataSource(uniswapV2FactoryAddress, baseToken);
-  const uniswapV3DataSource = await createUniswapV3DataSource(uniswapV3FactoryAddress, baseToken, 3000, 10);
-  const sushiswapDataSource = await createSushiswapDataSource(sushiswapFactoryAddress, baseToken);
+    const oraclePeriod = 8;
 
-  const observationPeriodSeconds = 16;
-  const observationGranularity = 2;
+    var uniswapV2Oracle = await createUniswapV2Oracle(uniswapV2FactoryAddress, baseToken, oraclePeriod);
+    var uniswapV3Oracle = await createUniswapV3Oracle(uniswapV3FactoryAddress, baseToken, oraclePeriod);
+    var sushiswapOracle = await createUniswapV2Oracle(sushiswapFactoryAddress, baseToken, oraclePeriod);
 
-  const uniswapV2Oracle = await createContract("SlidingWindowOracle", uniswapV2DataSource.address, baseToken, observationPeriodSeconds, observationGranularity);
-  const uniswapV3Oracle = await createContract("SlidingWindowOracle", uniswapV3DataSource.address, baseToken, observationPeriodSeconds, observationGranularity);
-  const sushiswapOracle = await createContract("SlidingWindowOracle", sushiswapDataSource.address, baseToken, observationPeriodSeconds, observationGranularity);
+    uniswapV2Oracle = await createSlidingWindowOracle(uniswapV2Oracle.address, baseToken);
+    uniswapV3Oracle = await createSlidingWindowOracle(uniswapV3Oracle.address, baseToken);
+    sushiswapOracle = await createSlidingWindowOracle(sushiswapOracle.address, baseToken);
 
-  const aggregatedOracle = await createContract("AggregatedOracle", [ uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address ]);
+    const aggregatedOracle = await createContract("AggregatedOracle", [
+        uniswapV2Oracle.address,
+        uniswapV3Oracle.address,
+        sushiswapOracle.address,
+    ], oraclePeriod);
 
-  while (true) {
-    try {
-      const estimation = await aggregatedOracle.estimateGas.update(token);
+    while (true) {
+        try {
+            const estimation = await aggregatedOracle.estimateGas.update(token);
 
-      console.log("Aggregate update gas =", estimation.toString());
+            console.log("Aggregate update gas =", estimation.toString());
 
-      await aggregatedOracle.update(token);
-    } catch (e) {
-      console.log(e);
+            await aggregatedOracle.update(token);
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            const result = await uniswapV2Oracle['consult(address)'](token);
+
+            console.log(
+                "UniswapV2 Price =",
+                result["price"].toString(),
+                ", Token Liquidity =",
+                result["tokenLiquidity"].toString(),
+                ", Base Liquidity =",
+                result["baseLiquidity"].toString()
+            );
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            const result = await uniswapV3Oracle['consult(address)'](token);
+
+            console.log(
+                "UniswapV3 Price =",
+                result["price"].toString(),
+                ", Token Liquidity =",
+                result["tokenLiquidity"].toString(),
+                ", Base Liquidity =",
+                result["baseLiquidity"].toString()
+            );
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            const result = await sushiswapOracle['consult(address)'](token);
+
+            console.log(
+                "Sushiswap Price =",
+                result["price"].toString(),
+                ", Token Liquidity =",
+                result["tokenLiquidity"].toString(),
+                ", Base Liquidity =",
+                result["baseLiquidity"].toString()
+            );
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            const estimation = await aggregatedOracle.estimateGas['consult(address)'](token);
+
+            console.log("Aggregate consult gas =", estimation.toString());
+
+            const result = await aggregatedOracle['consult(address)'](token);
+
+            console.log(
+                "Aggregate Price =",
+                result["price"].toString(),
+                ", Token Liquidity =",
+                result["tokenLiquidity"].toString(),
+                ", Base Liquidity =",
+                result["baseLiquidity"].toString()
+            );
+        } catch (e) {
+            console.log(e);
+        }
+
+        await sleep(1000);
     }
-
-    try {
-      const result = await uniswapV2Oracle.consult(token);
-
-      console.log("UniswapV2 Price =", result['price'].toString(), ", Token Liquidity =", result['tokenLiquidity'].toString(), ", Base Liquidity =", result['baseLiquidity'].toString());
-    } catch (e) {
-      console.log(e);
-    }
-
-    try {
-      const result = await uniswapV3Oracle.consult(token);
-
-      console.log("UniswapV3 Price =", result['price'].toString(), ", Token Liquidity =", result['tokenLiquidity'].toString(), ", Base Liquidity =", result['baseLiquidity'].toString());
-    } catch (e) {
-      console.log(e);
-    }
-
-    try {
-      const result = await sushiswapOracle.consult(token);
-
-      console.log("Sushiswap Price =", result['price'].toString(), ", Token Liquidity =", result['tokenLiquidity'].toString(), ", Base Liquidity =", result['baseLiquidity'].toString());
-    } catch (e) {
-      console.log(e);
-    }
-
-    try {
-      const estimation = await aggregatedOracle.estimateGas.consult(token);
-
-      console.log("Aggregate consult gas =", estimation.toString());
-
-      const result = await aggregatedOracle.consult(token);
-
-      console.log("Aggregate Price =", result['price'].toString(), ", Token Liquidity =", result['tokenLiquidity'].toString(), ", Base Liquidity =", result['baseLiquidity'].toString());
-    } catch (e) {
-      console.log(e);
-    }
-
-    await sleep(1000);
-  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 main()
-  .then(() => process.exit(0))
-  .catch(error => {
-    console.error(error);
-    process.exit(1);
-  });
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });
