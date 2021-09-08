@@ -2,8 +2,10 @@
 pragma solidity >=0.5.0 <0.9.0;
 
 import "./IUpdateByToken.sol";
+import "./ILiquidityOracle.sol";
+import "./IPriceOracle.sol";
 
-abstract contract IOracle is IUpdateByToken {
+abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
     function consult(address token)
         public
         view

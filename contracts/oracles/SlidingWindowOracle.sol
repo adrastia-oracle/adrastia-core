@@ -127,6 +127,54 @@ contract SlidingWindowOracle is IOracle {
         baseLiquidity = consultation.baseLiquidity;
     }
 
+    function consultPrice(address token) public view virtual override returns (uint256 price) {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
+
+        price = consultation.price;
+    }
+
+    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
+        require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
+
+        price = consultation.price;
+    }
+
+    function consultLiquidity(address token)
+        public
+        view
+        virtual
+        override
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
+
+        tokenLiquidity = consultation.tokenLiquidity;
+        quoteTokenLiquidity = consultation.baseLiquidity;
+    }
+
+    function consultLiquidity(address token, uint256 maxAge)
+        public
+        view
+        virtual
+        override
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+
+        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
+        require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
+
+        tokenLiquidity = consultation.tokenLiquidity;
+        quoteTokenLiquidity = consultation.baseLiquidity;
+    }
+
     function consultFresh(address token)
         internal
         view
