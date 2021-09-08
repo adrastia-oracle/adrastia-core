@@ -48,71 +48,7 @@ contract UniswapV2PriceOracle is IPriceOracle {
     }
 
     function update(address token) external virtual override returns (bool) {
-        if (needsUpdate(token)) {
-            address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
-
-            AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
-
-            // Get current accumulations from Uniswap's price accumulator
-            (
-                uint256 cumulativeQuoteTokenPrice,
-                uint256 cumulativeTokenPrice,
-                uint32 blockTimestamp
-            ) = UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
-
-            if (token < quoteToken) {
-                // Rearrange the values so that token0 in the underlying is always 'token'
-                uint256 temp = cumulativeTokenPrice;
-                cumulativeTokenPrice = cumulativeQuoteTokenPrice;
-                cumulativeQuoteTokenPrice = temp;
-            }
-
-            if (accumulation.timestamp == 0) {
-                // No prior observation so we use the last observation data provided by the pair
-
-                IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
-
-                // This is the timestamp when price0CumulativeLast and price1CumulativeLast was set
-                (, , uint32 timestamp) = pair.getReserves();
-
-                require(timestamp != 0, "UniswapV2PriceOracle: MISSING_RESERVES_TIMESTAMP");
-
-                if (token < quoteToken) {
-                    accumulation.cumulativeTokenPrice = pair.price0CumulativeLast();
-                    accumulation.cumulativeQuoteTokenPrice = pair.price1CumulativeLast();
-                } else {
-                    accumulation.cumulativeTokenPrice = pair.price1CumulativeLast();
-                    accumulation.cumulativeQuoteTokenPrice = pair.price0CumulativeLast();
-                }
-
-                accumulation.timestamp = timestamp;
-            }
-
-            uint32 timeElapsed = blockTimestamp - uint32(accumulation.timestamp); // overflow is desired
-            if (timeElapsed != 0) {
-                ObservationLibrary.PriceObservation storage observation = observations[token];
-
-                // Store price and current time
-                observation.price = computeAmountOut(
-                    accumulation.cumulativeTokenPrice,
-                    cumulativeTokenPrice,
-                    timeElapsed,
-                    computeWholeUnitAmount(token)
-                );
-                observation.timestamp = block.timestamp;
-
-                // Store current accumulations and the timestamp of them
-                accumulation.cumulativeTokenPrice = cumulativeTokenPrice;
-                accumulation.cumulativeQuoteTokenPrice = cumulativeQuoteTokenPrice;
-                accumulation.timestamp = blockTimestamp;
-            } else {
-                // We take the last price as the current price as the price seems to not have moved at all
-                // We update the timestamp so that the oracle doesn't update again for another period
-                observations[token].timestamp = block.timestamp;
-            }
-
-            return true;
-        }
+        if (needsUpdate(token)) return _update(token);
 
         return false;
     }
@@ -130,6 +66,72 @@ contract UniswapV2PriceOracle is IPriceOracle {
         require(block.timestamp <= observation.timestamp + maxAge, "UniswapV2PriceOracle: RATE_TOO_OLD");
 
         return observation.price;
+    }
+
+    function _update(address token) internal returns (bool) {
+        address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
+
+        AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
+
+        // Get current accumulations from Uniswap's price accumulator
+        (
+            uint256 cumulativeQuoteTokenPrice,
+            uint256 cumulativeTokenPrice,
+            uint32 blockTimestamp
+        ) = UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
+
+        if (token < quoteToken) {
+            // Rearrange the values so that token0 in the underlying is always 'token'
+            uint256 temp = cumulativeTokenPrice;
+            cumulativeTokenPrice = cumulativeQuoteTokenPrice;
+            cumulativeQuoteTokenPrice = temp;
+        }
+
+        if (accumulation.timestamp == 0) {
+            // No prior observation so we use the last observation data provided by the pair
+
+            IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
+
+            // This is the timestamp when price0CumulativeLast and price1CumulativeLast was set
+            (, , uint32 timestamp) = pair.getReserves();
+
+            require(timestamp != 0, "UniswapV2PriceOracle: MISSING_RESERVES_TIMESTAMP");
+
+            if (token < quoteToken) {
+                accumulation.cumulativeTokenPrice = pair.price0CumulativeLast();
+                accumulation.cumulativeQuoteTokenPrice = pair.price1CumulativeLast();
+            } else {
+                accumulation.cumulativeTokenPrice = pair.price1CumulativeLast();
+                accumulation.cumulativeQuoteTokenPrice = pair.price0CumulativeLast();
+            }
+
+            accumulation.timestamp = timestamp;
+        }
+
+        uint32 timeElapsed = blockTimestamp - uint32(accumulation.timestamp); // overflow is desired
+        if (timeElapsed != 0) {
+            ObservationLibrary.PriceObservation storage observation = observations[token];
+
+            // Store price and current time
+            observation.price = computeAmountOut(
+                accumulation.cumulativeTokenPrice,
+                cumulativeTokenPrice,
+                timeElapsed,
+                computeWholeUnitAmount(token)
+            );
+            observation.timestamp = block.timestamp;
+
+            // Store current accumulations and the timestamp of them
+            accumulation.cumulativeTokenPrice = cumulativeTokenPrice;
+            accumulation.cumulativeQuoteTokenPrice = cumulativeQuoteTokenPrice;
+            accumulation.timestamp = blockTimestamp;
+        } else {
+            // We take the last price as the current price as the price seems to not have moved at all
+            // We update the timestamp so that the oracle doesn't update again for another period
+            observations[token].timestamp = block.timestamp;
+        }
+
+        return true;
     }
 
     function computeWholeUnitAmount(address token) private view returns (uint256 amount) {
