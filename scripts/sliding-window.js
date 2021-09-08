@@ -45,7 +45,7 @@ async function createUniswapV2Oracle(factory, quoteToken, period) {
     );
 
     const liquidityOracle = await createContract(
-        "TwapLiquidityOracle",
+        "LiquidityOracle",
         liquidityAccumulator.address,
         quoteToken,
         period

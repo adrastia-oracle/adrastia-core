@@ -7,7 +7,7 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
-contract TwapLiquidityOracle is ILiquidityOracle {
+contract LiquidityOracle is ILiquidityOracle {
     address public immutable liquidityAccumulator;
 
     address public immutable quoteToken;
