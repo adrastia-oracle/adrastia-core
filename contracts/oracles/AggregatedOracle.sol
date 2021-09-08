@@ -19,6 +19,14 @@ contract AggregatedOracle is IAggregatedOracle {
         period = period_;
     }
 
+    function quoteTokenAddress() public view virtual override returns (address) {
+        revert("TODO");
+    }
+
+    function quoteTokenSymbol() public view virtual override returns (string memory) {
+        revert("TODO");
+    }
+
     function getOracles() external view virtual override returns (address[] memory) {
         return oracles;
     }

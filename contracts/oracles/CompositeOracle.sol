@@ -15,6 +15,14 @@ contract CompositeOracle is IOracle {
         liquidityOracle = liquidityOracle_;
     }
 
+    function quoteTokenAddress() public view virtual override returns (address) {
+        revert("TODO");
+    }
+
+    function quoteTokenSymbol() public view virtual override returns (string memory) {
+        revert("TODO");
+    }
+
     function needsUpdate(address token) public view virtual override returns (bool) {
         return IPriceOracle(priceOracle).needsUpdate(token) || ILiquidityOracle(liquidityOracle).needsUpdate(token);
     }

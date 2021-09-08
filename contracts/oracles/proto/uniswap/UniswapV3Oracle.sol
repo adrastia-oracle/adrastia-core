@@ -31,6 +31,14 @@ contract UniswapV3Oracle is IOracle {
         period = period_;
     }
 
+    function quoteTokenAddress() public view virtual override returns (address) {
+        return quoteToken;
+    }
+
+    function quoteTokenSymbol() public view virtual override returns (string memory) {
+        revert("TODO");
+    }
+
     function needsUpdate(address token) public view virtual override returns (bool) {
         uint256 deltaTime = block.timestamp - observations[token].timestamp;
 

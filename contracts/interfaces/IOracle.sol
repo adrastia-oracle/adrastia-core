@@ -6,6 +6,10 @@ import "./ILiquidityOracle.sol";
 import "./IPriceOracle.sol";
 
 abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
+    function quoteTokenAddress() public view virtual override(IPriceOracle, ILiquidityOracle) returns (address);
+
+    function quoteTokenSymbol() public view virtual override(IPriceOracle, ILiquidityOracle) returns (string memory);
+
     function consult(address token)
         public
         view
