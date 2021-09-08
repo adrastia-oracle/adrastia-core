@@ -117,13 +117,13 @@ contract UniswapV2PriceOracle is IPriceOracle {
         return false;
     }
 
-    function consultPrice(address token) external view virtual override returns (uint256 price) {
+    function consultPrice(address token) public view virtual override returns (uint256 price) {
         require(observations[token].timestamp != 0, "UniswapV2PriceOracle: MISSING_OBSERVATION");
 
         return observations[token].price;
     }
 
-    function consultPrice(address token, uint256 maxAge) external view virtual override returns (uint256 price) {
+    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
         require(observation.timestamp != 0, "UniswapV2PriceOracle: MISSING_OBSERVATION");

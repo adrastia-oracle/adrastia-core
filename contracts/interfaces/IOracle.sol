@@ -5,7 +5,7 @@ import "./IUpdateByToken.sol";
 
 abstract contract IOracle is IUpdateByToken {
     function consult(address token)
-        external
+        public
         view
         virtual
         returns (
@@ -15,7 +15,7 @@ abstract contract IOracle is IUpdateByToken {
         );
 
     function consult(address token, uint256 maxAge)
-        external
+        public
         view
         virtual
         returns (

@@ -5,13 +5,13 @@ import "./IUpdateByToken.sol";
 
 abstract contract ILiquidityOracle is IUpdateByToken {
     function consultLiquidity(address token)
-        external
+        public
         view
         virtual
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
 
     function consultLiquidity(address token, uint256 maxAge)
-        external
+        public
         view
         virtual
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);

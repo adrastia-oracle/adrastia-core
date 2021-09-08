@@ -51,7 +51,7 @@ contract UniswapV3Oracle is IOracle {
     }
 
     function consult(address token)
-        external
+        public
         view
         virtual
         override
@@ -71,7 +71,7 @@ contract UniswapV3Oracle is IOracle {
     }
 
     function consult(address token, uint256 maxAge)
-        external
+        public
         view
         virtual
         override
