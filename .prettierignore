@@ -7,6 +7,10 @@ yarn.lock
 cache
 artifacts
 
+# Coverage reports
+coverage.json
+coverage
+
 # IDEs
 .vscode
 
