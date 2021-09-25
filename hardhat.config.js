@@ -2,6 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-tracer");
+require("@atixlabs/hardhat-time-n-mine");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html

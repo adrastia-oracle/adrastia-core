@@ -2,6 +2,14 @@
 # yarn lockfile v1
 
 
+"@atixlabs/hardhat-time-n-mine@^0.0.5":
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/@atixlabs/hardhat-time-n-mine/-/hardhat-time-n-mine-0.0.5.tgz#a7956f6f81ae431472d3763303b9cfc7b3040a97"
+  integrity sha512-XmxKi/dUodbD0zXW7nTzwOyCtaYAh3UE/fkz+Q5zigoACTkSwRIwqmApeCO9Vy+/g/urtqVGA2Mgt4FNnAOXxw==
+  dependencies:
+    "@types/ms" "0.7.31"
+    ms "2.1.2"
+
 "@ensdomains/ens@^0.4.4":
   version "0.4.5"
   resolved "https://registry.yarnpkg.com/@ensdomains/ens/-/ens-0.4.5.tgz#e0aebc005afdc066447c6e22feb4eda89a5edbfc"
@@ -925,6 +933,11 @@
   integrity sha512-U5icWpv7YnZYGsN4/cmh3WD2onMY0aJIiTE6+51TwJCttdHvtCYmkBNOobHlXwrJRL0nkH9jH4kD+1FAdMN4Tg==
   dependencies:
     "@types/node" "*"
+
+"@types/ms@0.7.31":
+  version "0.7.31"
+  resolved "https://registry.yarnpkg.com/@types/ms/-/ms-0.7.31.tgz#31b7ca6407128a3d2bbc27fe2d21b345397f6197"
+  integrity sha512-iiUgKzV9AuaEkZqkOLDIvlQiL6ltuZd9tGcW3gwpnX8JbuiuhFlEGmmFXEXkN50Cvq7Os88IY2v0dkDqXYWVgA==
 
 "@types/node-fetch@^2.5.5":
   version "2.5.10"
