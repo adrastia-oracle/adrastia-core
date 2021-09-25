@@ -7,13 +7,16 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
 abstract contract LiquidityAccumulator is ILiquidityAccumulator {
-    uint256 public constant CHANGE_PRECISION = 10**8;
+    uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
+    uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
 
     uint256 public immutable updateThreshold;
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
 
     address public immutable override quoteToken;
+
+    uint256 public immutable override changePrecisionDecimals = CHANGE_PRECISION_DECIMALS;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
