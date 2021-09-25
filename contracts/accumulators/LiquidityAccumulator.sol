@@ -136,7 +136,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         uint256 a,
         uint256 b,
         uint256 updateTheshold
-    ) internal pure returns (bool) {
+    ) internal view virtual returns (bool) {
         // Ensure a is never smaller than b
         if (a < b) {
             uint256 temp = a;
