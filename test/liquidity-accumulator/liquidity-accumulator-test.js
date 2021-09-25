@@ -143,3 +143,46 @@ describe("LiquidityAccumulator#changeThresholdSurpassed", () => {
         });
     });
 });
+
+describe("LiquidityAccumulator#calculateLiquidity", () => {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var liquidityAccumulator;
+
+    const tests = [];
+
+    const revertedWithTests = [
+        {
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+            ],
+            expected: "LiquidityAccumulator: delta time cannot be 0.",
+        },
+    ];
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorHarness");
+        liquidityAccumulator = await LiquidityAccumulator.deploy(
+            USDC,
+            TWO_PERCENT_CHANGE,
+            minUpdateDelay,
+            maxUpdateDelay
+        );
+        await liquidityAccumulator.deployed();
+    });
+
+    tests.forEach(({ args, expected }) => {
+        it(`Should evaluate to ${expected} using accumulations {${args[0]}, ${args[1]}}`, async () => {
+            const received = await liquidityAccumulator.calculateLiquidity(args[0], args[1]);
+            expect(received).to.equal(expected);
+        });
+    });
+
+    revertedWithTests.forEach(({ args, expected }) => {
+        it(`Should revert with '${expected}' using accumulations {${args[0]}, ${args[1]}}`, async () => {
+            await expect(liquidityAccumulator.calculateLiquidity(args[0], args[1])).to.be.revertedWith(expected);
+        });
+    });
+});
