@@ -43,6 +43,14 @@ contract LiquidityAccumulatorHarness is LiquidityAccumulator {
         config.changeThresholdPassed = changeThresholdPassed;
     }
 
+    function harnessChangeThresholdSurpassed(
+        uint256 a,
+        uint256 b,
+        uint256 updateThreshold
+    ) public view returns (bool) {
+        return changeThresholdSurpassed(a, b, updateThreshold);
+    }
+
     /* Overridden functions */
 
     function fetchLiquidity(address token)
@@ -60,9 +68,9 @@ contract LiquidityAccumulatorHarness is LiquidityAccumulator {
     function changeThresholdSurpassed(
         uint256 a,
         uint256 b,
-        uint256 updateTheshold
+        uint256 updateThreshold
     ) internal view virtual override returns (bool) {
         if (config.changeThresholdOverridden) return config.changeThresholdPassed;
-        else return super.changeThresholdSurpassed(a, b, updateTheshold);
+        else return super.changeThresholdSurpassed(a, b, updateThreshold);
     }
 }
