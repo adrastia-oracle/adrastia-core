@@ -99,3 +99,37 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
     });
 });
+
+describe("LiquidityAccumulator#changeThresholdSurpassed", () => {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var liquidityAccumulator;
+
+    const tests = [
+        {args: [0, 0, TWO_PERCENT_CHANGE], expected: false},
+        {args: [0, 100, TWO_PERCENT_CHANGE], expected: true},
+        {args: [100, 0, TWO_PERCENT_CHANGE], expected: true},
+        {args: [100, 101, TWO_PERCENT_CHANGE], expected: false},
+        {args: [100, 102, TWO_PERCENT_CHANGE], expected: true},
+        {args: [100, 103, TWO_PERCENT_CHANGE], expected: true},
+        {args: [100, 1000000, TWO_PERCENT_CHANGE], expected: true},
+        {args: [101, 100, TWO_PERCENT_CHANGE], expected: false},
+        {args: [102, 100, TWO_PERCENT_CHANGE], expected: true},
+        {args: [103, 100, TWO_PERCENT_CHANGE], expected: true},
+        {args: [1000000, 100, TWO_PERCENT_CHANGE], expected: true},
+    ]
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorHarness");
+        liquidityAccumulator = await LiquidityAccumulator.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+        await liquidityAccumulator.deployed();
+    });
+
+    tests.forEach(({args, expected}) => {
+        it(`Should evaluate to ${expected} with liquidities ${args[0]}, ${args[1]} and update threshold ${args[3]}`, async () => {
+            const received = await liquidityAccumulator.harnessChangeThresholdSurpassed(args[0], args[1], args[2]);
+            expect(received).to.equal(expected);
+        });
+    });
+});
