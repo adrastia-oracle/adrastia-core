@@ -152,6 +152,10 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         if (a == 0) {
             // a == b == 0 (since a >= b), therefore no change
             return false;
+        } else if (b == 0) {
+            // (a > 0 && b == 0) => change threshold passed
+            // Zero to non-zero always returns true
+            return true;
         }
 
         unchecked {
