@@ -20,12 +20,12 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
 
     constructor(
         address quoteToken_,
-        uint256 updateTheshold_,
+        uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) {
         quoteToken = quoteToken_;
-        updateThreshold = updateTheshold_;
+        updateThreshold = updateThreshold_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
