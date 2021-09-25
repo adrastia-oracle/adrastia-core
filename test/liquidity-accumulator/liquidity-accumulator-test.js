@@ -21,6 +21,9 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         // Configure liquidity
         await liquidityAccumulator.setLiquidity(GRT, 100, 100);
 
+        // Override changeThresholdPassed (false)
+        await liquidityAccumulator.overrideChangeThresholdPassed(true, false);
+
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
@@ -30,8 +33,8 @@ describe("LiquidityAccumulator#needsUpdate", () => {
     });
 
     it("Shouldn't need update if delta time is less than the min update delay (update threshold passed)", async () => {
-        // Update liquidity (100% change => greater than update threshold)
-        await liquidityAccumulator.setLiquidity(GRT, 200, 200);
+        // changeThresholdPassed = true
+        await liquidityAccumulator.overrideChangeThresholdPassed(true, true);
 
         // deltaTime = 1
         expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
@@ -51,8 +54,8 @@ describe("LiquidityAccumulator#needsUpdate", () => {
     });
 
     it("Should need update if delta time is within min and max update delay (update threshold passed)", async () => {
-        // Update liquidity (100% change => greater than update threshold)
-        await liquidityAccumulator.setLiquidity(GRT, 200, 200);
+        // changeThresholdPassed = true
+        await liquidityAccumulator.overrideChangeThresholdPassed(true, true);
 
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
@@ -74,8 +77,8 @@ describe("LiquidityAccumulator#needsUpdate", () => {
     });
 
     it("Should need update if delta time is >= max update delay (update threshold passed)", async () => {
-        // Update liquidity (100% change => greater than update threshold)
-        await liquidityAccumulator.setLiquidity(GRT, 200, 200);
+        // changeThresholdPassed = true
+        await liquidityAccumulator.overrideChangeThresholdPassed(true, true);
 
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
