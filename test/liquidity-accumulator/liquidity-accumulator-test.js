@@ -1,3 +1,4 @@
+const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 
 const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
@@ -150,7 +151,113 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
 
     var liquidityAccumulator;
 
-    const tests = [];
+    const tests = [
+        {
+            // deltaCumulativeTokenLiquidity = 1
+            // deltaCumulativeQuoteTokenLiquidity = 1
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+                { cumulativeTokenLiquidity: 1, cumulativeQuoteTokenLiquidity: 1, timestamp: 1 },
+            ],
+            expected: [1, 1],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 0
+            // deltaCumulativeQuoteTokenLiquidity = 1
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 1, timestamp: 1 },
+            ],
+            expected: [0, 1],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 1
+            // deltaCumulativeQuoteTokenLiquidity = 0
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+                { cumulativeTokenLiquidity: 1, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+            ],
+            expected: [1, 0],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 0
+            // deltaCumulativeQuoteTokenLiquidity = 0
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+            ],
+            expected: [0, 0],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 1000000
+            // deltaCumulativeQuoteTokenLiquidity = 1000000
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 1 },
+            ],
+            expected: [1000000, 1000000],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 0
+            // deltaCumulativeQuoteTokenLiquidity = 1000000
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 1 },
+            ],
+            expected: [0, 1000000],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 1000000
+            // deltaCumulativeQuoteTokenLiquidity = 0
+            // deltaTime = 1
+            args: [
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+            ],
+            expected: [1000000, 0],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 1000000
+            // deltaCumulativeQuoteTokenLiquidity = 1000000
+            // deltaTime = 10
+            args: [
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 10 },
+            ],
+            expected: [100000, 100000],
+        },
+        {
+            // deltaCumulativeTokenLiquidity = 1000000
+            // deltaCumulativeQuoteTokenLiquidity = 1000000
+            // deltaTime = 100000
+            args: [
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 100000 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 200000 },
+            ],
+            expected: [10, 10],
+        },
+        {
+            // **Overflow test**
+            // deltaCumulativeTokenLiquidity = 10
+            // deltaCumulativeQuoteTokenLiquidity = 10
+            // deltaTime = 1
+            args: [
+                {
+                    cumulativeTokenLiquidity: ethers.constants.MaxUint256,
+                    cumulativeQuoteTokenLiquidity: ethers.constants.MaxUint256,
+                    timestamp: 10,
+                },
+                { cumulativeTokenLiquidity: 9, cumulativeQuoteTokenLiquidity: 9, timestamp: 11 },
+            ],
+            expected: [10, 10],
+        },
+    ];
 
     const revertedWithTests = [
         {
@@ -174,14 +281,19 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
     });
 
     tests.forEach(({ args, expected }) => {
-        it(`Should evaluate to ${expected} using accumulations {${args[0]}, ${args[1]}}`, async () => {
+        it(`Should evaluate to ${expected} using accumulations {${JSON.stringify(args[0])}, ${JSON.stringify(
+            args[1]
+        )}}`, async () => {
             const received = await liquidityAccumulator.calculateLiquidity(args[0], args[1]);
-            expect(received).to.equal(expected);
+            expect(received[0]).to.equal(expected[0]);
+            expect(received[1]).to.equal(expected[1]);
         });
     });
 
     revertedWithTests.forEach(({ args, expected }) => {
-        it(`Should revert with '${expected}' using accumulations {${args[0]}, ${args[1]}}`, async () => {
+        it(`Should revert with '${expected}' using accumulations {${JSON.stringify(args[0])}, ${JSON.stringify(
+            args[1]
+        )}}`, async () => {
             await expect(liquidityAccumulator.calculateLiquidity(args[0], args[1])).to.be.revertedWith(expected);
         });
     });
