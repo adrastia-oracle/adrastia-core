@@ -1,8 +1,8 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 
-const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const GRT = "0xc944e90c64b2c07662a292be6244bdf05cda44a7";
+const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const TWO_PERCENT_CHANGE = 2000000;
 
@@ -791,6 +791,10 @@ describe("LiquidityAccumulator#update", () => {
                 // Verify liquidity from accumulations is correct
                 expect(liquidityFromAccumulation["tokenLiquidity"]).to.equal(expectedTokenLiquidity);
                 expect(liquidityFromAccumulation["quoteTokenLiquidity"]).to.equal(expectedQuoteTokenLiquidity);
+
+                await expect(receipt)
+                    .to.emit(liquidityAccumulator, "Updated")
+                    .withArgs(GRT, USDC, updateTime, expectedTokenLiquidity, expectedQuoteTokenLiquidity);
             } else {
                 // No update should have occurred => use last values
 
@@ -801,6 +805,8 @@ describe("LiquidityAccumulator#update", () => {
                 expectedQuoteTokenLiquidity = initialLiquidity["quoteToken"] ?? 0;
 
                 expectedTimestamp = firstUpdateTime;
+
+                await expect(receipt).to.not.emit(liquidityAccumulator, "Updated");
             }
         } else {
             // Verifying initial update
@@ -815,6 +821,14 @@ describe("LiquidityAccumulator#update", () => {
                 expectedQuoteTokenLiquidity = initialLiquidity["quoteToken"] ?? 0;
 
                 expectedTimestamp = updateTime;
+
+                await expect(receipt)
+                    .to.emit(liquidityAccumulator, "Updated")
+                    .withArgs(GRT, USDC, updateTime, expectedTokenLiquidity, expectedQuoteTokenLiquidity);
+            } else {
+                // An update should not have occurred
+
+                await expect(receipt).to.not.emit(liquidityAccumulator, "Updated");
             }
         }
 
