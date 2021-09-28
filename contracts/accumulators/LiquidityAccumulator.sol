@@ -21,6 +21,14 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
 
+    event Updated(
+        address indexed token,
+        address indexed quoteToken,
+        uint256 indexed timestamp,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    );
+
     constructor(
         address quoteToken_,
         uint256 updateThreshold_,
@@ -69,6 +77,8 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
                 accumulation.cumulativeQuoteTokenLiquidity = observation.quoteTokenLiquidity = quoteTokenLiquidity;
                 accumulation.timestamp = observation.timestamp = block.timestamp;
 
+                emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+
                 return true;
             }
 
@@ -89,6 +99,8 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
                     observation.quoteTokenLiquidity = quoteTokenLiquidity;
                     observation.timestamp = block.timestamp;
                 }
+
+                emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
 
                 return true;
             }
