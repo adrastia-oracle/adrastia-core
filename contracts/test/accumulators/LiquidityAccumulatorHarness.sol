@@ -12,6 +12,8 @@ contract LiquidityAccumulatorHarness is LiquidityAccumulator {
     struct Config {
         bool changeThresholdOverridden;
         bool changeThresholdPassed;
+        bool needsUpdateOverridden;
+        bool needsUpdate;
     }
 
     mapping(address => MockLiquidity) public mockLiquidity;
@@ -43,6 +45,11 @@ contract LiquidityAccumulatorHarness is LiquidityAccumulator {
         config.changeThresholdPassed = changeThresholdPassed;
     }
 
+    function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {
+        config.needsUpdateOverridden = overridden;
+        config.needsUpdate = needsUpdate_;
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,
@@ -52,6 +59,11 @@ contract LiquidityAccumulatorHarness is LiquidityAccumulator {
     }
 
     /* Overridden functions */
+
+    function needsUpdate(address token) public view virtual override returns (bool) {
+        if (config.needsUpdateOverridden) return config.needsUpdate;
+        else return super.needsUpdate(token);
+    }
 
     function fetchLiquidity(address token)
         internal
