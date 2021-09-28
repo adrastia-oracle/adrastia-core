@@ -121,8 +121,10 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         AccumulationLibrary.LiquidityAccumulator memory firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator memory secondAccumulation
     ) public pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
+        require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
+
         uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
-        require(deltaTime != 0, "LiquidityAccumulator: delta time cannot be 0.");
+        require(deltaTime != 0, "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
         unchecked {
             // Underflow is desired and results in correct functionality
