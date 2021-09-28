@@ -157,8 +157,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 1
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
-                { cumulativeTokenLiquidity: 1, cumulativeQuoteTokenLiquidity: 1, timestamp: 1 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1, cumulativeQuoteTokenLiquidity: 1, timestamp: 2 },
             ],
             expected: [1, 1],
         },
@@ -167,8 +167,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 1
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
-                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 1, timestamp: 1 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 1, timestamp: 2 },
             ],
             expected: [0, 1],
         },
@@ -177,8 +177,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 0
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
-                { cumulativeTokenLiquidity: 1, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1, cumulativeQuoteTokenLiquidity: 0, timestamp: 2 },
             ],
             expected: [1, 0],
         },
@@ -187,8 +187,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 0
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
                 { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 2 },
             ],
             expected: [0, 0],
         },
@@ -197,8 +197,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 1000000
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
-                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 2 },
             ],
             expected: [1000000, 1000000],
         },
@@ -207,8 +207,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 1000000
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
-                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 2 },
             ],
             expected: [0, 1000000],
         },
@@ -217,8 +217,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 0
             // deltaTime = 1
             args: [
-                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
-                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 2 },
             ],
             expected: [1000000, 0],
         },
@@ -227,8 +227,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaCumulativeQuoteTokenLiquidity = 1000000
             // deltaTime = 10
             args: [
-                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 0 },
-                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 10 },
+                { cumulativeTokenLiquidity: 1000000, cumulativeQuoteTokenLiquidity: 1000000, timestamp: 1 },
+                { cumulativeTokenLiquidity: 2000000, cumulativeQuoteTokenLiquidity: 2000000, timestamp: 11 },
             ],
             expected: [100000, 100000],
         },
@@ -265,7 +265,28 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
                 { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
                 { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
             ],
-            expected: "LiquidityAccumulator: delta time cannot be 0.",
+            expected: "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO",
+        },
+        {
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+            ],
+            expected: "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO",
+        },
+        {
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+            ],
+            expected: "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO",
+        },
+        {
+            args: [
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 1 },
+                { cumulativeTokenLiquidity: 0, cumulativeQuoteTokenLiquidity: 0, timestamp: 0 },
+            ],
+            expected: false, // Subtraction underflow
         },
     ];
 
@@ -291,10 +312,12 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
     });
 
     revertedWithTests.forEach(({ args, expected }) => {
-        it(`Should revert with '${expected}' using accumulations {${JSON.stringify(args[0])}, ${JSON.stringify(
-            args[1]
-        )}}`, async () => {
-            await expect(liquidityAccumulator.calculateLiquidity(args[0], args[1])).to.be.revertedWith(expected);
+        it(`Should revert${expected ? " with " + expected : ""} using accumulations {${JSON.stringify(
+            args[0]
+        )}, ${JSON.stringify(args[1])}}`, async () => {
+            if (expected)
+                await expect(liquidityAccumulator.calculateLiquidity(args[0], args[1])).to.be.revertedWith(expected);
+            else await expect(liquidityAccumulator.calculateLiquidity(args[0], args[1])).to.be.reverted;
         });
     });
 });
