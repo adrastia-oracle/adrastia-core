@@ -44,16 +44,7 @@ async function createUniswapV2Oracle(factory, quoteToken, period) {
         maxUpdateDelay
     );
 
-    const liquidityOracle = await createContract(
-        "LiquidityOracle",
-        liquidityAccumulator.address,
-        quoteToken,
-        period
-    );
-
-    const priceOracle = await createContract("UniswapV2PriceOracle", factory, quoteToken, period);
-
-    const oracle = await createContract("CompositeOracle", priceOracle.address, liquidityOracle.address);
+    const oracle = await createContract("UniswapV2Oracle", liquidityAccumulator.address, factory, quoteToken, period);
 
     return oracle;
 }
@@ -87,11 +78,11 @@ async function main() {
     uniswapV3Oracle = await createSlidingWindowOracle(uniswapV3Oracle.address, baseToken);
     sushiswapOracle = await createSlidingWindowOracle(sushiswapOracle.address, baseToken);
 
-    const aggregatedOracle = await createContract("AggregatedOracle", [
-        uniswapV2Oracle.address,
-        uniswapV3Oracle.address,
-        sushiswapOracle.address,
-    ], oraclePeriod);
+    const aggregatedOracle = await createContract(
+        "AggregatedOracle",
+        [uniswapV2Oracle.address, uniswapV3Oracle.address, sushiswapOracle.address],
+        oraclePeriod
+    );
 
     while (true) {
         try {
@@ -105,7 +96,7 @@ async function main() {
         }
 
         try {
-            const result = await uniswapV2Oracle['consult(address)'](token);
+            const result = await uniswapV2Oracle["consult(address)"](token);
 
             console.log(
                 "UniswapV2 Price =",
@@ -120,7 +111,7 @@ async function main() {
         }
 
         try {
-            const result = await uniswapV3Oracle['consult(address)'](token);
+            const result = await uniswapV3Oracle["consult(address)"](token);
 
             console.log(
                 "UniswapV3 Price =",
@@ -135,7 +126,7 @@ async function main() {
         }
 
         try {
-            const result = await sushiswapOracle['consult(address)'](token);
+            const result = await sushiswapOracle["consult(address)"](token);
 
             console.log(
                 "Sushiswap Price =",
@@ -150,11 +141,11 @@ async function main() {
         }
 
         try {
-            const estimation = await aggregatedOracle.estimateGas['consult(address)'](token);
+            const estimation = await aggregatedOracle.estimateGas["consult(address)"](token);
 
             console.log("Aggregate consult gas =", estimation.toString());
 
-            const result = await aggregatedOracle['consult(address)'](token);
+            const result = await aggregatedOracle["consult(address)"](token);
 
             console.log(
                 "Aggregate Price =",
