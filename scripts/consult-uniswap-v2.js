@@ -58,6 +58,15 @@ async function main() {
 
     const oracle = await createUniswapV2Oracle(factoryAddress, quoteToken, period);
 
+    const tokenContract = await ethers.getContractAt("ERC20", token);
+    const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
+
+    const tokenSymbol = await tokenContract.symbol();
+    const quoteTokenSymbol = await quoteTokenContract.symbol();
+
+    const tokenDecimals = await tokenContract.decimals();
+    const quoteTokenDecimals = await quoteTokenContract.decimals();
+
     while (true) {
         try {
             if (await oracle.needsUpdate(token)) {
@@ -69,7 +78,25 @@ async function main() {
 
             const consultation = await oracle["consult(address)"](token);
 
-            console.log("Price =", consultation["price"].toString());
+            const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
+
+            console.log("Price(%s) = %s %s", tokenSymbol, priceStr, quoteTokenSymbol);
+
+            const tokenLiquidityStr = ethers.utils.commify(
+                ethers.utils.formatUnits(consultation["tokenLiquidity"], tokenDecimals)
+            );
+
+            const quoteTokenLiquidityStr = ethers.utils.commify(
+                ethers.utils.formatUnits(consultation["quoteTokenLiquidity"], quoteTokenDecimals)
+            );
+
+            console.log(
+                "Liquidity(%s) = %s, Liquidity(%s) = %s",
+                tokenSymbol,
+                tokenLiquidityStr,
+                quoteTokenSymbol,
+                quoteTokenLiquidityStr
+            );
         } catch (e) {
             console.log(e);
         }
