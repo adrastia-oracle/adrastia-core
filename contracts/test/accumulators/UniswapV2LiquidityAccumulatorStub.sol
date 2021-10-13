@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../accumulators/proto/uniswap/UniswapV2LiquidityAccumulator.sol";
 
-contract UniswapV2LiquidityAccumulatorHarness is UniswapV2LiquidityAccumulator {
+contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
     constructor(
         address uniswapFactory_,
         address quoteToken_,

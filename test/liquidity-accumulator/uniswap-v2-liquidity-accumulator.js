@@ -10,7 +10,7 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
-    var mockUniswapV2Factory;
+    var fakeUniswapV2Factory;
     var liquidityAccumulator;
 
     var quoteToken;
@@ -25,13 +25,13 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
     beforeEach(async () => {
         const [owner] = await ethers.getSigners();
 
-        // Deploy mock uniswap v2 factory
-        const MockUniswapV2Factory = await ethers.getContractFactory("MockUniswapV2Factory");
-        mockUniswapV2Factory = await MockUniswapV2Factory.deploy(owner.getAddress());
-        await mockUniswapV2Factory.deployed();
+        // Deploy fake uniswap v2 factory
+        const FakeUniswapV2Factory = await ethers.getContractFactory("FakeUniswapV2Factory");
+        fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
+        await fakeUniswapV2Factory.deployed();
 
         // Create tokens
-        const erc20Factory = await ethers.getContractFactory("MockERC20");
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
 
         noPairToken = await erc20Factory.deploy("No Pair Token", "NPT");
         await noPairToken.deployed();
@@ -54,14 +54,14 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         gtToken = tokens[2];
 
         // Configure pairs
-        await mockUniswapV2Factory.createPair(token.address, quoteToken.address);
-        await mockUniswapV2Factory.createPair(ltToken.address, quoteToken.address);
-        await mockUniswapV2Factory.createPair(gtToken.address, quoteToken.address);
+        await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
+        await fakeUniswapV2Factory.createPair(ltToken.address, quoteToken.address);
+        await fakeUniswapV2Factory.createPair(gtToken.address, quoteToken.address);
 
         // Deploy uniswap v2 liquidity accumulator
-        const LiquidityAccumulator = await ethers.getContractFactory("UniswapV2LiquidityAccumulatorHarness");
+        const LiquidityAccumulator = await ethers.getContractFactory("UniswapV2LiquidityAccumulatorStub");
         liquidityAccumulator = await LiquidityAccumulator.deploy(
-            mockUniswapV2Factory.address,
+            fakeUniswapV2Factory.address,
             quoteToken.address,
             TWO_PERCENT_CHANGE,
             minUpdateDelay,
@@ -86,10 +86,10 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
             const [owner] = await ethers.getSigners();
 
             // Get pair
-            const ltPair = await mockUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
-            const gtPair = await mockUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
-            const ltPairContract = await ethers.getContractAt("MockUniswapV2Pair", ltPair);
-            const gtPairContract = await ethers.getContractAt("MockUniswapV2Pair", gtPair);
+            const ltPair = await fakeUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
+            const gtPair = await fakeUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
+            const ltPairContract = await ethers.getContractAt("FakeUniswapV2Pair", ltPair);
+            const gtPairContract = await ethers.getContractAt("FakeUniswapV2Pair", gtPair);
 
             // Approve transfers to pair (ltToken, quoteToken)
             await ltToken.approve(ltPair, args[0]);

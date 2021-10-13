@@ -15,7 +15,7 @@ describe("LiquidityAccumulator#needsUpdate", () => {
     var updateTime;
 
     beforeEach(async () => {
-        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorHarness");
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
         liquidityAccumulator = await LiquidityAccumulator.deploy(
             USDC,
             TWO_PERCENT_CHANGE,
@@ -127,7 +127,7 @@ describe("LiquidityAccumulator#changeThresholdSurpassed", () => {
     ];
 
     beforeEach(async () => {
-        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorHarness");
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
         liquidityAccumulator = await LiquidityAccumulator.deploy(
             USDC,
             TWO_PERCENT_CHANGE,
@@ -291,7 +291,7 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
     ];
 
     beforeEach(async () => {
-        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorHarness");
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
         liquidityAccumulator = await LiquidityAccumulator.deploy(
             USDC,
             TWO_PERCENT_CHANGE,
@@ -717,7 +717,7 @@ describe("LiquidityAccumulator#update", () => {
     ];
 
     beforeEach(async () => {
-        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorHarness");
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
         liquidityAccumulator = await LiquidityAccumulator.deploy(
             USDC,
             TWO_PERCENT_CHANGE,

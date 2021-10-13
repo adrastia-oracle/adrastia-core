@@ -8,7 +8,7 @@ import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
 
-contract MockUniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
+contract FakeUniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     using SafeMath for uint256;
     using UQ112x112 for uint224;
 

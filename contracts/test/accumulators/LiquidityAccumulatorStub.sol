@@ -3,7 +3,7 @@ pragma solidity ^0.8;
 
 import "../../accumulators/LiquidityAccumulator.sol";
 
-contract LiquidityAccumulatorHarness is LiquidityAccumulator {
+contract LiquidityAccumulatorStub is LiquidityAccumulator {
     struct MockLiquidity {
         uint256 tokenLiquidity;
         uint256 quoteTokenLiquidity;
@@ -27,7 +27,7 @@ contract LiquidityAccumulatorHarness is LiquidityAccumulator {
         uint256 maxUpdateDelay_
     ) LiquidityAccumulator(quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
-    /* Harness functions */
+    /* Stub functions */
 
     function setLiquidity(
         address token,
