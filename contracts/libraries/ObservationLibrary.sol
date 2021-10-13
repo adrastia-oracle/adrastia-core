@@ -5,10 +5,10 @@ pragma experimental ABIEncoderV2;
 
 library ObservationLibrary {
     struct Observation {
-        uint256 timestamp;
         uint256 price;
         uint256 tokenLiquidity;
         uint256 quoteTokenLiquidity;
+        uint256 timestamp;
     }
 
     struct LiquidityObservation {
