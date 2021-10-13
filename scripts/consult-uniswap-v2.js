@@ -73,14 +73,21 @@ async function main() {
                 const updateTx = await oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 
-                console.log("Oracle updated. Gas used = " + updateReceipt["gasUsed"]);
+                console.log(
+                    "\u001b[" + 93 + "m" + "Oracle updated. Gas used = " + updateReceipt["gasUsed"] + "\u001b[0m"
+                );
             }
 
             const consultation = await oracle["consult(address)"](token);
 
             const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
 
-            console.log("Price(%s) = %s %s", tokenSymbol, priceStr, quoteTokenSymbol);
+            console.log(
+                "\u001b[" + 32 + "m" + "Price(%s) = %s %s" + "\u001b[0m",
+                tokenSymbol,
+                priceStr,
+                quoteTokenSymbol
+            );
 
             const tokenLiquidityStr = ethers.utils.commify(
                 ethers.utils.formatUnits(consultation["tokenLiquidity"], tokenDecimals)
@@ -91,7 +98,7 @@ async function main() {
             );
 
             console.log(
-                "Liquidity(%s) = %s, Liquidity(%s) = %s",
+                "\u001b[" + 31 + "m" + "Liquidity(%s) = %s, Liquidity(%s) = %s" + "\u001b[0m",
                 tokenSymbol,
                 tokenLiquidityStr,
                 quoteTokenSymbol,
