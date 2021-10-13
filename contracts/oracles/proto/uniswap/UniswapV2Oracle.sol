@@ -97,7 +97,7 @@ contract UniswapV2Oracle is IOracle {
         require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
 
         tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.baseLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function consultLiquidity(address token, uint256 maxAge)
@@ -113,7 +113,7 @@ contract UniswapV2Oracle is IOracle {
         require(block.timestamp <= observation.timestamp + maxAge, "UniswapV2Oracle: RATE_TOO_OLD");
 
         tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.baseLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function consult(address token)
@@ -133,7 +133,7 @@ contract UniswapV2Oracle is IOracle {
 
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.baseLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function consult(address token, uint256 maxAge)
@@ -154,7 +154,7 @@ contract UniswapV2Oracle is IOracle {
 
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.baseLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function _update(address token) internal returns (bool) {
@@ -236,8 +236,9 @@ contract UniswapV2Oracle is IOracle {
 
             if (lastAccumulationTime != 0) {
                 // We have two accumulations -> calculate liquidity from them
-                (observation.tokenLiquidity, observation.baseLiquidity) = ILiquidityAccumulator(liquidityAccumulator)
-                    .calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
+                (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                    liquidityAccumulator
+                ).calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
             } else {
                 // Only one accumulation, so we use the accumulator's last observation
                 ObservationLibrary.LiquidityObservation memory liquidityObservation = ILiquidityAccumulator(
@@ -245,7 +246,7 @@ contract UniswapV2Oracle is IOracle {
                 ).getLastObservation(token);
 
                 observation.tokenLiquidity = liquidityObservation.tokenLiquidity;
-                observation.baseLiquidity = liquidityObservation.quoteTokenLiquidity;
+                observation.quoteTokenLiquidity = liquidityObservation.quoteTokenLiquidity;
             }
 
             liquidityAccumulations[token] = freshAccumulation;

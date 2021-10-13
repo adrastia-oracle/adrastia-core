@@ -8,7 +8,7 @@ library ObservationLibrary {
         uint256 timestamp;
         uint256 price;
         uint256 tokenLiquidity;
-        uint256 baseLiquidity;
+        uint256 quoteTokenLiquidity;
     }
 
     struct LiquidityObservation {

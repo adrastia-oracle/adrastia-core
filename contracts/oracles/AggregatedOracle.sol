@@ -52,7 +52,7 @@ contract AggregatedOracle is IAggregatedOracle {
 
             ObservationLibrary.Observation storage consultation = storedConsultations[token];
 
-            (consultation.price, consultation.tokenLiquidity, consultation.baseLiquidity) = consultFresh(token);
+            (consultation.price, consultation.tokenLiquidity, consultation.quoteTokenLiquidity) = consultFresh(token);
             consultation.timestamp = block.timestamp;
 
             return true;
@@ -69,7 +69,7 @@ contract AggregatedOracle is IAggregatedOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         )
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
@@ -78,7 +78,7 @@ contract AggregatedOracle is IAggregatedOracle {
 
         price = consultation.price;
         tokenLiquidity = consultation.tokenLiquidity;
-        baseLiquidity = consultation.baseLiquidity;
+        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
     }
 
     function consult(address token, uint256 maxAge)
@@ -89,7 +89,7 @@ contract AggregatedOracle is IAggregatedOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         )
     {
         ObservationLibrary.Observation storage consultation = storedConsultations[token];
@@ -99,7 +99,7 @@ contract AggregatedOracle is IAggregatedOracle {
 
         price = consultation.price;
         tokenLiquidity = consultation.tokenLiquidity;
-        baseLiquidity = consultation.baseLiquidity;
+        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
@@ -131,7 +131,7 @@ contract AggregatedOracle is IAggregatedOracle {
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
 
         tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.baseLiquidity;
+        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
     }
 
     function consultLiquidity(address token, uint256 maxAge)
@@ -147,7 +147,7 @@ contract AggregatedOracle is IAggregatedOracle {
         require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
 
         tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.baseLiquidity;
+        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
     }
 
     function consultFresh(address token)

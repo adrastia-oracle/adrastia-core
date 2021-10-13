@@ -49,7 +49,7 @@ contract UniswapV3Oracle is IOracle {
         if (needsUpdate(token)) {
             ObservationLibrary.Observation storage observation = observations[token];
 
-            (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = consultFresh(token);
+            (observation.price, observation.tokenLiquidity, observation.quoteTokenLiquidity) = consultFresh(token);
             observation.timestamp = block.timestamp;
 
             return true;
@@ -66,7 +66,7 @@ contract UniswapV3Oracle is IOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         )
     {
         ObservationLibrary.Observation storage observation = observations[token];
@@ -75,7 +75,7 @@ contract UniswapV3Oracle is IOracle {
 
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
-        baseLiquidity = observation.baseLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function consult(address token, uint256 maxAge)
@@ -86,7 +86,7 @@ contract UniswapV3Oracle is IOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         )
     {
         ObservationLibrary.Observation storage observation = observations[token];
@@ -96,7 +96,7 @@ contract UniswapV3Oracle is IOracle {
 
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
-        baseLiquidity = observation.baseLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
@@ -128,7 +128,7 @@ contract UniswapV3Oracle is IOracle {
         require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
 
         tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.baseLiquidity;
+        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
     }
 
     function consultLiquidity(address token, uint256 maxAge)
@@ -144,7 +144,7 @@ contract UniswapV3Oracle is IOracle {
         require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
 
         tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.baseLiquidity;
+        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
     }
 
     function consultFresh(address token)
@@ -153,7 +153,7 @@ contract UniswapV3Oracle is IOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         )
     {
         address poolAddress500 = PoolAddress.computeAddress(
@@ -205,10 +205,10 @@ contract UniswapV3Oracle is IOracle {
 
         if (token < quoteToken) {
             tokenLiquidity = amount0;
-            baseLiquidity = amount1;
+            quoteTokenLiquidity = amount1;
         } else {
             tokenLiquidity = amount1;
-            baseLiquidity = amount0;
+            quoteTokenLiquidity = amount0;
         }
     }
 

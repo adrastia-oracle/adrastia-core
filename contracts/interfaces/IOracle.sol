@@ -17,7 +17,7 @@ abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         );
 
     function consult(address token, uint256 maxAge)
@@ -27,6 +27,6 @@ abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 baseLiquidity
+            uint256 quoteTokenLiquidity
         );
 }
