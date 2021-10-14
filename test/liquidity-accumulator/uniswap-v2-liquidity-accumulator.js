@@ -33,15 +33,15 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         // Create tokens
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
 
-        noPairToken = await erc20Factory.deploy("No Pair Token", "NPT");
+        noPairToken = await erc20Factory.deploy("No Pair Token", "NPT", 18);
         await noPairToken.deployed();
 
-        token = await erc20Factory.deploy("Token", "T");
+        token = await erc20Factory.deploy("Token", "T", 18);
         await token.deployed();
 
         var tokens = [undefined, undefined, undefined];
         for (var i = 0; i < tokens.length; ++i) {
-            tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i);
+            tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
             await tokens[i].deployed();
         }
 
