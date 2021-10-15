@@ -27,16 +27,25 @@ contract UniswapV2Oracle is IOracle {
 
     address public immutable liquidityAccumulator;
 
-    address immutable uniswapFactory;
+    address public immutable uniswapFactory;
 
-    address immutable quoteToken;
+    address public immutable quoteToken;
 
-    uint256 immutable period;
+    uint256 public immutable period;
 
-    mapping(address => AccumulationLibrary.PriceAccumulator) priceAccumulations;
-    mapping(address => AccumulationLibrary.LiquidityAccumulator) liquidityAccumulations;
+    mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
+    mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
 
-    mapping(address => ObservationLibrary.Observation) observations;
+    mapping(address => ObservationLibrary.Observation) public observations;
+
+    event Updated(
+        address indexed token,
+        address indexed quoteToken,
+        uint256 indexed timestamp,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    );
 
     constructor(
         address liquidityAccumulator_,
@@ -71,7 +80,9 @@ contract UniswapV2Oracle is IOracle {
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
-        require(observations[token].timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
+        ObservationLibrary.Observation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
 
         return observations[token].price;
     }
@@ -160,29 +171,14 @@ contract UniswapV2Oracle is IOracle {
     function _update(address token) internal returns (bool) {
         address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
 
+        require(pairAddress != address(0), "UniswapV2Oracle: POOL_NOT_FOUND");
+
+        ObservationLibrary.Observation storage observation = observations[token];
+
         /*
          * 1. Update price
          */
-
-        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
-
-        // Get current accumulations from Uniswap's price accumulator
-        (
-            uint256 cumulativeQuoteTokenPrice,
-            uint256 cumulativeTokenPrice,
-            uint32 blockTimestamp
-        ) = UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
-
-        if (token < quoteToken) {
-            // Rearrange the values so that token0 in the underlying is always 'token'
-            uint256 temp = cumulativeTokenPrice;
-            cumulativeTokenPrice = cumulativeQuoteTokenPrice;
-            cumulativeQuoteTokenPrice = temp;
-        }
-
-        if (priceAccumulation.timestamp == 0) {
-            // No prior observation so we use the last observation data provided by the pair
-
+        {
             IUniswapV2Pair pair = IUniswapV2Pair(pairAddress);
 
             // This is the timestamp when price0CumulativeLast and price1CumulativeLast was set
@@ -190,75 +186,104 @@ contract UniswapV2Oracle is IOracle {
 
             require(timestamp != 0, "UniswapV2Oracle: MISSING_RESERVES_TIMESTAMP");
 
+            AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+
+            // Get current accumulations from Uniswap's price accumulator
+            (
+                uint256 cumulativeQuoteTokenPrice,
+                uint256 cumulativeTokenPrice,
+                uint32 blockTimestamp
+            ) = UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
+
             if (token < quoteToken) {
-                priceAccumulation.cumulativeTokenPrice = pair.price0CumulativeLast();
-                priceAccumulation.cumulativeQuoteTokenPrice = pair.price1CumulativeLast();
-            } else {
-                priceAccumulation.cumulativeTokenPrice = pair.price1CumulativeLast();
-                priceAccumulation.cumulativeQuoteTokenPrice = pair.price0CumulativeLast();
+                // Rearrange the values so that token0 in the underlying is always 'token'
+                uint256 temp = cumulativeTokenPrice;
+                cumulativeTokenPrice = cumulativeQuoteTokenPrice;
+                cumulativeQuoteTokenPrice = temp;
             }
 
-            priceAccumulation.timestamp = timestamp;
-        }
+            if (priceAccumulation.timestamp == 0) {
+                // No prior observation so we use the last observation data provided by the pair
 
-        ObservationLibrary.Observation storage observation = observations[token];
+                if (token < quoteToken) {
+                    priceAccumulation.cumulativeTokenPrice = pair.price0CumulativeLast();
+                    priceAccumulation.cumulativeQuoteTokenPrice = pair.price1CumulativeLast();
+                } else {
+                    priceAccumulation.cumulativeTokenPrice = pair.price1CumulativeLast();
+                    priceAccumulation.cumulativeQuoteTokenPrice = pair.price0CumulativeLast();
+                }
 
-        uint32 timeElapsed = blockTimestamp - uint32(priceAccumulation.timestamp); // overflow is desired
-        if (timeElapsed != 0) {
-            // Store price and current time
-            observation.price = computeAmountOut(
-                priceAccumulation.cumulativeTokenPrice,
-                cumulativeTokenPrice,
-                timeElapsed,
-                computeWholeUnitAmount(token)
-            );
+                priceAccumulation.timestamp = timestamp;
+            }
 
-            // Store current accumulations and the timestamp of them
-            priceAccumulation.cumulativeTokenPrice = cumulativeTokenPrice;
-            priceAccumulation.cumulativeQuoteTokenPrice = cumulativeQuoteTokenPrice;
-            priceAccumulation.timestamp = blockTimestamp;
+            uint32 timeElapsed = blockTimestamp - uint32(priceAccumulation.timestamp); // overflow is desired
+            if (timeElapsed != 0) {
+                // Store price and current time
+                observation.price = computeAmountOut(
+                    priceAccumulation.cumulativeTokenPrice,
+                    cumulativeTokenPrice,
+                    timeElapsed,
+                    computeWholeUnitAmount(token)
+                );
+
+                // Store current accumulations and the timestamp of them
+                priceAccumulation.cumulativeTokenPrice = cumulativeTokenPrice;
+                priceAccumulation.cumulativeQuoteTokenPrice = cumulativeQuoteTokenPrice;
+                priceAccumulation.timestamp = blockTimestamp;
+            }
         }
 
         /*
          * 2. Update liquidity
          */
+        {
+            // Always keep the liquidity accumulator up-to-date
+            ILiquidityAccumulator(liquidityAccumulator).update(token);
 
-        // Always keep the liquidity accumulator up-to-date
-        ILiquidityAccumulator(liquidityAccumulator).update(token);
+            AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
+                liquidityAccumulator
+            ).getAccumulation(token);
 
-        AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(liquidityAccumulator)
-            .getAccumulation(token);
+            uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
 
-        uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
+            if (freshAccumulation.timestamp > lastAccumulationTime) {
+                // Accumulator updated, so we update our observation
 
-        if (freshAccumulation.timestamp > lastAccumulationTime) {
-            // Accumulator updated, so we update our observation
+                if (lastAccumulationTime != 0) {
+                    // We have two accumulations -> calculate liquidity from them
+                    (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                        liquidityAccumulator
+                    ).calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
+                } else {
+                    // Only one accumulation, so we use the accumulator's last observation
+                    ObservationLibrary.LiquidityObservation memory liquidityObservation = ILiquidityAccumulator(
+                        liquidityAccumulator
+                    ).getLastObservation(token);
 
-            if (lastAccumulationTime != 0) {
-                // We have two accumulations -> calculate liquidity from them
-                (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
-                    liquidityAccumulator
-                ).calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
-            } else {
-                // Only one accumulation, so we use the accumulator's last observation
-                ObservationLibrary.LiquidityObservation memory liquidityObservation = ILiquidityAccumulator(
-                    liquidityAccumulator
-                ).getLastObservation(token);
+                    observation.tokenLiquidity = liquidityObservation.tokenLiquidity;
+                    observation.quoteTokenLiquidity = liquidityObservation.quoteTokenLiquidity;
+                }
 
-                observation.tokenLiquidity = liquidityObservation.tokenLiquidity;
-                observation.quoteTokenLiquidity = liquidityObservation.quoteTokenLiquidity;
+                liquidityAccumulations[token] = freshAccumulation;
             }
-
-            liquidityAccumulations[token] = freshAccumulation;
         }
 
         // Update observation timestamp so that the oracle doesn't update again until the next period
         observation.timestamp = block.timestamp;
 
+        emit Updated(
+            token,
+            quoteToken,
+            block.timestamp,
+            observation.price,
+            observation.tokenLiquidity,
+            observation.quoteTokenLiquidity
+        );
+
         return true;
     }
 
-    function computeWholeUnitAmount(address token) private view returns (uint256 amount) {
+    function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {
         amount = uint256(10)**IERC20(token).decimals();
     }
 
@@ -269,11 +294,13 @@ contract UniswapV2Oracle is IOracle {
         uint256 priceCumulativeEnd,
         uint256 timeElapsed,
         uint256 amountIn
-    ) private pure returns (uint256 amountOut) {
+    ) internal pure returns (uint256 amountOut) {
         // overflow is desired.
-        FixedPoint.uq112x112 memory priceAverage = FixedPoint.uq112x112(
-            uint224((priceCumulativeEnd - priceCumulativeStart) / timeElapsed)
-        );
-        amountOut = priceAverage.mul(amountIn).decode144();
+        unchecked {
+            FixedPoint.uq112x112 memory priceAverage = FixedPoint.uq112x112(
+                uint224((priceCumulativeEnd - priceCumulativeStart) / timeElapsed)
+            );
+            amountOut = priceAverage.mul(amountIn).decode144();
+        }
     }
 }
