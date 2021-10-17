@@ -91,13 +91,14 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
             if (deltaTime != 0) {
                 unchecked {
                     // Overflow is desired and results in correct functionality
-                    accumulation.cumulativeTokenLiquidity += tokenLiquidity * deltaTime;
-                    accumulation.cumulativeQuoteTokenLiquidity += quoteTokenLiquidity * deltaTime;
-                    accumulation.timestamp = block.timestamp;
+                    // We add the liquidites multiplied by the time those liquidities were present
+                    accumulation.cumulativeTokenLiquidity += observation.tokenLiquidity * deltaTime;
+                    accumulation.cumulativeQuoteTokenLiquidity += observation.quoteTokenLiquidity * deltaTime;
 
                     observation.tokenLiquidity = tokenLiquidity;
                     observation.quoteTokenLiquidity = quoteTokenLiquidity;
-                    observation.timestamp = block.timestamp;
+
+                    observation.timestamp = accumulation.timestamp = block.timestamp;
                 }
 
                 emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
