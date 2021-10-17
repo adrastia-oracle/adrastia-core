@@ -242,7 +242,7 @@ contract UniswapV2Oracle is IOracle {
 
             AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
                 liquidityAccumulator
-            ).getAccumulation(token);
+            ).getLastAccumulation(token);
 
             uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
 

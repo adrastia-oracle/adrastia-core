@@ -13,7 +13,7 @@ abstract contract ILiquidityAccumulator is IUpdateByToken {
 
     function changePrecisionDecimals() external view virtual returns (uint256);
 
-    function getAccumulation(address token)
+    function getLastAccumulation(address token)
         public
         view
         virtual

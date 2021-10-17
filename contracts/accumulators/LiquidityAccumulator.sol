@@ -110,7 +110,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         return false;
     }
 
-    function getAccumulation(address token)
+    function getLastAccumulation(address token)
         public
         view
         virtual

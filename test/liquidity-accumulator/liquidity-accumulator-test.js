@@ -728,7 +728,7 @@ describe("LiquidityAccumulator#update", () => {
     });
 
     async function verifyUpdate(expectedReturn, initialLiquidity, secondLiquidity = undefined, firstUpdateTime = 0) {
-        const firstAccumulation = await liquidityAccumulator.getAccumulation(GRT);
+        const firstAccumulation = await liquidityAccumulator.getLastAccumulation(GRT);
 
         expect(await liquidityAccumulator.callStatic.update(GRT)).to.equal(expectedReturn);
 
@@ -737,7 +737,7 @@ describe("LiquidityAccumulator#update", () => {
 
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
-        const accumulation = await liquidityAccumulator.getAccumulation(GRT);
+        const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
         const observation = await liquidityAccumulator.getLastObservation(GRT);
 
         var expectedCumulativeTokenLiquidity = 0;
@@ -754,7 +754,7 @@ describe("LiquidityAccumulator#update", () => {
             if (expectedReturn) {
                 // An update should have occurred
 
-                const secondAccumulation = await liquidityAccumulator.getAccumulation(GRT);
+                const secondAccumulation = await liquidityAccumulator.getLastAccumulation(GRT);
 
                 const liquidityFromAccumulation = await liquidityAccumulator.calculateLiquidity(
                     firstAccumulation,
@@ -959,7 +959,7 @@ describe("LiquidityAccumulator#update", () => {
                 firstQuoteTokenLiquidity.mul(BigNumber.from(deltaTime))
             );
 
-            const accumulation = await liquidityAccumulator.getAccumulation(GRT);
+            const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
             const observation = await liquidityAccumulator.getLastObservation(GRT);
 
             expect(accumulation["cumulativeTokenLiquidity"]).to.equal(expectedCumulativeTokenLiquidity);
