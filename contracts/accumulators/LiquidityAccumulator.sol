@@ -86,7 +86,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
              * Update
              */
 
-            uint256 deltaTime = block.timestamp - accumulation.timestamp;
+            uint256 deltaTime = block.timestamp - observation.timestamp;
 
             if (deltaTime != 0) {
                 unchecked {
