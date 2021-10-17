@@ -73,9 +73,9 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
                 /*
                  * Initialize
                  */
-                accumulation.cumulativeTokenLiquidity = observation.tokenLiquidity = tokenLiquidity;
-                accumulation.cumulativeQuoteTokenLiquidity = observation.quoteTokenLiquidity = quoteTokenLiquidity;
-                accumulation.timestamp = observation.timestamp = block.timestamp;
+                observation.tokenLiquidity = tokenLiquidity;
+                observation.quoteTokenLiquidity = quoteTokenLiquidity;
+                observation.timestamp = block.timestamp;
 
                 emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
 
