@@ -19,7 +19,19 @@ abstract contract ILiquidityAccumulator is IUpdateByToken {
         virtual
         returns (AccumulationLibrary.LiquidityAccumulator memory);
 
+    function getCurrentAccumulation(address token)
+        public
+        view
+        virtual
+        returns (AccumulationLibrary.LiquidityAccumulator memory);
+
     function getLastObservation(address token)
+        public
+        view
+        virtual
+        returns (ObservationLibrary.LiquidityObservation memory);
+
+    function getCurrentObservation(address token)
         public
         view
         virtual

@@ -120,6 +120,33 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         return accumulations[token];
     }
 
+    function getCurrentAccumulation(address token)
+        public
+        view
+        virtual
+        override
+        returns (AccumulationLibrary.LiquidityAccumulator memory accumulation)
+    {
+        ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
+        require(lastObservation.timestamp != 0, "LiquidityAccumulator: UNINITIALIZED");
+
+        accumulation = accumulations[token]; // Load last accumulation
+
+        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+
+        if (deltaTime != 0) {
+            // The last observation liquidities have existed for some time, so we add that
+            unchecked {
+                // Overflow is desired and results in correct functionality
+                // We add the liquidites multiplied by the time those liquidities were present
+                accumulation.cumulativeTokenLiquidity += lastObservation.tokenLiquidity * deltaTime;
+                accumulation.cumulativeQuoteTokenLiquidity += lastObservation.quoteTokenLiquidity * deltaTime;
+
+                accumulation.timestamp = block.timestamp;
+            }
+        }
+    }
+
     function getLastObservation(address token)
         public
         view
@@ -128,6 +155,17 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         returns (ObservationLibrary.LiquidityObservation memory)
     {
         return observations[token];
+    }
+
+    function getCurrentObservation(address token)
+        public
+        view
+        virtual
+        override
+        returns (ObservationLibrary.LiquidityObservation memory observation)
+    {
+        (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
+        observation.timestamp = block.timestamp;
     }
 
     function calculateLiquidity(
