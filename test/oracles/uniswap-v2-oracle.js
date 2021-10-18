@@ -1067,9 +1067,10 @@ describe("UniswapV2Oracle#update", function () {
     //   - Liquidity accumulator updated if needed & opposite
     //   - Liquidity accumulation changed (& not changed)
     //     - No prior accumulation & opposite
-    //   - Updated event
-    //     - Match event data with observation data
+    //   - Updated event ✔
+    //     - Match event data with observation data ✔
     //   - Various combinations of underlying data points
+    //   - Correctly calculates price when token decimals vary
     var tests = [
         {
             desc: "Should not update if not needed",
@@ -1154,7 +1155,7 @@ describe("UniswapV2Oracle#update", function () {
         liquiditiesToTest,
         initialLiquiditiesToTest,
         initialLiquiditiesToTest,
-        [10000],
+        [100],
     ];
 
     // Create should update test combinations
@@ -1247,7 +1248,9 @@ describe("UniswapV2Oracle#update", function () {
                         // Verify the timestamp matches expected
                         expect(updateTime).to.equal(expectedTimestamp);
 
-                        const [, , , timestamp] = await oracle.observations(token.address);
+                        const [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(
+                            token.address
+                        );
 
                         // Verify the current observation matches expected
                         // expect(price).to.equal(TODO);
@@ -1256,14 +1259,16 @@ describe("UniswapV2Oracle#update", function () {
                         expect(timestamp).to.equal(BigNumber.from(updateTime));
 
                         // Verify the correct log was emitted
-                        await expect(updateTxPromise).to.emit(oracle, "Updated"); /*.withArgs(
-                            token.address,
-                            quoteToken.address,
-                            BigNumber.from(expectedTimestamp),
-                            undefined, // TODO: Verify price
-                            undefined, // TODO: Verify token liquidity
-                            undefined // TODO: Verify quote token liquidity
-                        );*/
+                        await expect(updateTxPromise)
+                            .to.emit(oracle, "Updated")
+                            .withArgs(
+                                token.address,
+                                quoteToken.address,
+                                BigNumber.from(expectedTimestamp),
+                                price,
+                                tokenLiquidity,
+                                quoteTokenLiquidity
+                            );
                     } else {
                         // No update should have occurred
 
