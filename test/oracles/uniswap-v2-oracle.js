@@ -1058,19 +1058,19 @@ describe("UniswapV2Oracle#update", function () {
 
     // Testing points:
     // - Does not need update ✔
-    // - Needs update
+    // - Needs update ✔
     //   - Revert: POOL_NOT_FOUND ✔
     //   - token < quoteToken & opposite ✔
     //   - No prior observation ✔
     //   - Revert: MISSING_RESERVES_TIMESTAMP ✔
-    //   - Price accumulation timeElapsed == 0 & opposite
-    //   - Liquidity accumulator updated if needed & opposite
-    //   - Liquidity accumulation changed (& not changed)
-    //     - No prior accumulation & opposite
+    //   - Price accumulation timeElapsed == 0 & opposite ✔
+    //   - Liquidity accumulator updated if needed & opposite ✔
+    //   - Liquidity accumulation changed (& not changed) ✔
+    //     - No prior accumulation & opposite ✔
     //   - Updated event ✔
     //     - Match event data with observation data ✔
-    //   - Various combinations of underlying data points
-    //   - Correctly calculates price when token decimals vary
+    //   - Various combinations of underlying data points ✔
+    //   - Correctly calculates price when token decimals vary ✔
     var tests = [
         {
             desc: "Should not update if not needed",
@@ -1105,8 +1105,17 @@ describe("UniswapV2Oracle#update", function () {
         quoteTokenLiquidity = ethers.utils.parseUnits("1", 18),
         initialTokenLiquidity = undefined,
         initialQuoteTokenLiquidity = undefined,
-        deltaTime = 100
+        deltaTime = 100,
+        tokenDecimals = 18,
+        quoteTokenDecimals = 18
     ) {
+        var totalTokenLiquidity = tokenLiquidity;
+        var totalQuoteTokenLiquidity = quoteTokenLiquidity;
+
+        if (initialTokenLiquidity !== undefined) totalTokenLiquidity = totalTokenLiquidity.add(initialTokenLiquidity);
+        if (initialQuoteTokenLiquidity !== undefined)
+            totalQuoteTokenLiquidity = totalQuoteTokenLiquidity.add(initialQuoteTokenLiquidity);
+
         return {
             desc:
                 `Should update (token = ${useLtToken ? "ltToken" : "gtToken"}, ` +
@@ -1118,9 +1127,13 @@ describe("UniswapV2Oracle#update", function () {
                 (initialQuoteTokenLiquidity === undefined
                     ? ""
                     : `initialQuoteTokenLiquidity = ${initialQuoteTokenLiquidity.toString()}, `) +
-                `deltaTime = ${deltaTime})`,
+                `deltaTime = ${deltaTime}, tokenDecimals = ${tokenDecimals}, quoteTokenDecimals = ${quoteTokenDecimals})`,
             preCallFunc: async function () {
                 token = useLtToken ? ltToken : gtToken;
+
+                await token.setDecimals(tokenDecimals);
+                await quoteToken.setDecimals(quoteTokenDecimals);
+
                 await oracle.overrideNeedsUpdate(true, true);
                 await createPair();
 
@@ -1140,8 +1153,8 @@ describe("UniswapV2Oracle#update", function () {
             },
             expectedRevert: undefined,
             expectedOutput: true,
-            expectedTokenLiquidity: tokenLiquidity,
-            expectedQuoteTokenLiquidity: quoteTokenLiquidity,
+            totalTokenLiquidity: totalTokenLiquidity,
+            totalQuoteTokenLiquidity: totalQuoteTokenLiquidity,
         };
     }
 
@@ -1156,6 +1169,8 @@ describe("UniswapV2Oracle#update", function () {
         initialLiquiditiesToTest,
         initialLiquiditiesToTest,
         [100],
+        [6, 18],
+        [6, 18],
     ];
 
     // Create should update test combinations
@@ -1168,7 +1183,9 @@ describe("UniswapV2Oracle#update", function () {
 
     // Add all combinations of shouldUpdateTestPermutations to our tests
     for (const combo of shouldUpdateTestCombos)
-        tests.push(createShouldUpdateTest(combo[0], combo[1], combo[2], combo[3], combo[4], combo[5]));
+        tests.push(
+            createShouldUpdateTest(combo[0], combo[1], combo[2], combo[3], combo[4], combo[5], combo[6], combo[7])
+        );
 
     beforeEach(async () => {
         const [owner] = await ethers.getSigners();
@@ -1210,14 +1227,7 @@ describe("UniswapV2Oracle#update", function () {
     });
 
     tests.forEach(
-        ({
-            desc,
-            preCallFunc,
-            expectedRevert,
-            expectedOutput,
-            expectedTokenLiquidity,
-            expectedQuoteTokenLiquidity,
-        }) => {
+        ({ desc, preCallFunc, expectedRevert, expectedOutput, totalTokenLiquidity, totalQuoteTokenLiquidity }) => {
             it(desc, async () => {
                 await preCallFunc();
 
@@ -1248,7 +1258,7 @@ describe("UniswapV2Oracle#update", function () {
                         // Verify the timestamp matches expected
                         expect(updateTime).to.equal(expectedTimestamp);
 
-                        const [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(
+                        [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(
                             token.address
                         );
 
@@ -1265,6 +1275,39 @@ describe("UniswapV2Oracle#update", function () {
                                 token.address,
                                 quoteToken.address,
                                 BigNumber.from(expectedTimestamp),
+                                price,
+                                tokenLiquidity,
+                                quoteTokenLiquidity
+                            );
+                        await expect(updateTxPromise).to.emit(liquidityAccumulator, "Updated");
+
+                        // Fast-forward and update s.t. reported price and token liquities will equal calculations based on total liquidites
+                        // (since we use time-weighted averages)
+                        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
+                        await oracle.update(token.address);
+                        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
+
+                        const lastExpectedTimestamp = (await currentBlockTimestamp()) + 1;
+                        const lasteUpdateTx = await oracle.update(token.address);
+
+                        [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(
+                            token.address
+                        );
+
+                        const decimalFactor = BigNumber.from(10).pow(await token.decimals());
+
+                        const expectedPrice = totalQuoteTokenLiquidity.mul(decimalFactor).div(totalTokenLiquidity);
+
+                        expect(price).to.equal(expectedPrice);
+                        expect(tokenLiquidity).to.equal(totalTokenLiquidity);
+                        expect(quoteTokenLiquidity).to.equal(totalQuoteTokenLiquidity);
+
+                        await expect(lasteUpdateTx)
+                            .to.emit(oracle, "Updated")
+                            .withArgs(
+                                token.address,
+                                quoteToken.address,
+                                lastExpectedTimestamp,
                                 price,
                                 tokenLiquidity,
                                 quoteTokenLiquidity
