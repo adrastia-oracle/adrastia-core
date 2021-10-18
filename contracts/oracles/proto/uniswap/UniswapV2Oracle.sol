@@ -254,14 +254,6 @@ contract UniswapV2Oracle is IOracle {
                     (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
                         liquidityAccumulator
                     ).calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
-                } else {
-                    // Only one accumulation, so we use the accumulator's last observation
-                    ObservationLibrary.LiquidityObservation memory liquidityObservation = ILiquidityAccumulator(
-                        liquidityAccumulator
-                    ).getLastObservation(token);
-
-                    observation.tokenLiquidity = liquidityObservation.tokenLiquidity;
-                    observation.quoteTokenLiquidity = liquidityObservation.quoteTokenLiquidity;
                 }
 
                 liquidityAccumulations[token] = freshAccumulation;
