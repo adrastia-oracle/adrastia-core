@@ -18,4 +18,8 @@ contract FakeERC20 is ERC20 {
     function decimals() public view virtual override returns (uint8) {
         return _decimals;
     }
+
+    function setDecimals(uint8 decimals_) public {
+        _decimals = decimals_;
+    }
 }
