@@ -254,7 +254,7 @@ describe("UniswapV2Oracle#consultPrice(token)", function () {
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consultPrice(address)"](AddressZero)).to.be.revertedWith(
-            "UniswapV2Oracle: MISSING_OBSERVATION"
+            "AbstractOracle: MISSING_OBSERVATION"
         );
     });
 
@@ -291,7 +291,7 @@ describe("UniswapV2Oracle#consultPrice(token, maxAge)", function () {
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
-            "UniswapV2Oracle: MISSING_OBSERVATION"
+            "AbstractOracle: MISSING_OBSERVATION"
         );
     });
 
@@ -306,7 +306,7 @@ describe("UniswapV2Oracle#consultPrice(token, maxAge)", function () {
 
         expect(await currentBlockTimestamp()).to.equal(time);
         await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
-            "UniswapV2Oracle: RATE_TOO_OLD"
+            "AbstractOracle: RATE_TOO_OLD"
         );
     });
 
@@ -410,7 +410,7 @@ describe("UniswapV2Oracle#consultLiquidity(token)", function () {
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consultLiquidity(address)"](AddressZero)).to.be.revertedWith(
-            "UniswapV2Oracle: MISSING_OBSERVATION"
+            "AbstractOracle: MISSING_OBSERVATION"
         );
     });
 
@@ -479,7 +479,7 @@ describe("UniswapV2Oracle#consultLiquidity(token, maxAge)", function () {
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
-            "UniswapV2Oracle: MISSING_OBSERVATION"
+            "AbstractOracle: MISSING_OBSERVATION"
         );
     });
 
@@ -494,7 +494,7 @@ describe("UniswapV2Oracle#consultLiquidity(token, maxAge)", function () {
 
         expect(await currentBlockTimestamp()).to.equal(time);
         await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
-            "UniswapV2Oracle: RATE_TOO_OLD"
+            "AbstractOracle: RATE_TOO_OLD"
         );
     });
 
@@ -627,9 +627,7 @@ describe("UniswapV2Oracle#consult(token)", function () {
     });
 
     it("Should revert when there's no observation", async () => {
-        await expect(oracle["consult(address)"](AddressZero)).to.be.revertedWith(
-            "UniswapV2Oracle: MISSING_OBSERVATION"
-        );
+        await expect(oracle["consult(address)"](AddressZero)).to.be.revertedWith("AbstractOracle: MISSING_OBSERVATION");
     });
 
     tests.forEach(({ args }) => {
@@ -726,7 +724,7 @@ describe("UniswapV2Oracle#consult(token, maxAge)", function () {
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consult(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
-            "UniswapV2Oracle: MISSING_OBSERVATION"
+            "AbstractOracle: MISSING_OBSERVATION"
         );
     });
 
@@ -741,7 +739,7 @@ describe("UniswapV2Oracle#consult(token, maxAge)", function () {
 
         expect(await currentBlockTimestamp()).to.equal(time);
         await expect(oracle["consult(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
-            "UniswapV2Oracle: RATE_TOO_OLD"
+            "AbstractOracle: RATE_TOO_OLD"
         );
     });
 
