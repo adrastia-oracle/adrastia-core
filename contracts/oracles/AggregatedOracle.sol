@@ -12,6 +12,14 @@ contract AggregatedOracle is IAggregatedOracle {
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
+    event Updated(
+        address indexed token,
+        uint256 indexed timestamp,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    );
+
     constructor(address[] memory oracles_, uint256 period_) {
         require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
 
@@ -54,6 +62,14 @@ contract AggregatedOracle is IAggregatedOracle {
 
             (consultation.price, consultation.tokenLiquidity, consultation.quoteTokenLiquidity) = consultFresh(token);
             consultation.timestamp = block.timestamp;
+
+            emit Updated(
+                token,
+                block.timestamp,
+                consultation.price,
+                consultation.tokenLiquidity,
+                consultation.quoteTokenLiquidity
+            );
 
             return true;
         }
