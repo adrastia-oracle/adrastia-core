@@ -192,7 +192,7 @@ contract AggregatedOracle is IAggregatedOracle {
             //
             // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed
             // -> We don't want to use old data.
-            try IOracle(oracles[i]).consult(token, period) returns (
+            try IOracle(oracles[i]).consult(token, period * 2) returns (
                 uint256 oraclePrice,
                 uint256 oracleTokenLiquidity,
                 uint256 oracleQuoteTokenLiquidity
