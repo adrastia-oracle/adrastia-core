@@ -47,31 +47,42 @@ contract AggregatedOracle is IAggregatedOracle {
 
     function update(address token) external override returns (bool) {
         if (needsUpdate(token)) {
+            bool underlyingUpdated;
+
             // Ensure all underlying oracles are up-to-date
             for (uint256 i = 0; i < oracles.length; ++i) {
                 // We don't want any problematic underlying oracles to prevent this oracle from updating
                 // so we put update in a try-catch block
-                try IOracle(oracles[i]).update(token) {} catch Error(string memory reason) {
+                try IOracle(oracles[i]).update(token) returns (bool updated) {
+                    underlyingUpdated = underlyingUpdated || updated;
+                } catch Error(string memory reason) {
                     emit UpdateErrorWithReason(token, reason);
                 } catch (bytes memory err) {
                     emit UpdateError(token, err);
                 }
             }
 
-            ObservationLibrary.Observation storage consultation = observations[token];
+            uint256 price;
+            uint256 tokenLiquidity;
+            uint256 quoteTokenLiquidity;
+            uint256 validResponses;
 
-            (consultation.price, consultation.tokenLiquidity, consultation.quoteTokenLiquidity) = consultFresh(token);
-            consultation.timestamp = block.timestamp;
+            (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = consultFresh(token);
 
-            emit Updated(
-                token,
-                block.timestamp,
-                consultation.price,
-                consultation.tokenLiquidity,
-                consultation.quoteTokenLiquidity
-            );
+            if (validResponses >= 1) {
+                ObservationLibrary.Observation storage observation = observations[token];
 
-            return true;
+                observation.price = price;
+                observation.tokenLiquidity = tokenLiquidity;
+                observation.quoteTokenLiquidity = quoteTokenLiquidity;
+                observation.timestamp = block.timestamp;
+
+                emit Updated(token, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+
+                return true;
+            } else emit UpdateErrorWithReason(token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+
+            return underlyingUpdated;
         }
 
         return false;
@@ -171,14 +182,13 @@ contract AggregatedOracle is IAggregatedOracle {
         returns (
             uint256 price,
             uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint256 quoteTokenLiquidity,
+            uint256 validResponses
         )
     {
         require(oracles.length > 0, "No underlying oracles.");
 
         uint256 oracleCount = oracles.length;
-
-        uint256 validResponses;
 
         /*
          * Compute harmonic mean
@@ -213,9 +223,6 @@ contract AggregatedOracle is IAggregatedOracle {
             }
         }
 
-        // TODO: Allow specification for the minimum number of valid consultations
-        require(validResponses >= 1, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
-
-        price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
+        if (denominator != 0) price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
     }
 }
