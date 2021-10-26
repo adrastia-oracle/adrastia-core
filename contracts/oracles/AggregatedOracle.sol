@@ -8,7 +8,7 @@ import "../libraries/ObservationLibrary.sol";
 contract AggregatedOracle is IAggregatedOracle {
     address[] public oracles;
 
-    uint256 immutable period;
+    uint256 public immutable period;
 
     mapping(address => ObservationLibrary.Observation) public storedConsultations;
 
