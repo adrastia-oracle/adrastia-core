@@ -186,8 +186,6 @@ contract AggregatedOracle is IAggregatedOracle {
             uint256 validResponses
         )
     {
-        require(oracles.length > 0, "No underlying oracles.");
-
         uint256 oracleCount = oracles.length;
 
         /*
@@ -223,6 +221,6 @@ contract AggregatedOracle is IAggregatedOracle {
             }
         }
 
-        if (denominator != 0) price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
+        price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
     }
 }
