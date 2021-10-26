@@ -1,16 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
 
-import "../libraries/ObservationLibrary.sol";
-
-contract AggregatedOracle is IAggregatedOracle {
+contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     address[] public oracles;
-
-    uint256 public immutable period;
-
-    mapping(address => ObservationLibrary.Observation) public observations;
 
     event Updated(
         address indexed token,
@@ -20,18 +15,17 @@ contract AggregatedOracle is IAggregatedOracle {
         uint256 quoteTokenLiquidity
     );
 
-    constructor(address[] memory oracles_, uint256 period_) {
+    constructor(address[] memory oracles_, uint256 period_) PeriodicOracle(address(0), period_) {
         require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
 
         oracles = oracles_;
-        period = period_;
     }
 
-    function quoteTokenAddress() public view virtual override returns (address) {
+    function quoteTokenAddress() public view virtual override(IOracle, AbstractOracle) returns (address) {
         revert("TODO");
     }
 
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
+    function quoteTokenSymbol() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
         revert("TODO");
     }
 
@@ -39,142 +33,43 @@ contract AggregatedOracle is IAggregatedOracle {
         return oracles;
     }
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp - observations[token].timestamp;
+    function _update(address token) internal override returns (bool) {
+        bool underlyingUpdated;
 
-        return deltaTime >= period;
-    }
-
-    function update(address token) external override returns (bool) {
-        if (needsUpdate(token)) {
-            bool underlyingUpdated;
-
-            // Ensure all underlying oracles are up-to-date
-            for (uint256 i = 0; i < oracles.length; ++i) {
-                // We don't want any problematic underlying oracles to prevent this oracle from updating
-                // so we put update in a try-catch block
-                try IOracle(oracles[i]).update(token) returns (bool updated) {
-                    underlyingUpdated = underlyingUpdated || updated;
-                } catch Error(string memory reason) {
-                    emit UpdateErrorWithReason(token, reason);
-                } catch (bytes memory err) {
-                    emit UpdateError(token, err);
-                }
+        // Ensure all underlying oracles are up-to-date
+        for (uint256 i = 0; i < oracles.length; ++i) {
+            // We don't want any problematic underlying oracles to prevent this oracle from updating
+            // so we put update in a try-catch block
+            try IOracle(oracles[i]).update(token) returns (bool updated) {
+                underlyingUpdated = underlyingUpdated || updated;
+            } catch Error(string memory reason) {
+                emit UpdateErrorWithReason(token, reason);
+            } catch (bytes memory err) {
+                emit UpdateError(token, err);
             }
-
-            uint256 price;
-            uint256 tokenLiquidity;
-            uint256 quoteTokenLiquidity;
-            uint256 validResponses;
-
-            (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = consultFresh(token);
-
-            if (validResponses >= 1) {
-                ObservationLibrary.Observation storage observation = observations[token];
-
-                observation.price = price;
-                observation.tokenLiquidity = tokenLiquidity;
-                observation.quoteTokenLiquidity = quoteTokenLiquidity;
-                observation.timestamp = block.timestamp;
-
-                emit Updated(token, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
-
-                return true;
-            } else emit UpdateErrorWithReason(token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
-
-            return underlyingUpdated;
         }
 
-        return false;
-    }
+        uint256 price;
+        uint256 tokenLiquidity;
+        uint256 quoteTokenLiquidity;
+        uint256 validResponses;
 
-    function consult(address token)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage consultation = observations[token];
+        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = consultFresh(token);
 
-        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
+        if (validResponses >= 1) {
+            ObservationLibrary.Observation storage observation = observations[token];
 
-        price = consultation.price;
-        tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
-    }
+            observation.price = price;
+            observation.tokenLiquidity = tokenLiquidity;
+            observation.quoteTokenLiquidity = quoteTokenLiquidity;
+            observation.timestamp = block.timestamp;
 
-    function consult(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage consultation = observations[token];
+            emit Updated(token, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
 
-        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
+            return true;
+        } else emit UpdateErrorWithReason(token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
-        price = consultation.price;
-        tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
-    }
-
-    function consultPrice(address token) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
-
-        price = consultation.price;
-    }
-
-    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
-
-        price = consultation.price;
-    }
-
-    function consultLiquidity(address token)
-        public
-        view
-        virtual
-        override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
-
-        tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
-    }
-
-    function consultLiquidity(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
-
-        tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
+        return underlyingUpdated;
     }
 
     function consultFresh(address token)
