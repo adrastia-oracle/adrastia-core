@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "../../../interfaces/IOracle.sol";
+import "../../PeriodicOracle.sol";
 
 import "../../../libraries/ObservationLibrary.sol";
 
@@ -12,14 +12,8 @@ import "../../../libraries/uniswap-v3-periphery/LiquidityAmounts.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 
-contract UniswapV3Oracle is IOracle {
+contract UniswapV3Oracle is PeriodicOracle {
     address public immutable uniswapFactory;
-
-    address public immutable quoteToken;
-
-    uint32 public immutable period;
-
-    mapping(address => ObservationLibrary.Observation) public observations;
 
     event Updated(
         address indexed token,
@@ -34,135 +28,26 @@ contract UniswapV3Oracle is IOracle {
         address uniswapFactory_,
         address quoteToken_,
         uint32 period_
-    ) {
+    ) PeriodicOracle(quoteToken_, period_) {
         uniswapFactory = uniswapFactory_;
-        quoteToken = quoteToken_;
-        period = period_;
     }
 
-    function quoteTokenAddress() public view virtual override returns (address) {
-        return quoteToken;
-    }
-
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
-        revert("TODO");
-    }
-
-    function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp - observations[token].timestamp;
-
-        return deltaTime >= period;
-    }
-
-    function update(address token) external virtual override returns (bool) {
-        if (needsUpdate(token)) {
-            ObservationLibrary.Observation storage observation = observations[token];
-
-            (observation.price, observation.tokenLiquidity, observation.quoteTokenLiquidity) = consultFresh(token);
-            observation.timestamp = block.timestamp;
-
-            emit Updated(
-                token,
-                quoteToken,
-                block.timestamp,
-                observation.price,
-                observation.tokenLiquidity,
-                observation.quoteTokenLiquidity
-            );
-
-            return true;
-        }
-
-        return false;
-    }
-
-    function consult(address token)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
-        )
-    {
+    function _update(address token) internal override returns (bool) {
         ObservationLibrary.Observation storage observation = observations[token];
 
-        require(observation.timestamp != 0, "UniswapV3Oracle: MISSING_OBSERVATION");
+        (observation.price, observation.tokenLiquidity, observation.quoteTokenLiquidity) = consultFresh(token);
+        observation.timestamp = block.timestamp;
 
-        price = observation.price;
-        tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.quoteTokenLiquidity;
-    }
+        emit Updated(
+            token,
+            quoteToken,
+            block.timestamp,
+            observation.price,
+            observation.tokenLiquidity,
+            observation.quoteTokenLiquidity
+        );
 
-    function consult(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV3Oracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp - maxAge, "UniswapV3Oracle: RATE_TOO_OLD");
-
-        price = observation.price;
-        tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.quoteTokenLiquidity;
-    }
-
-    function consultPrice(address token) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
-
-        price = consultation.price;
-    }
-
-    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
-
-        price = consultation.price;
-    }
-
-    function consultLiquidity(address token)
-        public
-        view
-        virtual
-        override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
-
-        tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
-    }
-
-    function consultLiquidity(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
-        ObservationLibrary.Observation storage consultation = observations[token];
-
-        require(consultation.timestamp != 0, "SlidingWindowOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= consultation.timestamp + maxAge, "SlidingWindowOracle: RATE_TOO_OLD");
-
-        tokenLiquidity = consultation.tokenLiquidity;
-        quoteTokenLiquidity = consultation.quoteTokenLiquidity;
+        return true;
     }
 
     function consultFresh(address token)
@@ -190,12 +75,14 @@ contract UniswapV3Oracle is IOracle {
         WeightedOracleLibrary.PeriodObservation[]
             memory periodObservations = new WeightedOracleLibrary.PeriodObservation[](3);
 
-        if (isContract(poolAddress500)) periodObservations[0] = WeightedOracleLibrary.consult(poolAddress500, period);
+        if (isContract(poolAddress500))
+            periodObservations[0] = WeightedOracleLibrary.consult(poolAddress500, uint32(period));
 
-        if (isContract(poolAddress3000)) periodObservations[1] = WeightedOracleLibrary.consult(poolAddress3000, period);
+        if (isContract(poolAddress3000))
+            periodObservations[1] = WeightedOracleLibrary.consult(poolAddress3000, uint32(period));
 
         if (isContract(poolAddress10000))
-            periodObservations[2] = WeightedOracleLibrary.consult(poolAddress10000, period);
+            periodObservations[2] = WeightedOracleLibrary.consult(poolAddress10000, uint32(period));
 
         int24 timeWeightedAverageTick = WeightedOracleLibrary.getArithmeticMeanTickWeightedByLiquidity(
             periodObservations
