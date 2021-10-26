@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
-import "../../../interfaces/IOracle.sol";
+import "../../PeriodicOracle.sol";
 import "../../../interfaces/ILiquidityAccumulator.sol";
 
 import "../../../libraries/AccumulationLibrary.sol";
@@ -16,27 +16,15 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "hardhat/console.sol";
 
-contract UniswapV2Oracle is IOracle {
+contract UniswapV2Oracle is PeriodicOracle {
     using FixedPoint for *;
-
-    struct PriceObservation {
-        uint32 timestamp;
-        uint256 price0Cumulative;
-        uint256 price1Cumulative;
-    }
 
     address public immutable liquidityAccumulator;
 
     address public immutable uniswapFactory;
 
-    address public immutable quoteToken;
-
-    uint256 public immutable period;
-
     mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
-
-    mapping(address => ObservationLibrary.Observation) public observations;
 
     event Updated(
         address indexed token,
@@ -52,123 +40,12 @@ contract UniswapV2Oracle is IOracle {
         address uniswapFactory_,
         address quoteToken_,
         uint256 period_
-    ) {
+    ) PeriodicOracle(quoteToken_, period_) {
         liquidityAccumulator = liquidityAccumulator_;
         uniswapFactory = uniswapFactory_;
-        quoteToken = quoteToken_;
-        period = period_;
     }
 
-    function quoteTokenAddress() public view virtual override returns (address) {
-        return quoteToken;
-    }
-
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
-        revert("TODO");
-    }
-
-    function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp - observations[token].timestamp;
-
-        return deltaTime >= period;
-    }
-
-    function update(address token) external virtual override returns (bool) {
-        if (needsUpdate(token)) return _update(token);
-
-        return false;
-    }
-
-    function consultPrice(address token) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
-
-        return observations[token].price;
-    }
-
-    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp + maxAge, "UniswapV2Oracle: RATE_TOO_OLD");
-
-        return observation.price;
-    }
-
-    function consultLiquidity(address token)
-        public
-        view
-        virtual
-        override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
-
-        tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.quoteTokenLiquidity;
-    }
-
-    function consultLiquidity(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp + maxAge, "UniswapV2Oracle: RATE_TOO_OLD");
-
-        tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.quoteTokenLiquidity;
-    }
-
-    function consult(address token)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
-
-        price = observation.price;
-        tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.quoteTokenLiquidity;
-    }
-
-    function consult(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV2Oracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp + maxAge, "UniswapV2Oracle: RATE_TOO_OLD");
-
-        price = observation.price;
-        tokenLiquidity = observation.tokenLiquidity;
-        quoteTokenLiquidity = observation.quoteTokenLiquidity;
-    }
-
-    function _update(address token) internal returns (bool) {
+    function _update(address token) internal override returns (bool) {
         address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
 
         require(pairAddress != address(0), "UniswapV2Oracle: POOL_NOT_FOUND");
