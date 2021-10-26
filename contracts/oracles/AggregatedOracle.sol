@@ -10,7 +10,7 @@ contract AggregatedOracle is IAggregatedOracle {
 
     uint256 public immutable period;
 
-    mapping(address => ObservationLibrary.Observation) public storedConsultations;
+    mapping(address => ObservationLibrary.Observation) public observations;
 
     event Updated(
         address indexed token,
@@ -40,7 +40,7 @@ contract AggregatedOracle is IAggregatedOracle {
     }
 
     function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp - storedConsultations[token].timestamp;
+        uint256 deltaTime = block.timestamp - observations[token].timestamp;
 
         return deltaTime >= period;
     }
@@ -58,7 +58,7 @@ contract AggregatedOracle is IAggregatedOracle {
                 }
             }
 
-            ObservationLibrary.Observation storage consultation = storedConsultations[token];
+            ObservationLibrary.Observation storage consultation = observations[token];
 
             (consultation.price, consultation.tokenLiquidity, consultation.quoteTokenLiquidity) = consultFresh(token);
             consultation.timestamp = block.timestamp;
@@ -88,7 +88,7 @@ contract AggregatedOracle is IAggregatedOracle {
             uint256 quoteTokenLiquidity
         )
     {
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
 
@@ -108,7 +108,7 @@ contract AggregatedOracle is IAggregatedOracle {
             uint256 quoteTokenLiquidity
         )
     {
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
         require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
@@ -119,7 +119,7 @@ contract AggregatedOracle is IAggregatedOracle {
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
 
@@ -127,7 +127,7 @@ contract AggregatedOracle is IAggregatedOracle {
     }
 
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
         require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
@@ -142,7 +142,7 @@ contract AggregatedOracle is IAggregatedOracle {
         override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
 
@@ -157,7 +157,7 @@ contract AggregatedOracle is IAggregatedOracle {
         override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
-        ObservationLibrary.Observation storage consultation = storedConsultations[token];
+        ObservationLibrary.Observation storage consultation = observations[token];
 
         require(consultation.timestamp != 0, "AggregatedOracle: MISSING_OBSERVATION");
         require(block.timestamp <= consultation.timestamp + maxAge, "AggregatedOracle: RATE_TOO_OLD");
