@@ -21,6 +21,15 @@ contract UniswapV3Oracle is IOracle {
 
     mapping(address => ObservationLibrary.Observation) public observations;
 
+    event Updated(
+        address indexed token,
+        address indexed quoteToken,
+        uint256 indexed timestamp,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    );
+
     constructor(
         address uniswapFactory_,
         address quoteToken_,
@@ -51,6 +60,15 @@ contract UniswapV3Oracle is IOracle {
 
             (observation.price, observation.tokenLiquidity, observation.quoteTokenLiquidity) = consultFresh(token);
             observation.timestamp = block.timestamp;
+
+            emit Updated(
+                token,
+                quoteToken,
+                block.timestamp,
+                observation.price,
+                observation.tokenLiquidity,
+                observation.quoteTokenLiquidity
+            );
 
             return true;
         }
