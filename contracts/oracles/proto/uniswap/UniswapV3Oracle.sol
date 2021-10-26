@@ -13,13 +13,13 @@ import "../../../libraries/uniswap-v3-periphery/LiquidityAmounts.sol";
 import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 
 contract UniswapV3Oracle is IOracle {
-    address immutable uniswapFactory;
+    address public immutable uniswapFactory;
 
-    address immutable quoteToken;
+    address public immutable quoteToken;
 
-    uint32 immutable period;
+    uint32 public immutable period;
 
-    mapping(address => ObservationLibrary.Observation) observations;
+    mapping(address => ObservationLibrary.Observation) public observations;
 
     constructor(
         address uniswapFactory_,
