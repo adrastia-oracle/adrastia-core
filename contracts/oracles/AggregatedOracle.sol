@@ -43,9 +43,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             try IOracle(oracles[i]).update(token) returns (bool updated) {
                 underlyingUpdated = underlyingUpdated || updated;
             } catch Error(string memory reason) {
-                emit UpdateErrorWithReason(token, reason);
+                emit UpdateErrorWithReason(oracles[i], token, reason);
             } catch (bytes memory err) {
-                emit UpdateError(token, err);
+                emit UpdateError(oracles[i], token, err);
             }
         }
 
@@ -67,7 +67,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             emit Updated(token, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
 
             return true;
-        } else emit UpdateErrorWithReason(token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+        } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
         return underlyingUpdated;
     }
@@ -110,9 +110,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                     quoteTokenLiquidity += oracleQuoteTokenLiquidity;
                 }
             } catch Error(string memory reason) {
-                emit ConsultErrorWithReason(token, reason);
+                emit ConsultErrorWithReason(oracles[i], token, reason);
             } catch (bytes memory err) {
-                emit ConsultError(token, err);
+                emit ConsultError(oracles[i], token, err);
             }
         }
 
