@@ -51,8 +51,8 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
     return await createContract("UniswapV3Oracle", factory, quoteToken, period);
 }
 
-async function createAggregatedOracle(period, ...oracles) {
-    return await createContract("AggregatedOracle", oracles, period);
+async function createAggregatedOracle(quoteTokenAddress, quoteTokenSymbol, period, ...oracles) {
+    return await createContract("AggregatedOracle", quoteTokenAddress, quoteTokenSymbol, oracles, period);
 }
 
 async function main() {
@@ -67,6 +67,8 @@ async function main() {
     const uniswapV3Oracle = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
 
     const oracle = await createAggregatedOracle(
+        quoteToken,
+        "USDC",
         periodSeconds,
         uniswapV2Oracle.address,
         sushiswapOracle.address,

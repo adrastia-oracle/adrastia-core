@@ -7,6 +7,9 @@ import "../interfaces/IAggregatedOracle.sol";
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     address[] public oracles;
 
+    address internal _quoteTokenAddress;
+    string internal _quoteTokenSymbol;
+
     event Updated(
         address indexed token,
         uint256 indexed timestamp,
@@ -15,18 +18,28 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         uint256 quoteTokenLiquidity
     );
 
-    constructor(address[] memory oracles_, uint256 period_) PeriodicOracle(address(0), period_) {
+    constructor(
+        address quoteTokenAddress_,
+        string memory quoteTokenSymbol_,
+        address[] memory oracles_,
+        uint256 period_
+    ) PeriodicOracle(address(0), period_) {
         require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
+
+        // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
+        // Note: All underlying quote tokens must be loosly equal (i.e. equal in value and in number of decimals).
+        _quoteTokenAddress = quoteTokenAddress_;
+        _quoteTokenSymbol = quoteTokenSymbol_;
 
         oracles = oracles_;
     }
 
     function quoteTokenAddress() public view virtual override(IOracle, AbstractOracle) returns (address) {
-        revert("TODO");
+        return _quoteTokenAddress;
     }
 
     function quoteTokenSymbol() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
-        revert("TODO");
+        return _quoteTokenSymbol;
     }
 
     function getOracles() external view virtual override returns (address[] memory) {
