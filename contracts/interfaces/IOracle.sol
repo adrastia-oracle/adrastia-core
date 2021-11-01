@@ -6,6 +6,15 @@ import "./ILiquidityOracle.sol";
 import "./IPriceOracle.sol";
 
 abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
+    event Updated(
+        address indexed token,
+        address indexed quoteToken,
+        uint256 indexed timestamp,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    );
+
     function quoteTokenAddress() public view virtual override(IPriceOracle, ILiquidityOracle) returns (address);
 
     function quoteTokenSymbol() public view virtual override(IPriceOracle, ILiquidityOracle) returns (string memory);

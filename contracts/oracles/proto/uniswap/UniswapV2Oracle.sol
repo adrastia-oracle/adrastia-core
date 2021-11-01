@@ -26,15 +26,6 @@ contract UniswapV2Oracle is PeriodicOracle {
     mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
 
-    event Updated(
-        address indexed token,
-        address indexed quoteToken,
-        uint256 indexed timestamp,
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    );
-
     constructor(
         address liquidityAccumulator_,
         address uniswapFactory_,

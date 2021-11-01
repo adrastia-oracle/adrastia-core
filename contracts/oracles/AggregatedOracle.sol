@@ -10,14 +10,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     address internal _quoteTokenAddress;
     string internal _quoteTokenSymbol;
 
-    event Updated(
-        address indexed token,
-        uint256 indexed timestamp,
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    );
-
     constructor(
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
@@ -77,7 +69,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             observation.quoteTokenLiquidity = quoteTokenLiquidity;
             observation.timestamp = block.timestamp;
 
-            emit Updated(token, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, _quoteTokenAddress, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
 
             return true;
         } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");

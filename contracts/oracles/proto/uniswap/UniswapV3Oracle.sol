@@ -15,15 +15,6 @@ import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 contract UniswapV3Oracle is PeriodicOracle {
     address public immutable uniswapFactory;
 
-    event Updated(
-        address indexed token,
-        address indexed quoteToken,
-        uint256 indexed timestamp,
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    );
-
     constructor(
         address uniswapFactory_,
         address quoteToken_,
