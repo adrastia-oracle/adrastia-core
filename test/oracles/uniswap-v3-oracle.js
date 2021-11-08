@@ -3,6 +3,17 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const AddressZero = ethers.constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
+const bn = require("bignumber.js");
+
+const {
+    abi: FACTORY_ABI,
+    bytecode: FACTORY_BYTECODE,
+} = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
+
+const {
+    abi: POOL_ABI,
+    bytecode: POOL_BYTECODE,
+} = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
@@ -26,7 +37,31 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-describe("UniswapV3Oracle#constructor", async function () {
+bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
+
+// returns the sqrt price as a 64x96
+// https://github.com/Uniswap/v3-core/blob/c05a0e2c8c08c460fb4d05cfdda30b3ad8deeaac/test/shared/utilities.ts#L63
+function encodePriceSqrt(reserve1, reserve0) {
+    return BigNumber.from(
+        new bn(reserve1.toString())
+            .div(reserve0.toString())
+            .sqrt()
+            .multipliedBy(new bn(2).pow(96))
+            .integerValue(3)
+            .toString()
+    );
+}
+
+const TICK_SPACINGS = {
+    500: 10,
+    3000: 60,
+    10000: 200,
+};
+
+const getMinTick = (tickSpacing) => Math.ceil(-887272 / tickSpacing) * tickSpacing;
+const getMaxTick = (tickSpacing) => Math.floor(887272 / tickSpacing) * tickSpacing;
+
+/*describe("UniswapV3Oracle#constructor", async function () {
     var oracleFactory;
 
     var tests = [];
@@ -683,8 +718,226 @@ describe("UniswapV3Oracle#consult(token, maxAge)", function () {
             expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
     });
+});*/
+
+describe("UniswapV2Oracle#update", function () {
+    var quoteToken;
+    var token;
+    var ltToken;
+    var gtToken;
+
+    var uniswapFactory;
+    var oracle;
+    var helper;
+
+    var expectedTokenLiquidity;
+    var expectedQuoteTokenLiquidity;
+    var expectedPrice;
+
+    beforeEach(async () => {
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
+        const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+        const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
+        const helperFactory = await ethers.getContractFactory("UniswapV3Helper");
+
+        var tokens = [undefined, undefined, undefined];
+
+        for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
+        for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
+
+        tokens = tokens.sort((a, b) => a.address < b.address);
+
+        token = ltToken = tokens[0];
+        quoteToken = tokens[1];
+        gtToken = tokens[2];
+
+        uniswapFactory = await uniswapFactoryFactory.deploy();
+        await uniswapFactory.deployed();
+
+        oracle = await oracleFactory.deploy(uniswapFactory.address, quoteToken.address, 1);
+        helper = await helperFactory.deploy(uniswapFactory.address, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
+
+        expectedTokenLiquidity = BigNumber.from(0);
+        expectedQuoteTokenLiquidity = BigNumber.from(0);
+        expectedPrice = BigNumber.from(0);
+    });
+
+    async function createPool(sqrtPrice, fee = 3000) {
+        await uniswapFactory.createPool(token.address, quoteToken.address, fee);
+
+        const pool = await uniswapFactory.getPool(token.address, quoteToken.address, fee);
+        const poolContract = await ethers.getContractAt(POOL_ABI, pool);
+
+        poolContract.initialize(sqrtPrice);
+    }
+
+    async function addLiquidity(tokenLiquidity, quoteTokenLiquidity, fee = 3000) {
+        const [owner] = await ethers.getSigners();
+
+        var token0;
+        var token1;
+
+        var amount0;
+        var amount1;
+
+        if (token.address < quoteToken.address) {
+            token0 = token.address;
+            token1 = quoteToken.address;
+
+            amount0 = tokenLiquidity;
+            amount1 = quoteTokenLiquidity;
+        } else {
+            token1 = token.address;
+            token0 = quoteToken.address;
+
+            amount1 = tokenLiquidity;
+            amount0 = quoteTokenLiquidity;
+        }
+
+        // const pool = await uniswapFactory.getPool(token.address, quoteToken.address, fee);
+        // const poolContract = await ethers.getContractAt(POOL_ABI, pool);
+
+        // const [, tick, , , , ,] = await poolContract.slot0();
+
+        const params = {
+            token0: token0,
+            token1: token1,
+            fee: fee,
+            recipient: owner.address,
+            tickLower: getMinTick(TICK_SPACINGS[fee]),
+            tickUpper: getMaxTick(TICK_SPACINGS[fee]),
+            amount0Desired: amount0,
+            amount1Desired: amount1,
+            amount0Min: 0,
+            amount1Min: 0,
+        };
+
+        await token.approve(helper.address, MaxUint256);
+        await quoteToken.approve(helper.address, MaxUint256);
+
+        const [, rAmount0, rAmount1] = await helper.callStatic.helperAddLiquidity(params);
+
+        await helper.helperAddLiquidity(params);
+
+        if (token.address < quoteToken.address) {
+            expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount0);
+            expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount1);
+        } else {
+            expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount1);
+            expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount0);
+        }
+
+        const decimalFactor = BigNumber.from(10).pow(await token.decimals());
+        const precisionFactor = BigNumber.from(10).pow(6);
+
+        expectedPrice = expectedQuoteTokenLiquidity
+            .mul(precisionFactor)
+            .mul(decimalFactor)
+            .div(expectedTokenLiquidity)
+            .div(precisionFactor);
+    }
+
+    it("Should revert when there's no liquidity", async function () {
+        await createPool(encodePriceSqrt(1, 1));
+
+        await expect(oracle.update(token.address)).to.be.revertedWith("UniswapV3Oracle: NO_LIQUIDITY");
+    });
+
+    const testUpdateSuccess = async function (_tokenLiquidity, _quoteTokenLiquidity) {
+        const sqrtPrice =
+            token.address < quoteToken.address
+                ? encodePriceSqrt(_tokenLiquidity, _quoteTokenLiquidity)
+                : encodePriceSqrt(_quoteTokenLiquidity, _tokenLiquidity);
+
+        await createPool(sqrtPrice);
+        await addLiquidity(_tokenLiquidity, _quoteTokenLiquidity);
+
+        const expectedTimestamp = (await currentBlockTimestamp()) + 100;
+
+        await hre.timeAndMine.setTimeNextBlock(expectedTimestamp);
+
+        const updateReceipt = await oracle.update(token.address);
+
+        [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(token.address);
+
+        // Verify that the observation matches what's expected
+        {
+            const expectedPriceFloor = expectedPrice.sub(expectedPrice.div(100));
+            const expectedPriceCeil = expectedPrice.add(expectedPrice.div(100));
+
+            // Check that price is equal to expected price +- 1% to account for loss of precision
+            expect(price).to.be.within(expectedPriceFloor, expectedPriceCeil);
+
+            // TODO: Verify tokenLiquidity
+            // TODO: Verify quoteTokenLiquidity
+
+            expect(timestamp).to.equal(expectedTimestamp);
+        }
+
+        // Verify that the log matches the observation
+        expect(updateReceipt)
+            .to.emit(oracle, "Updated")
+            .withArgs(token.address, quoteToken.address, timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+    };
+
+    const liquidityPermutations = [
+        [
+            // tokenLiquidity
+            ethers.utils.parseUnits("100.0", 18),
+            ethers.utils.parseUnits("1000.0", 18),
+            ethers.utils.parseUnits("50000.0", 18),
+        ],
+        [
+            // quoteTokenLiquidity
+            ethers.utils.parseUnits("100.0", 18),
+            ethers.utils.parseUnits("1000.0", 18),
+            ethers.utils.parseUnits("50000.0", 18),
+        ],
+    ];
+
+    var updateTestCombos = combos(liquidityPermutations);
+
+    describe("token = ltToken", function () {
+        beforeEach(async () => {
+            token = ltToken;
+        });
+
+        for (const combo of updateTestCombos) {
+            it(`Should update successfully with tokenLiquidity=${combo[0].toString()} and quoteTokenLiquidity=${combo[1].toString()}`, async function () {
+                await testUpdateSuccess(combo[0], combo[1]);
+            });
+        }
+    });
+
+    describe("token = gtToken", function () {
+        beforeEach(async () => {
+            token = gtToken;
+        });
+
+        for (const combo of updateTestCombos) {
+            it(`Should update successfully with tokenLiquidity=${combo[0].toString()} and quoteTokenLiquidity=${combo[1].toString()}`, async function () {
+                await testUpdateSuccess(combo[0], combo[1]);
+            });
+        }
+    });
 });
 
-describe("UniswapV3Oracle#update", function () {});
+describe("UniswapV3Oracle#isContract", function () {
+    var oracle;
 
-describe("UniswapV3Oracle#isContract", function () {});
+    beforeEach(async () => {
+        const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
+
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+    });
+
+    it("Should return false for our account address", async () => {
+        const [owner] = await ethers.getSigners();
+
+        expect(await oracle.stubIsContract(owner.address)).to.equal(false);
+    });
+
+    it("Should return true for a contract address", async () => {
+        expect(await oracle.stubIsContract(oracle.address)).to.equal(true);
+    });
+});
