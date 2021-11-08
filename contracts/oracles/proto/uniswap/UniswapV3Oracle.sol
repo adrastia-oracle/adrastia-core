@@ -1,27 +1,30 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity =0.7.6;
+pragma experimental ABIEncoderV2;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 
-import "../../PeriodicOracle.sol";
+import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
+import "@uniswap/v3-periphery/contracts/libraries/PoolAddress.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+
+import "../../SafePeriodicOracle.sol";
 
 import "../../../libraries/ObservationLibrary.sol";
 
-import "../../../libraries/uniswap-v3-periphery/OracleLibrary.sol";
-import "../../../libraries/uniswap-v3-periphery/WeightedOracleLibrary.sol";
-import "../../../libraries/uniswap-v3-periphery/PoolAddress.sol";
-import "../../../libraries/uniswap-v3-periphery/LiquidityAmounts.sol";
-
 import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 
-contract UniswapV3Oracle is PeriodicOracle {
+contract UniswapV3Oracle is SafePeriodicOracle {
+    using LowGasSafeMath for uint256;
+
     address public immutable uniswapFactory;
 
     constructor(
         address uniswapFactory_,
         address quoteToken_,
         uint32 period_
-    ) PeriodicOracle(quoteToken_, period_) {
+    ) SafePeriodicOracle(quoteToken_, period_) {
         uniswapFactory = uniswapFactory_;
     }
 
@@ -50,6 +53,8 @@ contract UniswapV3Oracle is PeriodicOracle {
     {
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = IUniswapV3Pool(pool).slot0();
 
+        if (tick == type(int256).max) --tick;
+
         uint160 sqrtRatioX96A = TickMath.getSqrtRatioAtTick(tick);
         uint160 sqrtRatioX96B = TickMath.getSqrtRatioAtTick(tick + 1);
 
@@ -70,8 +75,7 @@ contract UniswapV3Oracle is PeriodicOracle {
             uint256 quoteTokenLiquidity
         )
     {
-        WeightedOracleLibrary.PeriodObservation[]
-            memory periodObservations = new WeightedOracleLibrary.PeriodObservation[](3);
+        OracleLibrary.WeightedTickData[] memory periodObservations = new OracleLibrary.WeightedTickData[](3);
 
         uint256 total0;
         uint256 total1;
@@ -91,51 +95,47 @@ contract UniswapV3Oracle is PeriodicOracle {
             );
 
             if (isContract(poolAddress500)) {
-                periodObservations[0] = WeightedOracleLibrary.consult(poolAddress500, uint32(period));
-
-                (uint256 amount0, uint256 amount1) = calculateAmounts(
+                (periodObservations[0].tick, periodObservations[0].weight) = OracleLibrary.consult(
                     poolAddress500,
-                    periodObservations[0].harmonicMeanLiquidity
+                    uint32(period)
                 );
 
-                total0 += amount0;
-                total1 += amount1;
+                (uint256 amount0, uint256 amount1) = calculateAmounts(poolAddress500, periodObservations[0].weight);
+
+                total0 = total0.add(amount0);
+                total1 = total1.add(amount1);
             }
 
             if (isContract(poolAddress3000)) {
-                periodObservations[1] = WeightedOracleLibrary.consult(poolAddress3000, uint32(period));
-
-                (uint256 amount0, uint256 amount1) = calculateAmounts(
+                (periodObservations[1].tick, periodObservations[1].weight) = OracleLibrary.consult(
                     poolAddress3000,
-                    periodObservations[1].harmonicMeanLiquidity
+                    uint32(period)
                 );
 
-                total0 += amount0;
-                total1 += amount1;
+                (uint256 amount0, uint256 amount1) = calculateAmounts(poolAddress3000, periodObservations[1].weight);
+
+                total0 = total0.add(amount0);
+                total1 = total1.add(amount1);
             }
 
             if (isContract(poolAddress10000)) {
-                periodObservations[2] = WeightedOracleLibrary.consult(poolAddress10000, uint32(period));
-
-                (uint256 amount0, uint256 amount1) = calculateAmounts(
+                (periodObservations[2].tick, periodObservations[2].weight) = OracleLibrary.consult(
                     poolAddress10000,
-                    periodObservations[2].harmonicMeanLiquidity
+                    uint32(period)
                 );
 
-                total0 += amount0;
-                total1 += amount1;
+                (uint256 amount0, uint256 amount1) = calculateAmounts(poolAddress10000, periodObservations[2].weight);
+
+                total0 = total0.add(amount0);
+                total1 = total1.add(amount1);
             }
         }
 
-        uint128 liquidity = periodObservations[0].harmonicMeanLiquidity +
-            periodObservations[1].harmonicMeanLiquidity +
-            periodObservations[2].harmonicMeanLiquidity;
+        uint128 liquidity = periodObservations[0].weight + periodObservations[1].weight + periodObservations[2].weight;
 
         require(liquidity != 0, "UniswapV3Oracle: NO_LIQUIDITY");
 
-        int24 timeWeightedAverageTick = WeightedOracleLibrary.getArithmeticMeanTickWeightedByLiquidity(
-            periodObservations
-        );
+        int24 timeWeightedAverageTick = OracleLibrary.getWeightedArithmeticMeanTick(periodObservations);
 
         price = OracleLibrary.getQuoteAtTick(
             timeWeightedAverageTick,

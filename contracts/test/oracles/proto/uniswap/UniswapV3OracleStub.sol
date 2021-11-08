@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity =0.7.6;
 
 import "../../../../oracles/proto/uniswap/UniswapV3Oracle.sol";
 
