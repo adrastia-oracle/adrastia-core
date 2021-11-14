@@ -9,7 +9,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
-    address immutable uniswapFactory;
+    address public immutable uniswapFactory;
 
     constructor(
         address uniswapFactory_,
