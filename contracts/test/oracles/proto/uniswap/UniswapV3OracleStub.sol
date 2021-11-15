@@ -12,10 +12,12 @@ contract UniswapV3OracleStub is UniswapV3Oracle {
     Config public config;
 
     constructor(
+        address liquidityAccumulator_,
         address uniswapFactory_,
+        uint24[] memory poolFees_,
         address quoteToken_,
-        uint32 period_
-    ) UniswapV3Oracle(uniswapFactory_, quoteToken_, period_) {}
+        uint256 period_
+    ) UniswapV3Oracle(liquidityAccumulator_, uniswapFactory_, poolFees_, quoteToken_, period_) {}
 
     function stubSetObservation(
         address token,

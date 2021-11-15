@@ -48,7 +48,23 @@ async function createUniswapV2Oracle(factory, quoteToken, period) {
 }
 
 async function createUniswapV3Oracle(factory, quoteToken, period) {
-    return await createContract("UniswapV3Oracle", factory, quoteToken, period);
+    const poolFees = [/*500, */ 3000 /*, 10000*/];
+
+    const updateTheshold = 2000000; // 2% change -> update
+    const minUpdateDelay = 5; // At least 5 seconds between every update
+    const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
+
+    const liquidityAccumulator = await createContract(
+        "UniswapV3LiquidityAccumulator",
+        factory,
+        poolFees,
+        quoteToken,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
+
+    return await createContract("UniswapV3Oracle", liquidityAccumulator.address, factory, poolFees, quoteToken, period);
 }
 
 async function createAggregatedOracle(quoteTokenAddress, quoteTokenSymbol, period, ...oracles) {
