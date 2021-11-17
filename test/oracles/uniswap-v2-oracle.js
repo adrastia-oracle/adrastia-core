@@ -178,6 +178,10 @@ describe("UniswapV2Oracle#constructor", async function () {
             expect(await oracle.quoteToken()).to.equal(args["quoteToken"]);
             expect(await oracle.quoteTokenAddress()).to.equal(args["quoteToken"]);
             expect(await oracle.period()).to.equal(args["period"]);
+
+            if (args["quoteToken"] === USDC) {
+                expect(await oracle.quoteTokenSymbol()).to.equal("USDC");
+            }
         });
     });
 });
