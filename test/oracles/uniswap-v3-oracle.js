@@ -61,26 +61,155 @@ const TICK_SPACINGS = {
 const getMinTick = (tickSpacing) => Math.ceil(-887272 / tickSpacing) * tickSpacing;
 const getMaxTick = (tickSpacing) => Math.floor(887272 / tickSpacing) * tickSpacing;
 
-/*describe("UniswapV3Oracle#constructor", async function () {
+describe("UniswapV3Oracle#constructor", async function () {
     var oracleFactory;
 
-    var tests = [];
-
-    const testPermutations = [
-        [AddressZero, USDC], // uniswapFactory
-        [AddressZero, USDC], // quoteToken
-        [BigNumber.from(1), BigNumber.from(100)], // period
-    ];
-
-    for (const combo of combos(testPermutations)) {
-        tests.push({
+    const tests = [
+        {
             args: {
-                uniswapFactory: combo[0],
-                quoteToken: combo[1],
-                period: combo[2],
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(1),
             },
-        });
-    }
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: AddressZero,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: AddressZero,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: AddressZero,
+                period: BigNumber.from(100),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                liquidityAccumulator: USDC,
+                uniswapFactory: USDC,
+                poolFees: [3000],
+                quoteToken: USDC,
+                period: BigNumber.from(100),
+            },
+        },
+    ];
 
     beforeEach(async () => {
         oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
@@ -88,8 +217,15 @@ const getMaxTick = (tickSpacing) => Math.floor(887272 / tickSpacing) * tickSpaci
 
     tests.forEach(({ args }) => {
         it(`Should construct the oracle correctly with params ${JSON.stringify(args)}`, async () => {
-            const oracle = await oracleFactory.deploy(args["uniswapFactory"], args["quoteToken"], args["period"]);
+            const oracle = await oracleFactory.deploy(
+                args["liquidityAccumulator"],
+                args["uniswapFactory"],
+                args["poolFees"],
+                args["quoteToken"],
+                args["period"]
+            );
 
+            expect(await oracle.liquidityAccumulator()).to.equal(args["liquidityAccumulator"]);
             expect(await oracle.uniswapFactory()).to.equal(args["uniswapFactory"]);
             expect(await oracle.quoteToken()).to.equal(args["quoteToken"]);
             expect(await oracle.quoteTokenAddress()).to.equal(args["quoteToken"]);
@@ -104,7 +240,7 @@ describe("UniswapV3Oracle#needsUpdate", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -165,7 +301,7 @@ describe("UniswapV3Oracle#consultPrice(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -199,7 +335,7 @@ describe("UniswapV3Oracle#consultPrice(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -321,7 +457,7 @@ describe("UniswapV3Oracle#consultLiquidity(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -387,7 +523,7 @@ describe("UniswapV3Oracle#consultLiquidity(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -539,7 +675,7 @@ describe("UniswapV3Oracle#consult(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -632,7 +768,7 @@ describe("UniswapV3Oracle#consult(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -718,15 +854,22 @@ describe("UniswapV3Oracle#consult(token, maxAge)", function () {
             expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
     });
-});*/
+});
 
-describe("UniswapV2Oracle#update", function () {
+describe("UniswapV3Oracle#update", function () {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 2;
+    const TWO_PERCENT_CHANGE = 2000000;
+
+    const POOL_FEES = [3000];
+
     var quoteToken;
     var token;
     var ltToken;
     var gtToken;
 
     var uniswapFactory;
+    var liquidityAccumulator;
     var oracle;
     var helper;
 
@@ -737,6 +880,7 @@ describe("UniswapV2Oracle#update", function () {
     beforeEach(async () => {
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
         const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulator");
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
         const helperFactory = await ethers.getContractFactory("UniswapV3Helper");
 
@@ -754,7 +898,23 @@ describe("UniswapV2Oracle#update", function () {
         uniswapFactory = await uniswapFactoryFactory.deploy();
         await uniswapFactory.deployed();
 
-        oracle = await oracleFactory.deploy(uniswapFactory.address, quoteToken.address, 1);
+        liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+            uniswapFactory.address,
+            POOL_FEES,
+            quoteToken.address,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        await liquidityAccumulator.deployed();
+
+        oracle = await oracleFactory.deploy(
+            liquidityAccumulator.address,
+            uniswapFactory.address,
+            POOL_FEES,
+            quoteToken.address,
+            1
+        );
         helper = await helperFactory.deploy(uniswapFactory.address, "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
 
         expectedTokenLiquidity = BigNumber.from(0);
@@ -793,11 +953,6 @@ describe("UniswapV2Oracle#update", function () {
             amount1 = tokenLiquidity;
             amount0 = quoteTokenLiquidity;
         }
-
-        // const pool = await uniswapFactory.getPool(token.address, quoteToken.address, fee);
-        // const poolContract = await ethers.getContractAt(POOL_ABI, pool);
-
-        // const [, tick, , , , ,] = await poolContract.slot0();
 
         const params = {
             token0: token0,
@@ -843,6 +998,26 @@ describe("UniswapV2Oracle#update", function () {
         await expect(oracle.update(token.address)).to.be.revertedWith("UniswapV3Oracle: NO_LIQUIDITY");
     });
 
+    it("Shouldn't update if not needed", async function () {
+        await oracle.overrideNeedsUpdate(true, false);
+
+        expect(await oracle.callStatic.update(token.address)).to.equal(false);
+
+        const [pPrice, pTokenLiqudity, pQuoteTokenLiquidity, pTimestamp] = await oracle.observations(token.address);
+
+        const updateTxPromise = oracle.update(token.address);
+
+        await expect(updateTxPromise).to.not.emit(oracle, "Updated");
+
+        const [price, tokenLiqudity, quoteTokenLiquidity, timestamp] = await oracle.observations(token.address);
+
+        // Verify the current observation hasn't changed
+        expect(price).to.equal(pPrice);
+        expect(tokenLiqudity).to.equal(pTokenLiqudity);
+        expect(quoteTokenLiquidity).to.equal(pQuoteTokenLiquidity);
+        expect(timestamp).to.equal(pTimestamp);
+    });
+
     const testUpdateSuccess = async function (_tokenLiquidity, _quoteTokenLiquidity) {
         const sqrtPrice =
             token.address < quoteToken.address
@@ -851,6 +1026,14 @@ describe("UniswapV2Oracle#update", function () {
 
         await createPool(sqrtPrice);
         await addLiquidity(_tokenLiquidity, _quoteTokenLiquidity);
+
+        // Perform two initial updates so that the liquidity accumulator is properly initialized
+        {
+            await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
+            await oracle.update(token.address);
+            await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
+            await oracle.update(token.address);
+        }
 
         const expectedTimestamp = (await currentBlockTimestamp()) + 100;
 
@@ -868,8 +1051,8 @@ describe("UniswapV2Oracle#update", function () {
             // Check that price is equal to expected price +- 1% to account for loss of precision
             expect(price).to.be.within(expectedPriceFloor, expectedPriceCeil);
 
-            // TODO: Verify tokenLiquidity
-            // TODO: Verify quoteTokenLiquidity
+            expect(tokenLiquidity).to.equal(expectedTokenLiquidity);
+            expect(quoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
 
             expect(timestamp).to.equal(expectedTimestamp);
         }
@@ -928,7 +1111,7 @@ describe("UniswapV3Oracle#isContract", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, [3000], AddressZero, PERIOD);
     });
 
     it("Should return false for our account address", async () => {
