@@ -867,7 +867,7 @@ describe("UniswapV3Oracle#update", function () {
     const MAX_UPDATE_DELAY = 2;
     const TWO_PERCENT_CHANGE = 2000000;
 
-    const POOL_FEES = [3000];
+    const POOL_FEES = [3000, 123];
 
     var quoteToken;
     var token;
