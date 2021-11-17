@@ -16,6 +16,76 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
+describe("LiquidityAccumulator#getCurrentObservation", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var liquidityAccumulator;
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        liquidityAccumulator = await LiquidityAccumulator.deploy(
+            USDC,
+            TWO_PERCENT_CHANGE,
+            minUpdateDelay,
+            maxUpdateDelay
+        );
+        await liquidityAccumulator.deployed();
+
+        // Configure liquidity
+        await liquidityAccumulator.setLiquidity(GRT, 100, 100);
+
+        // Override changeThresholdPassed (true)
+        await liquidityAccumulator.overrideChangeThresholdPassed(true, true);
+    });
+
+    const tests = [
+        [0, 0],
+        [1, 1],
+        [10, 5],
+        [ethers.utils.parseUnits("101.0", 18), ethers.utils.parseUnits("102.0", 18)],
+    ];
+
+    for (const test of tests) {
+        it(`tokenLiquidity = ${test[0].toString()}, quoteTokenLiquidity = ${test[1].toString()}`, async function () {
+            // Configure liquidity
+            await liquidityAccumulator.setLiquidity(GRT, test[0], test[1]);
+
+            const [tokenLiquidity, quoteTokenLiquidity, timestamp] = await liquidityAccumulator.getCurrentObservation(
+                GRT
+            );
+
+            expect(tokenLiquidity).to.equal(test[0]);
+            expect(quoteTokenLiquidity).to.equal(test[1]);
+            expect(timestamp).to.equal(await currentBlockTimestamp());
+        });
+    }
+});
+
+describe("LiquidityAccumulator#getCurrentAccumulation", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var liquidityAccumulator;
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        liquidityAccumulator = await LiquidityAccumulator.deploy(
+            USDC,
+            TWO_PERCENT_CHANGE,
+            minUpdateDelay,
+            maxUpdateDelay
+        );
+        await liquidityAccumulator.deployed();
+    });
+
+    it("Reverts if the last observation is uninitialized", async function () {
+        await expect(liquidityAccumulator.getCurrentAccumulation(GRT)).to.be.revertedWith(
+            "LiquidityAccumulator: UNINITIALIZED"
+        );
+    });
+});
+
 describe("LiquidityAccumulator#needsUpdate", () => {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
