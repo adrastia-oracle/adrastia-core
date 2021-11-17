@@ -1020,7 +1020,7 @@ describe("UniswapV3Oracle#update", function () {
 
     const testUpdateSuccess = async function (_tokenLiquidity, _quoteTokenLiquidity) {
         const sqrtPrice =
-            token.address < quoteToken.address
+            token.address > quoteToken.address
                 ? encodePriceSqrt(_tokenLiquidity, _quoteTokenLiquidity)
                 : encodePriceSqrt(_quoteTokenLiquidity, _tokenLiquidity);
 
