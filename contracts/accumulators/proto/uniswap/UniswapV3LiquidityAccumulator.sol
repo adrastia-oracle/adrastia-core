@@ -86,13 +86,15 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         for (uint256 i = 0; i < len; ++i) {
             address pool = computeAddress(uniswapFactory, getPoolKey(token, quoteToken, poolFees[i]));
 
-            tokenLiquidity += IERC20Minimal(token).balanceOf(pool);
-            quoteTokenLiquidity += IERC20Minimal(quoteToken).balanceOf(pool);
+            if (isContract(pool)) {
+                tokenLiquidity += IERC20Minimal(token).balanceOf(pool);
+                quoteTokenLiquidity += IERC20Minimal(quoteToken).balanceOf(pool);
 
-            (uint128 token0, uint128 token1) = IUniswapV3Pool(pool).protocolFees();
+                (uint128 token0, uint128 token1) = IUniswapV3Pool(pool).protocolFees();
 
-            fees0 += token0;
-            fees1 += token1;
+                fees0 += token0;
+                fees1 += token1;
+            }
         }
 
         // Subtract protocol fees from the totals
@@ -103,5 +105,13 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
             tokenLiquidity -= fees1;
             quoteTokenLiquidity -= fees0;
         }
+    }
+
+    function isContract(address addr) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(addr)
+        }
+        return size > 0;
     }
 }
