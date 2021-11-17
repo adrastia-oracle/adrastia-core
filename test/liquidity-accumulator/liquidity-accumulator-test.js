@@ -914,9 +914,9 @@ describe("LiquidityAccumulator#update", () => {
         );
         expect(accumulation2["timestamp"], "Final AT").to.equal(updateTime2);
 
-        expect(observation2["tokenLiquidity"], "TL").to.equal(expectedTokenLiquidity);
-        expect(observation2["quoteTokenLiquidity"], "QTL").to.equal(expectedQuoteTokenLiquidity);
-        expect(observation2["timestamp"], "OT").to.equal(updateTime2);
+        expect(observation2["tokenLiquidity"], "Final TL").to.equal(expectedTokenLiquidity);
+        expect(observation2["quoteTokenLiquidity"], "Final QTL").to.equal(expectedQuoteTokenLiquidity);
+        expect(observation2["timestamp"], "Final OT").to.equal(updateTime2);
     }
 
     initialUpdateTests.forEach(({ args, expectedReturn }) => {
