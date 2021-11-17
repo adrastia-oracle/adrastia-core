@@ -857,6 +857,8 @@ describe("UniswapV3Oracle#consult(token, maxAge)", function () {
 });
 
 describe("UniswapV3Oracle#update", function () {
+    this.timeout(100000);
+
     const MIN_UPDATE_DELAY = 1;
     const MAX_UPDATE_DELAY = 2;
     const TWO_PERCENT_CHANGE = 2000000;
@@ -1066,42 +1068,84 @@ describe("UniswapV3Oracle#update", function () {
     const liquidityPermutations = [
         [
             // tokenLiquidity
-            ethers.utils.parseUnits("100.0", 18),
             ethers.utils.parseUnits("1000.0", 18),
-            ethers.utils.parseUnits("50000.0", 18),
+            ethers.utils.parseUnits("10000.0", 18),
+            ethers.utils.parseUnits("500000.0", 18),
         ],
         [
             // quoteTokenLiquidity
-            ethers.utils.parseUnits("100.0", 18),
             ethers.utils.parseUnits("1000.0", 18),
-            ethers.utils.parseUnits("50000.0", 18),
+            ethers.utils.parseUnits("10000.0", 18),
+            ethers.utils.parseUnits("500000.0", 18),
         ],
     ];
 
     var updateTestCombos = combos(liquidityPermutations);
 
-    describe("token = ltToken", function () {
-        beforeEach(async () => {
-            token = ltToken;
-        });
-
+    function describeSingleTokenTests() {
         for (const combo of updateTestCombos) {
             it(`Should update successfully with tokenLiquidity=${combo[0].toString()} and quoteTokenLiquidity=${combo[1].toString()}`, async function () {
                 await testUpdateSuccess(combo[0], combo[1]);
             });
         }
+    }
+
+    function describeMultiTokenTests() {
+        describe("token = ltToken", function () {
+            beforeEach(async () => {
+                token = ltToken;
+            });
+
+            describeSingleTokenTests();
+        });
+
+        describe("token = gtToken", function () {
+            beforeEach(async () => {
+                token = gtToken;
+            });
+
+            describeSingleTokenTests();
+        });
+    }
+
+    describe("token decimals = 18, quoteToken decimals = 18", function () {
+        beforeEach(async () => {
+            await ltToken.setDecimals(18);
+            await gtToken.setDecimals(18);
+            await quoteToken.setDecimals(18);
+        });
+
+        describeMultiTokenTests();
     });
 
-    describe("token = gtToken", function () {
+    describe("token decimals = 6, quoteToken decimals = 18", function () {
         beforeEach(async () => {
-            token = gtToken;
+            await ltToken.setDecimals(6);
+            await gtToken.setDecimals(6);
+            await quoteToken.setDecimals(18);
         });
 
-        for (const combo of updateTestCombos) {
-            it(`Should update successfully with tokenLiquidity=${combo[0].toString()} and quoteTokenLiquidity=${combo[1].toString()}`, async function () {
-                await testUpdateSuccess(combo[0], combo[1]);
-            });
-        }
+        describeMultiTokenTests();
+    });
+
+    describe("token decimals = 18, quoteToken decimals = 6", function () {
+        beforeEach(async () => {
+            await ltToken.setDecimals(18);
+            await gtToken.setDecimals(18);
+            await quoteToken.setDecimals(6);
+        });
+
+        describeMultiTokenTests();
+    });
+
+    describe("token decimals = 6, quoteToken decimals = 6", function () {
+        beforeEach(async () => {
+            await ltToken.setDecimals(6);
+            await gtToken.setDecimals(6);
+            await quoteToken.setDecimals(6);
+        });
+
+        describeMultiTokenTests();
     });
 });
 
