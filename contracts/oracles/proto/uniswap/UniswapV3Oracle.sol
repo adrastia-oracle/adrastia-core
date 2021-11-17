@@ -13,10 +13,6 @@ import "../../../interfaces/ILiquidityAccumulator.sol";
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
 
-import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
-
-import "hardhat/console.sol";
-
 contract UniswapV3Oracle is SafePeriodicOracle {
     address public immutable liquidityAccumulator;
 

@@ -10,7 +10,6 @@ import "../../../libraries/ObservationLibrary.sol";
 import "../../../libraries/uniswap-lib/FixedPoint.sol";
 import "../../../libraries/uniswap-v2-periphery/UniswapV2OracleLibrary.sol";
 
-import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
@@ -144,7 +143,7 @@ contract UniswapV2Oracle is PeriodicOracle {
     }
 
     function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {
-        amount = uint256(10)**IERC20(token).decimals();
+        amount = uint256(10)**IERC20Metadata(token).decimals();
     }
 
     // given the cumulative prices of the start and end of a period, and the length of the period, compute the average

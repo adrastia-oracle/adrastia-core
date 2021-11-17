@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8;
 
+import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import "../interfaces/IOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 
@@ -22,7 +24,7 @@ abstract contract AbstractOracle is IOracle {
     }
 
     function quoteTokenSymbol() public view virtual override returns (string memory) {
-        revert("TODO");
+        return IERC20Metadata(quoteToken).symbol();
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {

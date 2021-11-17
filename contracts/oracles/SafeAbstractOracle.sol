@@ -2,6 +2,8 @@
 pragma solidity =0.7.6;
 pragma experimental ABIEncoderV2;
 
+import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
+
 import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 
 import "../interfaces/IOracle.sol";
@@ -27,7 +29,7 @@ abstract contract SafeAbstractOracle is IOracle {
     }
 
     function quoteTokenSymbol() public view virtual override returns (string memory) {
-        revert("TODO");
+        return IERC20(quoteToken).symbol();
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
