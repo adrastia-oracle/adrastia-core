@@ -1033,6 +1033,24 @@ describe("UniswapV3Oracle#update", function () {
         await createPool(sqrtPrice);
         await addLiquidity(_tokenLiquidity, _quoteTokenLiquidity);
 
+        // Verify that the expected price based off input matches the expected price based off the uniswap helper
+        {
+            const decimalFactor = BigNumber.from(10).pow(await token.decimals());
+            const precisionFactor = BigNumber.from(10).pow(6);
+
+            const expectedPriceFromInput = _quoteTokenLiquidity
+                .mul(precisionFactor)
+                .mul(decimalFactor)
+                .div(_tokenLiquidity)
+                .div(precisionFactor);
+
+            const expectedPriceFloor = expectedPriceFromInput.sub(expectedPriceFromInput.div(100));
+            const expectedPriceCeil = expectedPriceFromInput.add(expectedPriceFromInput.div(100));
+
+            // Check that price is equal to expected price +- 1% to account for loss of precision
+            expect(expectedPrice).to.be.within(expectedPriceFloor, expectedPriceCeil);
+        }
+
         // Perform two initial updates so that the liquidity accumulator is properly initialized
         {
             await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
