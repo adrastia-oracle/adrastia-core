@@ -64,38 +64,30 @@ contract UniswapV2Oracle is PeriodicOracle {
 
             if (token < quoteToken) {
                 // Rearrange the values so that token0 in the underlying is always 'token'
-                uint256 temp = cumulativeTokenPrice;
                 cumulativeTokenPrice = cumulativeQuoteTokenPrice;
-                cumulativeQuoteTokenPrice = temp;
             }
 
             if (priceAccumulation.timestamp == 0) {
                 // No prior observation so we use the last observation data provided by the pair
 
-                if (token < quoteToken) {
-                    priceAccumulation.cumulativeTokenPrice = pair.price0CumulativeLast();
-                    priceAccumulation.cumulativeQuoteTokenPrice = pair.price1CumulativeLast();
-                } else {
-                    priceAccumulation.cumulativeTokenPrice = pair.price1CumulativeLast();
-                    priceAccumulation.cumulativeQuoteTokenPrice = pair.price0CumulativeLast();
-                }
+                if (token < quoteToken) priceAccumulation.cumulativePrice = pair.price0CumulativeLast();
+                else priceAccumulation.cumulativePrice = pair.price1CumulativeLast();
 
                 priceAccumulation.timestamp = timestamp;
             }
 
-            uint32 timeElapsed = blockTimestamp - uint32(priceAccumulation.timestamp); // overflow is desired
+            uint32 timeElapsed = blockTimestamp - uint32(priceAccumulation.timestamp);
             if (timeElapsed != 0) {
                 // Store price and current time
                 observation.price = computeAmountOut(
-                    priceAccumulation.cumulativeTokenPrice,
+                    priceAccumulation.cumulativePrice,
                     cumulativeTokenPrice,
                     timeElapsed,
                     computeWholeUnitAmount(token)
                 );
 
                 // Store current accumulations and the timestamp of them
-                priceAccumulation.cumulativeTokenPrice = cumulativeTokenPrice;
-                priceAccumulation.cumulativeQuoteTokenPrice = cumulativeQuoteTokenPrice;
+                priceAccumulation.cumulativePrice = cumulativeTokenPrice;
                 priceAccumulation.timestamp = blockTimestamp;
             }
         }
