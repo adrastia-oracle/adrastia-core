@@ -7,6 +7,8 @@ import "../interfaces/IAggregatedOracle.sol";
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     address[] public oracles;
 
+    mapping(address => address[]) tokenSpecificOracles;
+
     address internal _quoteTokenAddress;
     string internal _quoteTokenSymbol;
 
@@ -42,15 +44,22 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         bool underlyingUpdated;
 
         // Ensure all underlying oracles are up-to-date
-        for (uint256 i = 0; i < oracles.length; ++i) {
-            // We don't want any problematic underlying oracles to prevent this oracle from updating
-            // so we put update in a try-catch block
-            try IOracle(oracles[i]).update(token) returns (bool updated) {
-                underlyingUpdated = underlyingUpdated || updated;
-            } catch Error(string memory reason) {
-                emit UpdateErrorWithReason(oracles[i], token, reason);
-            } catch (bytes memory err) {
-                emit UpdateError(oracles[i], token, err);
+        for (uint256 j = 0; j < 2; ++j) {
+            address[] memory _oracles;
+
+            if (j == 0) _oracles = oracles;
+            else _oracles = tokenSpecificOracles[token];
+
+            for (uint256 i = 0; i < _oracles.length; ++i) {
+                // We don't want any problematic underlying oracles to prevent this oracle from updating
+                // so we put update in a try-catch block
+                try IOracle(_oracles[i]).update(token) returns (bool updated) {
+                    underlyingUpdated = underlyingUpdated || updated;
+                } catch Error(string memory reason) {
+                    emit UpdateErrorWithReason(_oracles[i], token, reason);
+                } catch (bytes memory err) {
+                    emit UpdateError(_oracles[i], token, err);
+                }
             }
         }
 
@@ -86,38 +95,43 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             uint256 validResponses
         )
     {
-        uint256 oracleCount = oracles.length;
-
         /*
          * Compute harmonic mean
          */
 
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
-        for (uint256 i = 0; i < oracleCount; ++i) {
-            // We don't want problematic underlying oracles to prevent us from calculating the aggregated
-            // results from the other working oracles, so we use a try-catch block
-            //
-            // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed
-            // -> We don't want to use old data.
-            try IOracle(oracles[i]).consult(token, period * 2) returns (
-                uint256 oraclePrice,
-                uint256 oracleTokenLiquidity,
-                uint256 oracleQuoteTokenLiquidity
-            ) {
-                if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
-                    ++validResponses;
+        for (uint256 j = 0; j < 2; ++j) {
+            address[] memory _oracles;
 
-                    denominator += oracleQuoteTokenLiquidity / oraclePrice;
+            if (j == 0) _oracles = oracles;
+            else _oracles = tokenSpecificOracles[token];
 
-                    // These should never overflow: supply of an asset cannot be greater than uint256.max
-                    tokenLiquidity += oracleTokenLiquidity;
-                    quoteTokenLiquidity += oracleQuoteTokenLiquidity;
+            for (uint256 i = 0; i < _oracles.length; ++i) {
+                // We don't want problematic underlying oracles to prevent us from calculating the aggregated
+                // results from the other working oracles, so we use a try-catch block
+                //
+                // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed
+                // -> We don't want to use old data.w
+                try IOracle(_oracles[i]).consult(token, period * 2) returns (
+                    uint256 oraclePrice,
+                    uint256 oracleTokenLiquidity,
+                    uint256 oracleQuoteTokenLiquidity
+                ) {
+                    if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
+                        ++validResponses;
+
+                        denominator += oracleQuoteTokenLiquidity / oraclePrice;
+
+                        // These should never overflow: supply of an asset cannot be greater than uint256.max
+                        tokenLiquidity += oracleTokenLiquidity;
+                        quoteTokenLiquidity += oracleQuoteTokenLiquidity;
+                    }
+                } catch Error(string memory reason) {
+                    emit ConsultErrorWithReason(oracles[i], token, reason);
+                } catch (bytes memory err) {
+                    emit ConsultError(oracles[i], token, err);
                 }
-            } catch Error(string memory reason) {
-                emit ConsultErrorWithReason(oracles[i], token, reason);
-            } catch (bytes memory err) {
-                emit ConsultError(oracles[i], token, err);
             }
         }
 
