@@ -34,6 +34,7 @@ async function createCurveOracle(pool, quoteToken, period) {
     const liquidityAccumulator = await createContract(
         "CurveLiquidityAccumulator",
         pool,
+        2,
         quoteToken,
         updateTheshold,
         minUpdateDelay,
@@ -43,6 +44,7 @@ async function createCurveOracle(pool, quoteToken, period) {
     const priceAccumulator = await createContract(
         "CurvePriceAccumulator",
         pool,
+        2,
         quoteToken,
         updateTheshold,
         minUpdateDelay,
