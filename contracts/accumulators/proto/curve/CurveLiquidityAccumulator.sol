@@ -12,14 +12,15 @@ import "./ICurvePool.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract CurveLiquidityAccumulator is LiquidityAccumulator {
-    uint256 internal constant N_COINS = 3; // Pools have 2-3 coins, so we use 3 for max compatibility
-
     address public immutable curvePool;
 
     uint256 public immutable quoteTokenIndex;
 
+    mapping(address => uint256) tokenIndices;
+
     constructor(
         address curvePool_,
+        uint8 nCoins_,
         address quoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
@@ -30,12 +31,14 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         uint256 quoteTokenIndex_ = type(uint256).max;
 
         ICurvePool pool = ICurvePool(curvePool_);
-        for (uint256 i = 0; i < N_COINS; ++i) {
-            // The following may revert if N_COINS > pool.N_COINS, but this is desired
-            if (pool.coins(i) == quoteToken_) {
-                quoteTokenIndex_ = i;
+        for (uint256 i = 0; i < nCoins_; ++i) {
+            address token = pool.coins(i);
 
-                break;
+            if (token == quoteToken_)
+                quoteTokenIndex_ = i; // Store quote token index
+            else {
+                // Add one to reserve 0 for invalid
+                tokenIndices[token] = i + 1; // Store token indices
             }
         }
 
@@ -44,20 +47,10 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
-    function getTokenIndex(address token) internal view returns (uint256 tokenIndex) {
-        tokenIndex = type(uint256).max;
+    function needsUpdate(address token) public view virtual override returns (bool) {
+        if (tokenIndices[token] == 0) return false;
 
-        ICurvePool pool = ICurvePool(curvePool);
-        for (uint256 i = 0; i < N_COINS; ++i) {
-            // The following may revert if N_COINS > pool.N_COINS, but this is desired
-            if (pool.coins(i) == token) {
-                tokenIndex = i;
-
-                break;
-            }
-        }
-
-        require(tokenIndex != type(uint256).max, "CurveLiquidityAccumulator: INVALID_TOKEN");
+        return super.needsUpdate(token);
     }
 
     function fetchLiquidity(address token)
@@ -69,9 +62,10 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
     {
         ICurvePool pool = ICurvePool(curvePool);
 
-        uint256 tokenIndex = getTokenIndex(token);
+        uint256 tokenIndex = tokenIndices[token];
+        require(tokenIndex != 0, "CurveLiquidityAccumulator: INVALID_TOKEN");
 
-        tokenLiquidity = pool.balances(tokenIndex);
+        tokenLiquidity = pool.balances(tokenIndex - 1); // Subtract the added one
         quoteTokenLiquidity = pool.balances(quoteTokenIndex);
     }
 }
