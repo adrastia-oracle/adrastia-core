@@ -16,7 +16,7 @@ abstract contract PriceAccumulator is IPriceAccumulator {
 
     address public immutable override quoteToken;
 
-    uint256 public immutable override changePrecisionDecimals = CHANGE_PRECISION_DECIMALS;
+    uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
     mapping(address => AccumulationLibrary.PriceAccumulator) accumulations;
     mapping(address => ObservationLibrary.PriceObservation) observations;

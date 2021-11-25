@@ -11,7 +11,7 @@ import "../libraries/ObservationLibrary.sol";
 abstract contract ILiquidityAccumulator is IUpdateByToken {
     function quoteToken() external view virtual returns (address);
 
-    function changePrecisionDecimals() external view virtual returns (uint256);
+    function changePrecision() external view virtual returns (uint256);
 
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,

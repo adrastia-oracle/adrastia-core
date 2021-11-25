@@ -16,7 +16,7 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
 
     address public immutable override quoteToken;
 
-    uint256 public immutable override changePrecisionDecimals = CHANGE_PRECISION_DECIMALS;
+    uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) observations;
