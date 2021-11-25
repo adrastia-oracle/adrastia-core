@@ -37,6 +37,7 @@ async function createUniswapV2Oracle(factory, quoteToken, period) {
     const liquidityAccumulator = await createContract(
         "UniswapV2LiquidityAccumulator",
         factory,
+        "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
         quoteToken,
         updateTheshold,
         minUpdateDelay,

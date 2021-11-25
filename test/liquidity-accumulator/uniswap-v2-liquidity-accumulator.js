@@ -2,6 +2,8 @@ const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-core/build/UniswapV2Factory.json");
+
 const TWO_PERCENT_CHANGE = 2000000;
 
 describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
@@ -26,7 +28,7 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         const [owner] = await ethers.getSigners();
 
         // Deploy fake uniswap v2 factory
-        const FakeUniswapV2Factory = await ethers.getContractFactory("FakeUniswapV2Factory");
+        const FakeUniswapV2Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
         fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
         await fakeUniswapV2Factory.deployed();
 
@@ -62,6 +64,7 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         const LiquidityAccumulator = await ethers.getContractFactory("UniswapV2LiquidityAccumulatorStub");
         liquidityAccumulator = await LiquidityAccumulator.deploy(
             fakeUniswapV2Factory.address,
+            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
             quoteToken.address,
             TWO_PERCENT_CHANGE,
             minUpdateDelay,

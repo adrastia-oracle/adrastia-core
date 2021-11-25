@@ -10,14 +10,18 @@ import "../../LiquidityAccumulator.sol";
 contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     address public immutable uniswapFactory;
 
+    bytes32 public immutable initCodeHash;
+
     constructor(
         address uniswapFactory_,
+        bytes32 initCodeHash_,
         address quoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
+        initCodeHash = initCodeHash_;
     }
 
     function fetchLiquidity(address token)
@@ -27,9 +31,9 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
         override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
-        address pairAddress = pairFor(uniswapFactory, token, quoteToken);
+        address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
-        require(pairAddress != address(0), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
+        require(isContract(pairAddress), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
 
         (uint256 reserve0, uint256 reserve1, uint32 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
 
@@ -54,6 +58,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     // calculates the CREATE2 address for a pair without making any external calls
     function pairFor(
         address factory,
+        bytes32 initCodeHash_,
         address tokenA,
         address tokenB
     ) internal pure returns (address pair) {
@@ -62,15 +67,18 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
             uint160(
                 uint256(
                     keccak256(
-                        abi.encodePacked(
-                            hex"ff",
-                            factory,
-                            keccak256(abi.encodePacked(token0, token1)),
-                            hex"96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // init code hash
-                        )
+                        abi.encodePacked(hex"ff", factory, keccak256(abi.encodePacked(token0, token1)), initCodeHash_)
                     )
                 )
             )
         );
+    }
+
+    function isContract(address addr) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(addr)
+        }
+        return size > 0;
     }
 }

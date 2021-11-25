@@ -4,6 +4,8 @@ const { ethers } = require("hardhat");
 const AddressZero = ethers.constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
 
+const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-core/build/UniswapV2Factory.json");
+
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 const PERIOD = 100;
@@ -1193,7 +1195,7 @@ describe("UniswapV2Oracle#update", function () {
         const [owner] = await ethers.getSigners();
 
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
-        const uniswapFactoryFactory = await ethers.getContractFactory("FakeUniswapV2Factory");
+        const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
         const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV2LiquidityAccumulator");
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
@@ -1213,6 +1215,7 @@ describe("UniswapV2Oracle#update", function () {
 
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
             uniswapFactory.address,
+            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
             quoteToken.address,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
