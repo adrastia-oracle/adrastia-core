@@ -35,6 +35,21 @@ abstract contract PriceAccumulator is IPriceAccumulator {
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    function calculatePrice(
+        AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
+        AccumulationLibrary.PriceAccumulator calldata secondAccumulation
+    ) external pure virtual override returns (uint256 price) {
+        require(firstAccumulation.timestamp != 0, "PriceAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
+
+        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        require(deltaTime != 0, "PriceAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
+
+        unchecked {
+            // Underflow is desired and results in correct functionality
+            price = (secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime;
+        }
+    }
+
     function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
 
@@ -154,21 +169,6 @@ abstract contract PriceAccumulator is IPriceAccumulator {
     {
         observation.price = fetchPrice(token);
         observation.timestamp = block.timestamp;
-    }
-
-    function calculatePrice(
-        AccumulationLibrary.PriceAccumulator memory firstAccumulation,
-        AccumulationLibrary.PriceAccumulator memory secondAccumulation
-    ) public pure virtual override returns (uint256 price) {
-        require(firstAccumulation.timestamp != 0, "PriceAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
-
-        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
-        require(deltaTime != 0, "PriceAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
-
-        unchecked {
-            // Underflow is desired and results in correct functionality
-            price = (secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime;
-        }
     }
 
     function changeThresholdSurpassed(

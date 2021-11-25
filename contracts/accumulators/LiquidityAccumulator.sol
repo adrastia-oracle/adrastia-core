@@ -41,6 +41,26 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    function calculateLiquidity(
+        AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
+        AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
+    ) external pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
+        require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
+
+        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        require(deltaTime != 0, "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
+
+        unchecked {
+            // Underflow is desired and results in correct functionality
+            tokenLiquidity =
+                (secondAccumulation.cumulativeTokenLiquidity - firstAccumulation.cumulativeTokenLiquidity) /
+                deltaTime;
+            quoteTokenLiquidity =
+                (secondAccumulation.cumulativeQuoteTokenLiquidity - firstAccumulation.cumulativeQuoteTokenLiquidity) /
+                deltaTime;
+        }
+    }
+
     function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
@@ -166,26 +186,6 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
     {
         (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
         observation.timestamp = block.timestamp;
-    }
-
-    function calculateLiquidity(
-        AccumulationLibrary.LiquidityAccumulator memory firstAccumulation,
-        AccumulationLibrary.LiquidityAccumulator memory secondAccumulation
-    ) public pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
-        require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
-
-        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
-        require(deltaTime != 0, "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
-
-        unchecked {
-            // Underflow is desired and results in correct functionality
-            tokenLiquidity =
-                (secondAccumulation.cumulativeTokenLiquidity - firstAccumulation.cumulativeTokenLiquidity) /
-                deltaTime;
-            quoteTokenLiquidity =
-                (secondAccumulation.cumulativeQuoteTokenLiquidity - firstAccumulation.cumulativeQuoteTokenLiquidity) /
-                deltaTime;
-        }
     }
 
     function changeThresholdSurpassed(

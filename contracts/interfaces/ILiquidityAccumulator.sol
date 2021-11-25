@@ -13,6 +13,11 @@ abstract contract ILiquidityAccumulator is IUpdateByToken {
 
     function changePrecisionDecimals() external view virtual returns (uint256);
 
+    function calculateLiquidity(
+        AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
+        AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
+    ) external pure virtual returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
+
     function getLastAccumulation(address token)
         public
         view
@@ -36,9 +41,4 @@ abstract contract ILiquidityAccumulator is IUpdateByToken {
         view
         virtual
         returns (ObservationLibrary.LiquidityObservation memory);
-
-    function calculateLiquidity(
-        AccumulationLibrary.LiquidityAccumulator memory firstAccumulation,
-        AccumulationLibrary.LiquidityAccumulator memory secondAccumulation
-    ) public pure virtual returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
 }

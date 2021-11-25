@@ -13,6 +13,11 @@ abstract contract IPriceAccumulator is IUpdateByToken {
 
     function changePrecisionDecimals() external view virtual returns (uint256);
 
+    function calculatePrice(
+        AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
+        AccumulationLibrary.PriceAccumulator calldata secondAccumulation
+    ) external pure virtual returns (uint256 price);
+
     function getLastAccumulation(address token)
         public
         view
@@ -32,9 +37,4 @@ abstract contract IPriceAccumulator is IUpdateByToken {
         view
         virtual
         returns (ObservationLibrary.PriceObservation memory);
-
-    function calculatePrice(
-        AccumulationLibrary.PriceAccumulator memory firstAccumulation,
-        AccumulationLibrary.PriceAccumulator memory secondAccumulation
-    ) public pure virtual returns (uint256 price);
 }
