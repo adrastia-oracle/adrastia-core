@@ -14,9 +14,10 @@ contract UniswapV2OracleStub is UniswapV2Oracle {
     constructor(
         address liquidityAccumulator_,
         address uniswapFactory_,
+        bytes32 initCodeHash_,
         address quoteToken_,
         uint256 period_
-    ) UniswapV2Oracle(liquidityAccumulator_, uniswapFactory_, quoteToken_, period_) {}
+    ) UniswapV2Oracle(liquidityAccumulator_, uniswapFactory_, initCodeHash_, quoteToken_, period_) {}
 
     function stubSetObservation(
         address token,

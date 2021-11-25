@@ -8,7 +8,10 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 const uniswapV2FactoryAddress = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
+const uniswapV2InitCodeHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f";
+
 const sushiswapFactoryAddress = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
+const sushiswapInitCodeHash = "0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303";
 
 const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const daiAddress = "0x6b175474e89094c44da98b954eedeac495271d0f";
@@ -29,7 +32,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV2Oracle(factory, quoteToken, period) {
+async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
@@ -37,27 +40,35 @@ async function createUniswapV2Oracle(factory, quoteToken, period) {
     const liquidityAccumulator = await createContract(
         "UniswapV2LiquidityAccumulator",
         factory,
-        "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+        initCodeHash,
         quoteToken,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
     );
 
-    const oracle = await createContract("UniswapV2Oracle", liquidityAccumulator.address, factory, quoteToken, period);
+    const oracle = await createContract(
+        "UniswapV2Oracle",
+        liquidityAccumulator.address,
+        factory,
+        initCodeHash,
+        quoteToken,
+        period
+    );
 
     return oracle;
 }
 
 async function main() {
     const factoryAddress = uniswapV2FactoryAddress;
+    const initCodeHash = uniswapV2InitCodeHash;
 
     const token = wethAddress;
     const quoteToken = usdcAddress;
 
     const period = 10; // 10 seconds
 
-    const oracle = await createUniswapV2Oracle(factoryAddress, quoteToken, period);
+    const oracle = await createUniswapV2Oracle(factoryAddress, initCodeHash, quoteToken, period);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);

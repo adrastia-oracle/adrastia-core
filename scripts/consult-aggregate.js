@@ -49,7 +49,14 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    return await createContract("UniswapV2Oracle", liquidityAccumulator.address, factory, quoteToken, period);
+    return await createContract(
+        "UniswapV2Oracle",
+        liquidityAccumulator.address,
+        factory,
+        initCodeHash,
+        quoteToken,
+        period
+    );
 }
 
 async function createUniswapV3Oracle(factory, quoteToken, period) {

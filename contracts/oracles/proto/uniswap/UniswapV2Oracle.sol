@@ -10,7 +10,6 @@ import "../../../libraries/ObservationLibrary.sol";
 import "../../../libraries/uniswap-lib/FixedPoint.sol";
 import "../../../libraries/uniswap-v2-periphery/UniswapV2OracleLibrary.sol";
 
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "hardhat/console.sol";
@@ -22,23 +21,27 @@ contract UniswapV2Oracle is PeriodicOracle {
 
     address public immutable uniswapFactory;
 
+    bytes32 public immutable initCodeHash;
+
     mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
 
     constructor(
         address liquidityAccumulator_,
         address uniswapFactory_,
+        bytes32 initCodeHash_,
         address quoteToken_,
         uint256 period_
     ) PeriodicOracle(quoteToken_, period_) {
         liquidityAccumulator = liquidityAccumulator_;
         uniswapFactory = uniswapFactory_;
+        initCodeHash = initCodeHash_;
     }
 
     function _update(address token) internal override returns (bool) {
-        address pairAddress = IUniswapV2Factory(uniswapFactory).getPair(token, quoteToken);
+        address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
-        require(pairAddress != address(0), "UniswapV2Oracle: POOL_NOT_FOUND");
+        require(isContract(pairAddress), "UniswapV2Oracle: POOL_NOT_FOUND");
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -153,5 +156,39 @@ contract UniswapV2Oracle is PeriodicOracle {
             );
             amountOut = priceAverage.mul(amountIn).decode144();
         }
+    }
+
+    // returns sorted token addresses, used to handle return values from pairs sorted in this order
+    function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
+        require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
+        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
+    }
+
+    // calculates the CREATE2 address for a pair without making any external calls
+    function pairFor(
+        address factory,
+        bytes32 initCodeHash_,
+        address tokenA,
+        address tokenB
+    ) internal pure returns (address pair) {
+        (address token0, address token1) = sortTokens(tokenA, tokenB);
+        pair = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(hex"ff", factory, keccak256(abi.encodePacked(token0, token1)), initCodeHash_)
+                    )
+                )
+            )
+        );
+    }
+
+    function isContract(address addr) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(addr)
+        }
+        return size > 0;
     }
 }
