@@ -81,14 +81,16 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         uint256 fees0;
         uint256 fees1;
 
-        uint256 len = poolFees.length;
+        address _uniswapFactory = uniswapFactory;
+        address _quoteToken = quoteToken;
+        uint24[] memory _poolFees = poolFees;
 
-        for (uint256 i = 0; i < len; ++i) {
-            address pool = computeAddress(uniswapFactory, getPoolKey(token, quoteToken, poolFees[i]));
+        for (uint256 i = 0; i < _poolFees.length; ++i) {
+            address pool = computeAddress(_uniswapFactory, getPoolKey(token, _quoteToken, _poolFees[i]));
 
             if (isContract(pool)) {
                 tokenLiquidity += IERC20Minimal(token).balanceOf(pool);
-                quoteTokenLiquidity += IERC20Minimal(quoteToken).balanceOf(pool);
+                quoteTokenLiquidity += IERC20Minimal(_quoteToken).balanceOf(pool);
 
                 (uint128 token0, uint128 token1) = IUniswapV3Pool(pool).protocolFees();
 
@@ -98,7 +100,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         }
 
         // Subtract protocol fees from the totals
-        if (token < quoteToken) {
+        if (token < _quoteToken) {
             tokenLiquidity -= fees0;
             quoteTokenLiquidity -= fees1;
         } else {
