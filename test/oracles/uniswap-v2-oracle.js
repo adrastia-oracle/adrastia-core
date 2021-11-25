@@ -6,6 +6,8 @@ const MaxUint256 = ethers.constants.MaxUint256;
 
 const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 
+const uniswapV2InitCodeHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f";
+
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 const PERIOD = 100;
@@ -36,6 +38,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(1),
             },
@@ -44,6 +47,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(100),
             },
@@ -52,6 +56,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(1),
             },
@@ -60,6 +65,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(100),
             },
@@ -68,6 +74,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(1),
             },
@@ -76,6 +83,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(100),
             },
@@ -84,6 +92,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(1),
             },
@@ -92,6 +101,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: AddressZero,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(100),
             },
@@ -100,6 +110,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(1),
             },
@@ -108,6 +119,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(100),
             },
@@ -116,6 +128,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(1),
             },
@@ -124,6 +137,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: AddressZero,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(100),
             },
@@ -132,6 +146,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(1),
             },
@@ -140,6 +155,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: AddressZero,
                 period: BigNumber.from(100),
             },
@@ -148,6 +164,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(1),
             },
@@ -156,6 +173,7 @@ describe("UniswapV2Oracle#constructor", async function () {
             args: {
                 liquidityAccumulator: USDC,
                 uniswapFactory: USDC,
+                initCodeHash: uniswapV2InitCodeHash,
                 quoteToken: USDC,
                 period: BigNumber.from(100),
             },
@@ -171,12 +189,14 @@ describe("UniswapV2Oracle#constructor", async function () {
             const oracle = await oracleFactory.deploy(
                 args["liquidityAccumulator"],
                 args["uniswapFactory"],
+                args["initCodeHash"],
                 args["quoteToken"],
                 args["period"]
             );
 
             expect(await oracle.liquidityAccumulator()).to.equal(args["liquidityAccumulator"]);
             expect(await oracle.uniswapFactory()).to.equal(args["uniswapFactory"]);
+            expect(await oracle.initCodeHash()).to.equal(args["initCodeHash"]);
             expect(await oracle.quoteToken()).to.equal(args["quoteToken"]);
             expect(await oracle.quoteTokenAddress()).to.equal(args["quoteToken"]);
             expect(await oracle.period()).to.equal(args["period"]);
@@ -194,7 +214,7 @@ describe("UniswapV2Oracle#needsUpdate", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -255,7 +275,7 @@ describe("UniswapV2Oracle#consultPrice(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -289,7 +309,7 @@ describe("UniswapV2Oracle#consultPrice(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -411,7 +431,7 @@ describe("UniswapV2Oracle#consultLiquidity(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -477,7 +497,7 @@ describe("UniswapV2Oracle#consultLiquidity(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -629,7 +649,7 @@ describe("UniswapV2Oracle#consult(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -722,7 +742,7 @@ describe("UniswapV2Oracle#consult(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -835,7 +855,7 @@ describe("UniswapV2Oracle#computeWholeUnitAmount", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
     });
 
     tests.forEach(({ decimals, wholeUnitAmount }) => {
@@ -1003,7 +1023,7 @@ describe("UniswapV2Oracle#computeAmountOut", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
     });
 
     tests.forEach(({ args, expectedOutput }) => {
@@ -1226,7 +1246,7 @@ describe("UniswapV2Oracle#update", function () {
         oracle = await oracleFactory.deploy(
             liquidityAccumulator.address,
             uniswapFactory.address,
-            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+            uniswapV2InitCodeHash,
             quoteToken.address,
             PERIOD
         );
