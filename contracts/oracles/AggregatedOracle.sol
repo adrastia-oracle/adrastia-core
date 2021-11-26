@@ -5,6 +5,11 @@ import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
 
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
+    struct TokenSpecificOracle {
+        address token;
+        address oracle;
+    }
+
     address[] public oracles;
 
     mapping(address => address[]) tokenSpecificOracles;
@@ -16,6 +21,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
         address[] memory oracles_,
+        TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_
     ) PeriodicOracle(address(0), period_) {
         require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
@@ -26,6 +32,12 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         _quoteTokenSymbol = quoteTokenSymbol_;
 
         oracles = oracles_;
+
+        for (uint256 i = 0; i < tokenSpecificOracles_.length; ++i) {
+            TokenSpecificOracle memory oracle = tokenSpecificOracles_[i];
+
+            tokenSpecificOracles[oracle.token].push(oracle.oracle);
+        }
     }
 
     function quoteTokenAddress() external view virtual override(IOracle, AbstractOracle) returns (address) {

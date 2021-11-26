@@ -15,8 +15,9 @@ contract AggregatedOracleStub is AggregatedOracle {
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
         address[] memory oracles_,
+        AggregatedOracle.TokenSpecificOracle[] memory _tokenSpecificOracles,
         uint256 period_
-    ) AggregatedOracle(quoteTokenAddress_, quoteTokenSymbol_, oracles_, period_) {}
+    ) AggregatedOracle(quoteTokenAddress_, quoteTokenSymbol_, oracles_, _tokenSpecificOracles, period_) {}
 
     function stubSetObservation(
         address token,

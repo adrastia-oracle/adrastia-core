@@ -96,8 +96,15 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
     };
 }
 
-async function createAggregatedOracle(quoteTokenAddress, quoteTokenSymbol, period, ...oracles) {
-    return await createContract("AggregatedOracle", quoteTokenAddress, quoteTokenSymbol, oracles, period);
+async function createAggregatedOracle(quoteTokenAddress, quoteTokenSymbol, period, oracles, tokenSpecificOracles) {
+    return await createContract(
+        "AggregatedOracle",
+        quoteTokenAddress,
+        quoteTokenSymbol,
+        oracles,
+        tokenSpecificOracles,
+        period
+    );
 }
 
 async function main() {
@@ -121,14 +128,11 @@ async function main() {
     );
     const uniswapV3 = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
 
-    const oracle = await createAggregatedOracle(
-        quoteToken,
-        "USDC",
-        periodSeconds,
-        uniswapV2.oracle.address,
-        sushiswap.oracle.address,
-        uniswapV3.oracle.address
-    );
+    const oracles = [uniswapV2.oracle.address, sushiswap.oracle.address, uniswapV3.oracle.address];
+
+    const tokenSpecificOracles = [];
+
+    const oracle = await createAggregatedOracle(quoteToken, "USDC", periodSeconds, oracles, tokenSpecificOracles);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
