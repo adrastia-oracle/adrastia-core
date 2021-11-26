@@ -24,11 +24,11 @@ abstract contract SafeAbstractOracle is IOracle {
 
     function needsUpdate(address token) public view virtual override returns (bool);
 
-    function quoteTokenAddress() public view virtual override returns (address) {
+    function quoteTokenAddress() external view virtual override returns (address) {
         return quoteToken;
     }
 
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
+    function quoteTokenSymbol() external view virtual override returns (string memory) {
         return IERC20(quoteToken).symbol();
     }
 

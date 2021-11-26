@@ -15,9 +15,9 @@ abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
         uint256 quoteTokenLiquidity
     );
 
-    function quoteTokenAddress() public view virtual override(IPriceOracle, ILiquidityOracle) returns (address);
+    function quoteTokenAddress() external view virtual override(IPriceOracle, ILiquidityOracle) returns (address);
 
-    function quoteTokenSymbol() public view virtual override(IPriceOracle, ILiquidityOracle) returns (string memory);
+    function quoteTokenSymbol() external view virtual override(IPriceOracle, ILiquidityOracle) returns (string memory);
 
     function consult(address token)
         public
