@@ -8,6 +8,7 @@ import "../../accumulators/proto/uniswap/UniswapV3LiquidityAccumulator.sol";
 contract UniswapV3LiquidityAccumulatorStub is UniswapV3LiquidityAccumulator {
     constructor(
         address uniswapFactory_,
+        bytes32 initCodeHash_,
         uint24[] memory poolFees_,
         address quoteToken_,
         uint256 updateTheshold_,
@@ -16,6 +17,7 @@ contract UniswapV3LiquidityAccumulatorStub is UniswapV3LiquidityAccumulator {
     )
         UniswapV3LiquidityAccumulator(
             uniswapFactory_,
+            initCodeHash_,
             poolFees_,
             quoteToken_,
             updateTheshold_,

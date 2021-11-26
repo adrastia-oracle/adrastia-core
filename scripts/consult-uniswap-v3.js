@@ -8,6 +8,7 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 const uniswapV3FactoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+const uniswapV3InitCodeHash = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
 
 const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
@@ -26,7 +27,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV3Oracle(factory, quoteToken, period) {
+async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) {
     const poolFees = [500, 3000, 10000];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -36,6 +37,7 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
     const liquidityAccumulator = await createContract(
         "UniswapV3LiquidityAccumulator",
         factory,
+        initCodeHash,
         poolFees,
         quoteToken,
         updateTheshold,
@@ -47,6 +49,7 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
         "UniswapV3Oracle",
         liquidityAccumulator.address,
         factory,
+        initCodeHash,
         poolFees,
         quoteToken,
         period
@@ -65,7 +68,12 @@ async function main() {
     const underlyingPeriodSeconds = 5;
     const periodSeconds = 10;
 
-    const uniswapV3 = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
+    const uniswapV3 = await createUniswapV3Oracle(
+        uniswapV3FactoryAddress,
+        uniswapV3InitCodeHash,
+        quoteToken,
+        underlyingPeriodSeconds
+    );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);

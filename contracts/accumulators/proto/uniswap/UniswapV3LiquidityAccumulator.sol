@@ -17,14 +17,15 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         uint24 fee;
     }
 
-    bytes32 internal constant POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-
     address public immutable uniswapFactory;
+
+    bytes32 public immutable initCodeHash;
 
     uint24[] public poolFees;
 
     constructor(
         address uniswapFactory_,
+        bytes32 initCodeHash_,
         uint24[] memory poolFees_,
         address quoteToken_,
         uint256 updateTheshold_,
@@ -32,6 +33,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         uint256 maxUpdateDelay_
     ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
+        initCodeHash = initCodeHash_;
         poolFees = poolFees_;
     }
 
@@ -53,7 +55,11 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
     /// @param factory The Uniswap V3 factory contract address
     /// @param key The PoolKey
     /// @return pool The contract address of the V3 pool
-    function computeAddress(address factory, PoolKey memory key) internal pure returns (address pool) {
+    function computeAddress(
+        address factory,
+        bytes32 _initCodeHash,
+        PoolKey memory key
+    ) internal pure returns (address pool) {
         require(key.token0 < key.token1);
         pool = address(
             uint160(
@@ -63,7 +69,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
                             hex"ff",
                             factory,
                             keccak256(abi.encode(key.token0, key.token1, key.fee)),
-                            POOL_INIT_CODE_HASH
+                            _initCodeHash
                         )
                     )
                 )
@@ -84,9 +90,10 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         address _uniswapFactory = uniswapFactory;
         address _quoteToken = quoteToken;
         uint24[] memory _poolFees = poolFees;
+        bytes32 _initCodeHash = initCodeHash;
 
         for (uint256 i = 0; i < _poolFees.length; ++i) {
-            address pool = computeAddress(_uniswapFactory, getPoolKey(token, _quoteToken, _poolFees[i]));
+            address pool = computeAddress(_uniswapFactory, _initCodeHash, getPoolKey(token, _quoteToken, _poolFees[i]));
 
             if (isContract(pool)) {
                 tokenLiquidity += IERC20Minimal(token).balanceOf(pool);

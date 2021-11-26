@@ -11,6 +11,7 @@ const uniswapV2FactoryAddress = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
 const uniswapV2InitCodeHash = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f";
 
 const uniswapV3FactoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+const uniswapV3InitCodeHash = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
 
 const sushiswapFactoryAddress = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
 const sushiswapInitCodeHash = "0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303";
@@ -64,7 +65,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
     };
 }
 
-async function createUniswapV3Oracle(factory, quoteToken, period) {
+async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) {
     const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -74,6 +75,7 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
     const liquidityAccumulator = await createContract(
         "UniswapV3LiquidityAccumulator",
         factory,
+        initCodeHash,
         poolFees,
         quoteToken,
         updateTheshold,
@@ -85,6 +87,7 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
         "UniswapV3Oracle",
         liquidityAccumulator.address,
         factory,
+        initCodeHash,
         poolFees,
         quoteToken,
         period
@@ -126,7 +129,12 @@ async function main() {
         quoteToken,
         underlyingPeriodSeconds
     );
-    const uniswapV3 = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
+    const uniswapV3 = await createUniswapV3Oracle(
+        uniswapV3FactoryAddress,
+        uniswapV3InitCodeHash,
+        quoteToken,
+        underlyingPeriodSeconds
+    );
 
     const oracles = [uniswapV2.oracle.address, sushiswap.oracle.address, uniswapV3.oracle.address];
 
