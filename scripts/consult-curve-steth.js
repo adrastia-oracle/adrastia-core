@@ -59,7 +59,11 @@ async function createCurveOracle(pool, quoteToken, period) {
         period
     );
 
-    return oracle;
+    return {
+        liquidityAccumulator: liquidityAccumulator,
+        priceAccumulator: priceAccumulator,
+        oracle: oracle,
+    };
 }
 
 async function main() {
@@ -70,7 +74,7 @@ async function main() {
 
     const period = 10; // 10 seconds
 
-    const oracle = await createCurveOracle(poolAddress, quoteToken, period);
+    const curve = await createCurveOracle(poolAddress, quoteToken, period);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
 
@@ -82,8 +86,36 @@ async function main() {
 
     while (true) {
         try {
-            if (await oracle.needsUpdate(token)) {
-                const updateTx = await oracle.update(token);
+            if (await curve.liquidityAccumulator.needsUpdate(token)) {
+                const updateTx = await curve.liquidityAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await curve.priceAccumulator.needsUpdate(token)) {
+                const updateTx = await curve.priceAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Price accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await curve.oracle.needsUpdate(token)) {
+                const updateTx = await curve.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -91,7 +123,7 @@ async function main() {
                 );
             }
 
-            const consultation = await oracle["consult(address)"](token);
+            const consultation = await curve.oracle["consult(address)"](token);
 
             const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
 

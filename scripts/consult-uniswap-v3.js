@@ -43,7 +43,19 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
         maxUpdateDelay
     );
 
-    return await createContract("UniswapV3Oracle", liquidityAccumulator.address, factory, poolFees, quoteToken, period);
+    const oracle = await createContract(
+        "UniswapV3Oracle",
+        liquidityAccumulator.address,
+        factory,
+        poolFees,
+        quoteToken,
+        period
+    );
+
+    return {
+        liquidityAccumulator: liquidityAccumulator,
+        oracle: oracle,
+    };
 }
 
 async function main() {
@@ -53,7 +65,7 @@ async function main() {
     const underlyingPeriodSeconds = 5;
     const periodSeconds = 10;
 
-    const oracle = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
+    const uniswapV3 = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
@@ -66,8 +78,22 @@ async function main() {
 
     while (true) {
         try {
-            if (await oracle.needsUpdate(token)) {
-                const updateTx = await oracle.update(token);
+            if (await uniswapV3.liquidityAccumulator.needsUpdate(token)) {
+                const updateTx = await uniswapV3.liquidityAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await uniswapV3.oracle.needsUpdate(token)) {
+                const updateTx = await uniswapV3.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -75,7 +101,7 @@ async function main() {
                 );
             }
 
-            const consultation = await oracle["consult(address)"](token);
+            const consultation = await uniswapV3.oracle["consult(address)"](token);
 
             const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
 

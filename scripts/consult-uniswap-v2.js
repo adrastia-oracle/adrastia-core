@@ -56,7 +56,10 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         period
     );
 
-    return oracle;
+    return {
+        liquidityAccumulator: liquidityAccumulator,
+        oracle: oracle,
+    };
 }
 
 async function main() {
@@ -68,7 +71,7 @@ async function main() {
 
     const period = 10; // 10 seconds
 
-    const oracle = await createUniswapV2Oracle(factoryAddress, initCodeHash, quoteToken, period);
+    const uniswapV2 = await createUniswapV2Oracle(factoryAddress, initCodeHash, quoteToken, period);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
@@ -81,8 +84,22 @@ async function main() {
 
     while (true) {
         try {
-            if (await oracle.needsUpdate(token)) {
-                const updateTx = await oracle.update(token);
+            if (await uniswapV2.liquidityAccumulator.needsUpdate(token)) {
+                const updateTx = await uniswapV2.liquidityAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await uniswapV2.oracle.needsUpdate(token)) {
+                const updateTx = await uniswapV2.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -90,7 +107,7 @@ async function main() {
                 );
             }
 
-            const consultation = await oracle["consult(address)"](token);
+            const consultation = await uniswapV2.oracle["consult(address)"](token);
 
             const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
 

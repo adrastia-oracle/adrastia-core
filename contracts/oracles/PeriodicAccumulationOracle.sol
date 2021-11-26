@@ -32,9 +32,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle {
          * 1. Update price
          */
         {
-            // Always keep the price accumulator up-to-date
-            IPriceAccumulator(priceAccumulator).update(token);
-
+            // Note: We assume the accumulator is up-to-date (gas savings)
             AccumulationLibrary.PriceAccumulator memory freshAccumulation = IPriceAccumulator(priceAccumulator)
                 .getCurrentAccumulation(token);
 
@@ -59,9 +57,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle {
          * 2. Update liquidity
          */
         {
-            // Always keep the liquidity accumulator up-to-date
-            ILiquidityAccumulator(liquidityAccumulator).update(token);
-
+            // Note: We assume the accumulator is up-to-date (gas savings)
             AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
                 liquidityAccumulator
             ).getCurrentAccumulation(token);

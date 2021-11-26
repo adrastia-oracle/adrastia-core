@@ -81,9 +81,7 @@ contract UniswapV3Oracle is SafePeriodicOracle {
          * 2. Update liquidity
          */
         {
-            // Always keep the liquidity accumulator up-to-date
-            ILiquidityAccumulator(liquidityAccumulator).update(token);
-
+            // Note: We assume the accumulator is up-to-date (gas savings)
             AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
                 liquidityAccumulator
             ).getCurrentAccumulation(token);

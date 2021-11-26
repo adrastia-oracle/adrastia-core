@@ -49,7 +49,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    return await createContract(
+    const oracle = await createContract(
         "UniswapV2Oracle",
         liquidityAccumulator.address,
         factory,
@@ -57,6 +57,11 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         quoteToken,
         period
     );
+
+    return {
+        liquidityAccumulator: liquidityAccumulator,
+        oracle: oracle,
+    };
 }
 
 async function createUniswapV3Oracle(factory, quoteToken, period) {
@@ -76,7 +81,19 @@ async function createUniswapV3Oracle(factory, quoteToken, period) {
         maxUpdateDelay
     );
 
-    return await createContract("UniswapV3Oracle", liquidityAccumulator.address, factory, poolFees, quoteToken, period);
+    const oracle = await createContract(
+        "UniswapV3Oracle",
+        liquidityAccumulator.address,
+        factory,
+        poolFees,
+        quoteToken,
+        period
+    );
+
+    return {
+        liquidityAccumulator: liquidityAccumulator,
+        oracle: oracle,
+    };
 }
 
 async function createAggregatedOracle(quoteTokenAddress, quoteTokenSymbol, period, ...oracles) {
@@ -90,27 +107,27 @@ async function main() {
     const underlyingPeriodSeconds = 5;
     const periodSeconds = 10;
 
-    const uniswapV2Oracle = await createUniswapV2Oracle(
+    const uniswapV2 = await createUniswapV2Oracle(
         uniswapV2FactoryAddress,
         uniswapV2InitCodeHash,
         quoteToken,
         underlyingPeriodSeconds
     );
-    const sushiswapOracle = await createUniswapV2Oracle(
+    const sushiswap = await createUniswapV2Oracle(
         sushiswapFactoryAddress,
         sushiswapInitCodeHash,
         quoteToken,
         underlyingPeriodSeconds
     );
-    const uniswapV3Oracle = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
+    const uniswapV3 = await createUniswapV3Oracle(uniswapV3FactoryAddress, quoteToken, underlyingPeriodSeconds);
 
     const oracle = await createAggregatedOracle(
         quoteToken,
         "USDC",
         periodSeconds,
-        uniswapV2Oracle.address,
-        sushiswapOracle.address,
-        uniswapV3Oracle.address
+        uniswapV2.oracle.address,
+        sushiswap.oracle.address,
+        uniswapV3.oracle.address
     );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
@@ -124,6 +141,48 @@ async function main() {
 
     while (true) {
         try {
+            if (await uniswapV2.liquidityAccumulator.needsUpdate(token)) {
+                const updateTx = await uniswapV2.liquidityAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Uniswap V2 liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await uniswapV3.liquidityAccumulator.needsUpdate(token)) {
+                const updateTx = await uniswapV3.liquidityAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Uniswap V3 liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await sushiswap.liquidityAccumulator.needsUpdate(token)) {
+                const updateTx = await sushiswap.liquidityAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Sushiswap liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
             if (await oracle.needsUpdate(token)) {
                 const updateTx = await oracle.update(token);
                 const updateReceipt = await updateTx.wait();
