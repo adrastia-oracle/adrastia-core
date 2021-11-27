@@ -13,4 +13,6 @@ abstract contract IAggregatedOracle is IOracle {
     event ConsultError(address indexed oracle, address indexed token, bytes err);
 
     function getOracles() external view virtual returns (address[] memory);
+
+    function getOraclesFor(address token) external view virtual returns (address[] memory);
 }

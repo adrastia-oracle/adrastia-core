@@ -52,6 +52,22 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return oracles;
     }
 
+    function getOraclesFor(address token) external view virtual override returns (address[] memory) {
+        address[] memory _tokenSpecificOracles = tokenSpecificOracles[token];
+        address[] memory _oracles = oracles;
+
+        address[] memory allOracles = new address[](_oracles.length + _tokenSpecificOracles.length);
+
+        // Add the general oracles
+        for (uint256 i = 0; i < _oracles.length; ++i) allOracles[i] = _oracles[i];
+
+        // Add the token specific oracles
+        for (uint256 i = 0; i < _tokenSpecificOracles.length; ++i)
+            allOracles[_oracles.length + i] = _tokenSpecificOracles[i];
+
+        return allOracles;
+    }
+
     function _update(address token) internal override returns (bool) {
         bool underlyingUpdated;
 
