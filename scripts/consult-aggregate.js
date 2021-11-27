@@ -99,11 +99,21 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
     };
 }
 
-async function createAggregatedOracle(quoteTokenAddress, quoteTokenSymbol, period, oracles, tokenSpecificOracles) {
+async function createAggregatedOracle(
+    quoteTokenName,
+    quoteTokenAddress,
+    quoteTokenSymbol,
+    quoteTokenDecimals,
+    period,
+    oracles,
+    tokenSpecificOracles
+) {
     return await createContract(
         "AggregatedOracle",
+        quoteTokenName,
         quoteTokenAddress,
         quoteTokenSymbol,
+        quoteTokenDecimals,
         oracles,
         tokenSpecificOracles,
         period
@@ -140,16 +150,23 @@ async function main() {
 
     const tokenSpecificOracles = [];
 
-    const oracle = await createAggregatedOracle(quoteToken, "USDC", periodSeconds, oracles, tokenSpecificOracles);
+    const oracle = await createAggregatedOracle(
+        "USD Coin",
+        quoteToken,
+        "USDC",
+        6,
+        periodSeconds,
+        oracles,
+        tokenSpecificOracles
+    );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
-    const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
 
     const tokenSymbol = await tokenContract.symbol();
-    const quoteTokenSymbol = await quoteTokenContract.symbol();
-
     const tokenDecimals = await tokenContract.decimals();
-    const quoteTokenDecimals = await quoteTokenContract.decimals();
+
+    const quoteTokenSymbol = await oracle.quoteTokenSymbol();
+    const quoteTokenDecimals = await oracle.quoteTokenDecimals();
 
     while (true) {
         try {
