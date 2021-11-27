@@ -50,4 +50,13 @@ contract UniswapV3OracleStub is UniswapV3Oracle {
         if (config.needsUpdateOverridden) return config.needsUpdate;
         else return super.needsUpdate(token);
     }
+
+    function _update(address token) internal virtual override returns (bool) {
+        // Always keep the liquidity accumulator updated so that we don't have to do so in our tests.
+        try ILiquidityAccumulator(liquidityAccumulator).update(token) returns (bool) {} catch Error(
+            string memory
+        ) {} catch (bytes memory) {}
+
+        return super._update(token);
+    }
 }

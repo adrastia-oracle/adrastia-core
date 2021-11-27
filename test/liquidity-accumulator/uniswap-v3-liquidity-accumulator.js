@@ -15,6 +15,8 @@ const {
     bytecode: POOL_BYTECODE,
 } = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
 
+const uniswapV3InitCodeHash = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -94,6 +96,7 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
 
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
             uniswapFactory.address,
+            uniswapV3InitCodeHash,
             POOL_FEES,
             quoteToken.address,
             TWO_PERCENT_CHANGE,
@@ -256,6 +259,7 @@ describe("UniswapV3LiquidityAccumulator#isContract", function () {
 
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
             AddressZero,
+            uniswapV3InitCodeHash,
             POOL_FEES,
             AddressZero,
             TWO_PERCENT_CHANGE,

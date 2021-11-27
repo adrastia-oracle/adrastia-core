@@ -1235,7 +1235,7 @@ describe("UniswapV2Oracle#update", function () {
 
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
             uniswapFactory.address,
-            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+            uniswapV2InitCodeHash,
             quoteToken.address,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
