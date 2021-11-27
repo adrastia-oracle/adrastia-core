@@ -186,8 +186,12 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
         await expect(liquidityAccumulator.harnessFetchLiquidity(token.address)).to.not.be.reverted;
     });
 
-    it("Should revert is quoteToken == token", async function () {
+    it("Should revert if token == quoteToken", async function () {
         await expect(liquidityAccumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
+    });
+
+    it("Should revert if token == address(0)", async function () {
+        await expect(liquidityAccumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
     });
 
     function liquidityTests(poolFees) {

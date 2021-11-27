@@ -1,6 +1,7 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const AddressZero = ethers.constants.AddressZero;
 
 const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 
@@ -82,6 +83,14 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         await expect(liquidityAccumulator.harnessFetchLiquidity(noPairToken.address)).to.be.revertedWith(
             "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND"
         );
+    });
+
+    it("Should revert if token == quoteToken", async function () {
+        await expect(liquidityAccumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
+    });
+
+    it("Should revert if token == address(0)", async function () {
+        await expect(liquidityAccumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
     });
 
     tests.forEach(({ args }) => {
