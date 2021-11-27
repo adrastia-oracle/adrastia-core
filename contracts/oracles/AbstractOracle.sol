@@ -19,12 +19,20 @@ abstract contract AbstractOracle is IOracle {
 
     function needsUpdate(address token) public view virtual override returns (bool);
 
+    function quoteTokenName() external view virtual override returns (string memory) {
+        return IERC20Metadata(quoteToken).name();
+    }
+
     function quoteTokenAddress() external view virtual override returns (address) {
         return quoteToken;
     }
 
     function quoteTokenSymbol() external view virtual override returns (string memory) {
         return IERC20Metadata(quoteToken).symbol();
+    }
+
+    function quoteTokenDecimals() external view virtual override returns (uint8) {
+        return IERC20Metadata(quoteToken).decimals();
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {

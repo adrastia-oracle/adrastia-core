@@ -252,7 +252,9 @@ describe("UniswapV3Oracle#constructor", async function () {
             expect(await oracle.period()).to.equal(args["period"]);
 
             if (args["quoteToken"] === USDC) {
+                expect(await oracle.quoteTokenName()).to.equal("USD Coin");
                 expect(await oracle.quoteTokenSymbol()).to.equal("USDC");
+                expect(await oracle.quoteTokenDecimals()).to.equal(6);
             }
         });
     });

@@ -14,15 +14,19 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
     mapping(address => address[]) tokenSpecificOracles;
 
+    string internal _quoteTokenName;
     address internal _quoteTokenAddress;
     string internal _quoteTokenSymbol;
+    uint8 internal _quoteTokenDecimals;
 
     mapping(address => bool) private oracleExists;
     mapping(address => mapping(address => bool)) private oracleForExists;
 
     constructor(
+        string memory quoteTokenName_,
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
+        uint8 quoteTokenDecimals_,
         address[] memory oracles_,
         TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_
@@ -37,8 +41,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
         // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
         // Note: All underlying quote tokens must be loosly equal (i.e. equal in value and in number of decimals).
+        _quoteTokenName = quoteTokenName_;
         _quoteTokenAddress = quoteTokenAddress_;
         _quoteTokenSymbol = quoteTokenSymbol_;
+        _quoteTokenDecimals = quoteTokenDecimals_;
 
         oracles = oracles_;
 
@@ -54,12 +60,20 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         }
     }
 
+    function quoteTokenName() external view virtual override(IOracle, AbstractOracle) returns (string memory) {
+        return _quoteTokenName;
+    }
+
     function quoteTokenAddress() external view virtual override(IOracle, AbstractOracle) returns (address) {
         return _quoteTokenAddress;
     }
 
     function quoteTokenSymbol() external view virtual override(IOracle, AbstractOracle) returns (string memory) {
         return _quoteTokenSymbol;
+    }
+
+    function quoteTokenDecimals() external view virtual override(IOracle, AbstractOracle) returns (uint8) {
+        return _quoteTokenDecimals;
     }
 
     function getOracles() external view virtual override returns (address[] memory) {
