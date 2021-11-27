@@ -6,6 +6,9 @@ const MaxUint256 = ethers.constants.MaxUint256;
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
+const BAT = "0x0D8775F648430679A709E98d2b0Cb6250d2887EF";
+const SHIB = "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE";
+const ZRX = "0xE41d2489571d322189246DaFA5ebDe1F4699F498";
 
 const PERIOD = 100;
 
@@ -46,17 +49,17 @@ describe("AggregatedOracle#constructor", async function () {
 
     const tokenSpecificOracle1 = {
         token: USDC,
-        oracle: AddressZero,
+        oracle: BAT,
     };
 
     const tokenSpecificOracle2 = {
         token: GRT,
-        oracle: AddressZero,
+        oracle: SHIB,
     };
 
     const tokenSpecificOracle3 = {
         token: AddressZero,
-        oracle: USDC,
+        oracle: ZRX,
     };
 
     const tokensWithSpecificOracles = [USDC, GRT, AddressZero];
@@ -129,8 +132,26 @@ describe("AggregatedOracle#constructor", async function () {
 
     it("Should revert if no underlying oracles are provided", async () => {
         await expect(oracleFactory.deploy(AddressZero, "NIL", [], [], PERIOD)).to.be.revertedWith(
-            "AggregatedOracle: No oracles provided."
+            "AggregatedOracle: MISSING_ORACLES"
         );
+    });
+
+    it("Should revert if no duplicate general oracles are provided", async () => {
+        await expect(oracleFactory.deploy(AddressZero, "NIL", [USDC, USDC], [], PERIOD)).to.be.revertedWith(
+            "AggregatedOracle: DUPLICATE_ORACLE"
+        );
+    });
+
+    it("Should revert if no duplicate token specific oracles are provided", async () => {
+        await expect(
+            oracleFactory.deploy(AddressZero, "NIL", [], [tokenSpecificOracle1, tokenSpecificOracle1], PERIOD)
+        ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
+    });
+
+    it("Should revert if no duplicate general / token specific oracles are provided", async () => {
+        await expect(
+            oracleFactory.deploy(AddressZero, "NIL", [BAT], [tokenSpecificOracle1], PERIOD)
+        ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
 });
 

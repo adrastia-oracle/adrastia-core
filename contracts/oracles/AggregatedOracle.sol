@@ -17,6 +17,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     address internal _quoteTokenAddress;
     string internal _quoteTokenSymbol;
 
+    mapping(address => bool) private oracleExists;
+    mapping(address => mapping(address => bool)) private oracleForExists;
+
     constructor(
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
@@ -24,7 +27,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_
     ) PeriodicOracle(address(0), period_) {
-        require(oracles_.length > 0, "AggregatedOracle: No oracles provided.");
+        require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");
+
+        for (uint256 i = 0; i < oracles_.length; ++i) {
+            require(!oracleExists[oracles_[i]], "AggregatedOracle: DUPLICATE_ORACLE");
+
+            oracleExists[oracles_[i]] = true;
+        }
 
         // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
         // Note: All underlying quote tokens must be loosly equal (i.e. equal in value and in number of decimals).
@@ -36,7 +45,12 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         for (uint256 i = 0; i < tokenSpecificOracles_.length; ++i) {
             TokenSpecificOracle memory oracle = tokenSpecificOracles_[i];
 
+            require(!oracleExists[oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
+            require(!oracleForExists[oracle.token][oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
+
             tokenSpecificOracles[oracle.token].push(oracle.oracle);
+
+            oracleForExists[oracle.token][oracle.oracle] = true;
         }
     }
 
