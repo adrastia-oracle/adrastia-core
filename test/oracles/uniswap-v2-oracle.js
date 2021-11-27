@@ -1254,6 +1254,14 @@ describe("UniswapV2Oracle#update", function () {
         );
     });
 
+    it("Should revert if token == quoteToken", async function () {
+        await expect(oracle.update(quoteToken.address)).to.be.reverted;
+    });
+
+    it("Should revert if token == address(0)", async function () {
+        await expect(oracle.update(AddressZero)).to.be.reverted;
+    });
+
     tests.forEach(
         ({ desc, preCallFunc, expectedRevert, expectedOutput, totalTokenLiquidity, totalQuoteTokenLiquidity }) => {
             it(desc, async () => {
