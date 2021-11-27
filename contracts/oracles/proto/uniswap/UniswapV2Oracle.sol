@@ -38,7 +38,7 @@ contract UniswapV2Oracle is PeriodicOracle {
         initCodeHash = initCodeHash_;
     }
 
-    function _update(address token) internal override returns (bool) {
+    function _update(address token) internal virtual override returns (bool) {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
         require(isContract(pairAddress), "UniswapV2Oracle: POOL_NOT_FOUND");

@@ -116,7 +116,7 @@ contract UniswapV3Oracle is SafePeriodicOracle {
         );
     }
 
-    function _update(address token) internal override returns (bool) {
+    function _update(address token) internal virtual override returns (bool) {
         ObservationLibrary.Observation storage observation = observations[token];
 
         /*
