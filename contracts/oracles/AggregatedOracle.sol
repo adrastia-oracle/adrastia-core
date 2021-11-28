@@ -14,6 +14,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
     mapping(address => address[]) tokenSpecificOracles;
 
+    mapping(address => uint8) public oracleQuoteTokenDecimals;
+
     string internal _quoteTokenName;
     address internal _quoteTokenAddress;
     string internal _quoteTokenSymbol;
@@ -37,6 +39,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             require(!oracleExists[oracles_[i]], "AggregatedOracle: DUPLICATE_ORACLE");
 
             oracleExists[oracles_[i]] = true;
+
+            oracleQuoteTokenDecimals[oracles_[i]] = IOracle(oracles_[i]).quoteTokenDecimals();
         }
 
         // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
@@ -57,6 +61,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             tokenSpecificOracles[oracle.token].push(oracle.oracle);
 
             oracleForExists[oracle.token][oracle.oracle] = true;
+
+            oracleQuoteTokenDecimals[oracle.oracle] = IOracle(oracle.oracle).quoteTokenDecimals();
         }
     }
 
@@ -151,6 +157,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             uint256 validResponses
         )
     {
+        uint256 qtDecimals = _quoteTokenDecimals;
+
         /*
          * Compute harmonic mean
          */
@@ -175,7 +183,24 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                     uint256 oracleQuoteTokenLiquidity
                 ) {
                     if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
+                        uint256 decimals = oracleQuoteTokenDecimals[_oracles[i]];
+
                         ++validResponses;
+
+                        // Fix differing quote token decimal places
+                        if (decimals < qtDecimals) {
+                            // Scale up
+                            uint256 scalar = 10**(qtDecimals - decimals);
+
+                            oraclePrice *= scalar;
+                            oracleQuoteTokenLiquidity *= scalar;
+                        } else if (decimals > qtDecimals) {
+                            // Scale down
+                            uint256 scalar = 10**(decimals - qtDecimals);
+
+                            oraclePrice /= scalar;
+                            oracleQuoteTokenLiquidity /= scalar;
+                        }
 
                         denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
