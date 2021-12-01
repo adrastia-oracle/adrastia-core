@@ -12,7 +12,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
     address[] public oracles;
 
-    mapping(address => address[]) tokenSpecificOracles;
+    mapping(address => address[]) public tokenSpecificOracles;
 
     mapping(address => uint8) public oracleQuoteTokenDecimals;
 
