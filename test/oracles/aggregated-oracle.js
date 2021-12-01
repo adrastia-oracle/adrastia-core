@@ -43,60 +43,12 @@ function harmonicMean(values, weights) {
 }
 
 describe("AggregatedOracle#constructor", async function () {
+    var underlyingOracleFactory;
     var oracleFactory;
 
-    var tests = [];
-
-    const tokenSpecificOracle1 = {
-        token: USDC,
-        oracle: BAT,
-    };
-
-    const tokenSpecificOracle2 = {
-        token: GRT,
-        oracle: SHIB,
-    };
-
-    const tokenSpecificOracle3 = {
-        token: AddressZero,
-        oracle: ZRX,
-    };
-
-    const tokensWithSpecificOracles = [USDC, GRT, AddressZero];
-
-    const testPermutations = [
-        ["NAME"], // quoteTokenName
-        [(AddressZero, USDC)], // quoteTokenAddress
-        ["NIL", "USDC"], // quoteTokenSymbol
-        [18], // quoteTokenDecimals
-        [[AddressZero], [USDC], [AddressZero, USDC]], // oracles
-        [
-            // tokenSpecificOracles
-            [],
-            [tokenSpecificOracle1],
-            [tokenSpecificOracle1, tokenSpecificOracle2],
-            [tokenSpecificOracle1, tokenSpecificOracle3],
-            [tokenSpecificOracle2, tokenSpecificOracle3],
-        ],
-        [(BigNumber.from(1), BigNumber.from(100))], // period
-    ];
-
-    for (const combo of combos(testPermutations)) {
-        tests.push({
-            args: {
-                quoteTokenName: combo[0],
-                quoteTokenAddress: combo[1],
-                quoteTokenSymbol: combo[2],
-                quoteTokenDecimals: combo[3],
-                oracles: combo[4],
-                tokenSpecificOracles: combo[5],
-                period: combo[6],
-            },
-        });
-    }
-
     beforeEach(async () => {
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        oracleFactory = await ethers.getContractFactory("AggregatedOracle");
+        underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
     });
 
     function oraclesFor(token, oracles, tokenSpecificOracles) {
@@ -111,31 +63,46 @@ describe("AggregatedOracle#constructor", async function () {
         return allOracles;
     }
 
-    tests.forEach(({ args }) => {
-        it(`Should construct the oracle correctly with params ${JSON.stringify(args)}`, async () => {
-            const oracle = await oracleFactory.deploy(
-                args["quoteTokenName"],
-                args["quoteTokenAddress"],
-                args["quoteTokenSymbol"],
-                args["quoteTokenDecimals"],
-                args["oracles"],
-                args["tokenSpecificOracles"],
-                args["period"]
-            );
+    it("Should deploy correctly with valid arguments", async function () {
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
 
-            expect(await oracle.quoteTokenName()).to.equal(args["quoteTokenName"]);
-            expect(await oracle.quoteTokenAddress()).to.equal(args["quoteTokenAddress"]);
-            expect(await oracle.quoteTokenSymbol()).to.equal(args["quoteTokenSymbol"]);
-            expect(await oracle.quoteTokenDecimals()).to.equal(args["quoteTokenDecimals"]);
-            expect(await oracle.getOracles()).to.eql(args["oracles"]); // eql = deep equality
-            expect(await oracle.period()).to.equal(args["period"]);
+        const oracle2 = await underlyingOracleFactory.deploy(USDC);
+        await oracle2.deployed();
 
-            for (const token of tokensWithSpecificOracles) {
-                expect(await oracle.getOraclesFor(token)).to.eql(
-                    oraclesFor(token, args["oracles"], args["tokenSpecificOracles"])
-                );
-            }
-        });
+        const grtOracle = {
+            token: GRT,
+            oracle: oracle2.address,
+        };
+
+        const quoteTokenName = "USD Coin";
+        const quoteTokenAddress = USDC;
+        const quoteTokenSymbol = "USDC";
+        const quoteTokenDecimals = 6;
+        const oracles = [oracle1.address];
+        const tokenSpecificOracles = [grtOracle];
+        const period = 30;
+
+        const oracle = await oracleFactory.deploy(
+            quoteTokenName,
+            quoteTokenAddress,
+            quoteTokenSymbol,
+            quoteTokenDecimals,
+            oracles,
+            tokenSpecificOracles,
+            period
+        );
+
+        expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
+        expect(await oracle.quoteTokenAddress()).to.equal(quoteTokenAddress);
+        expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);
+        expect(await oracle.quoteTokenDecimals()).to.equal(quoteTokenDecimals);
+        expect(await oracle.getOracles()).to.eql(oracles); // eql = deep equality
+        expect(await oracle.period()).to.equal(period);
+
+        expect(await oracle.getOraclesFor(grtOracle.token)).to.eql(
+            oraclesFor(grtOracle.token, oracles, tokenSpecificOracles)
+        );
     });
 
     it("Should revert if no underlying oracles are provided", async () => {
@@ -144,29 +111,40 @@ describe("AggregatedOracle#constructor", async function () {
         );
     });
 
-    it("Should revert if no duplicate general oracles are provided", async () => {
-        await expect(oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [USDC, USDC], [], PERIOD)).to.be.revertedWith(
-            "AggregatedOracle: DUPLICATE_ORACLE"
-        );
-    });
+    it("Should revert if duplicate general oracles are provided", async () => {
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
 
-    it("Should revert if no duplicate token specific oracles are provided", async () => {
         await expect(
-            oracleFactory.deploy(
-                "NAME",
-                AddressZero,
-                "NIL",
-                18,
-                [],
-                [tokenSpecificOracle1, tokenSpecificOracle1],
-                PERIOD
-            )
+            oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [oracle1.address, oracle1.address], [], PERIOD)
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
 
-    it("Should revert if no duplicate general / token specific oracles are provided", async () => {
+    it("Should revert if duplicate token specific oracles are provided", async () => {
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
+
+        const oracle1Config = {
+            token: GRT,
+            oracle: oracle1.address,
+        };
+
         await expect(
-            oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [BAT], [tokenSpecificOracle1], PERIOD)
+            oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [], [oracle1Config, oracle1Config], PERIOD)
+        ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
+    });
+
+    it("Should revert if duplicate general / token specific oracles are provided", async () => {
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
+
+        const oracle1Config = {
+            token: GRT,
+            oracle: oracle1.address,
+        };
+
+        await expect(
+            oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [oracle1.address], [oracle1Config], PERIOD)
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
 });
@@ -174,10 +152,14 @@ describe("AggregatedOracle#constructor", async function () {
 describe("AggregatedOracle#needsUpdate", function () {
     var oracle;
 
-    beforeEach(async () => {
+    beforeEach(async function () {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -236,9 +218,13 @@ describe("AggregatedOracle#consultPrice(token)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -270,9 +256,13 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -392,9 +382,13 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
     ];
 
     beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -458,9 +452,13 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
     ];
 
     beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -610,9 +608,13 @@ describe("AggregatedOracle#consult(token)", function () {
     ];
 
     beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -703,9 +705,13 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
     ];
 
     beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [AddressZero], [], PERIOD);
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", AddressZero, "NIL", 18, [underlyingOracle.address], [], PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -811,7 +817,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy("USD Coin", quoteToken, "USDC", 8, [underlyingOracle.address], [], PERIOD);
+        oracle = await oracleFactory.deploy("USD Coin", quoteToken, "USDC", 6, [underlyingOracle.address], [], PERIOD);
     });
 
     it("Should update successfully", async () => {
@@ -1142,7 +1148,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             "USD Coin",
             quoteToken,
             "USDC",
-            8,
+            6,
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD
