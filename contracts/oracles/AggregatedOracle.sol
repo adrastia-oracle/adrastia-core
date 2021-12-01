@@ -66,19 +66,19 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         }
     }
 
-    function quoteTokenName() external view virtual override(IOracle, AbstractOracle) returns (string memory) {
+    function quoteTokenName() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
         return _quoteTokenName;
     }
 
-    function quoteTokenAddress() external view virtual override(IOracle, AbstractOracle) returns (address) {
+    function quoteTokenAddress() public view virtual override(IOracle, AbstractOracle) returns (address) {
         return _quoteTokenAddress;
     }
 
-    function quoteTokenSymbol() external view virtual override(IOracle, AbstractOracle) returns (string memory) {
+    function quoteTokenSymbol() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
         return _quoteTokenSymbol;
     }
 
-    function quoteTokenDecimals() external view virtual override(IOracle, AbstractOracle) returns (uint8) {
+    function quoteTokenDecimals() public view virtual override(IOracle, AbstractOracle) returns (uint8) {
         return _quoteTokenDecimals;
     }
 
