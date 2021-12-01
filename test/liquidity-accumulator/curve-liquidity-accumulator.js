@@ -1,0 +1,148 @@
+const { BigNumber } = require("ethers");
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
+
+const TWO_PERCENT_CHANGE = 2000000;
+
+describe("CurveLiquidityAccumulator#constructor", function () {
+    var curvePool;
+
+    var quoteToken;
+    var token;
+    var invalidToken;
+
+    beforeEach(async () => {
+        // Create tokens
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
+
+        token = await erc20Factory.deploy("Token", "T", 18);
+        quoteToken = await erc20Factory.deploy("Quote Token", "QT", 18);
+        invalidToken = await erc20Factory.deploy("Invalid Token", "IT", 18);
+
+        await token.deployed();
+        await quoteToken.deployed();
+        await invalidToken.deployed();
+
+        // Deploy the curve pool
+        const poolFactory = await ethers.getContractFactory("CurvePoolStub");
+        curvePool = await poolFactory.deploy([token.address, quoteToken.address]);
+        await curvePool.deployed();
+    });
+
+    it("Should revert when given a quote token not in the pool", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulator");
+        await expect(
+            accumulatorFactory.deploy(curvePool.address, 2, invalidToken.address, TWO_PERCENT_CHANGE, 1, 100)
+        ).to.be.revertedWith("CurveLiquidityAccumulator: INVALID_QUOTE_TOKEN");
+    });
+});
+
+describe("CurveLiquidityAccumulator#needsUpdate", function () {
+    this.timeout(100000);
+
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var curvePool;
+    var accumulator;
+
+    var quoteToken;
+    var token;
+
+    beforeEach(async () => {
+        // Create tokens
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
+
+        token = await erc20Factory.deploy("Token", "T", 18);
+        quoteToken = await erc20Factory.deploy("Quote Token", "QT", 18);
+
+        await token.deployed();
+        await quoteToken.deployed();
+
+        // Deploy the curve pool
+        const poolFactory = await ethers.getContractFactory("CurvePoolStub");
+        curvePool = await poolFactory.deploy([token.address, quoteToken.address]);
+        await curvePool.deployed();
+
+        // Deploy accumulator
+        const accumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulator");
+        accumulator = await accumulatorFactory.deploy(
+            curvePool.address,
+            2,
+            quoteToken.address,
+            TWO_PERCENT_CHANGE,
+            minUpdateDelay,
+            maxUpdateDelay
+        );
+    });
+
+    it("Should return false when given an invalid token", async function () {
+        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+    });
+
+    it("Should return true when given a valid token", async function () {
+        expect(await accumulator.needsUpdate(token.address)).to.equal(true);
+    });
+});
+
+describe("CurveLiquidityAccumulator#fetchLiquidity", function () {
+    this.timeout(100000);
+
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var curvePool;
+    var accumulator;
+
+    var quoteToken;
+    var token;
+
+    const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
+
+    beforeEach(async () => {
+        // Create tokens
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
+
+        token = await erc20Factory.deploy("Token", "T", 18);
+        quoteToken = await erc20Factory.deploy("Quote Token", "QT", 18);
+
+        await token.deployed();
+        await quoteToken.deployed();
+
+        // Deploy the curve pool
+        const poolFactory = await ethers.getContractFactory("CurvePoolStub");
+        curvePool = await poolFactory.deploy([token.address, quoteToken.address]);
+        await curvePool.deployed();
+
+        // Deploy accumulator
+        const accumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(
+            curvePool.address,
+            2,
+            quoteToken.address,
+            TWO_PERCENT_CHANGE,
+            minUpdateDelay,
+            maxUpdateDelay
+        );
+    });
+
+    it("Should revert when given an invalid token", async function () {
+        await expect(accumulator.harnessFetchLiquidity(GRT)).to.be.revertedWith(
+            "CurveLiquidityAccumulator: INVALID_TOKEN"
+        );
+    });
+
+    tests.forEach(({ args }) => {
+        it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
+            await curvePool.stubSetBalance(token.address, args[0]);
+            await curvePool.stubSetBalance(quoteToken.address, args[1]);
+
+            const [tokenLiquidity, quoteTokenLiquidity] = await accumulator.harnessFetchLiquidity(token.address);
+
+            expect(tokenLiquidity).to.equal(BigNumber.from(args[0]));
+            expect(quoteTokenLiquidity).to.equal(BigNumber.from(args[1]));
+        });
+    });
+});
