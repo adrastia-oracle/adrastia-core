@@ -56,6 +56,12 @@ contract CurvePriceAccumulator is PriceAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
+    function needsUpdate(address token) public view virtual override returns (bool) {
+        if (tokenIndices[token].index == 0) return false;
+
+        return super.needsUpdate(token);
+    }
+
     function fetchPrice(address token) internal view virtual override returns (uint256 price) {
         ICurvePool pool = ICurvePool(curvePool);
 
