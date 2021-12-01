@@ -31,6 +31,10 @@ contract AggregatedOracleStub is AggregatedOracle {
         )
     {}
 
+    function stubSetQuoteTokenDecimals(uint8 decimals) public {
+        _quoteTokenDecimals = decimals;
+    }
+
     function stubSetObservation(
         address token,
         uint256 price,

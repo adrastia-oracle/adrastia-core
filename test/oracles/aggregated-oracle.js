@@ -852,6 +852,72 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         expect(oTimestamp).to.equal(timestamp);
     });
 
+    it("Has correct price and quote token liquidity when the oracle has delta +2 quote token decimals", async function () {
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await oracle.stubSetQuoteTokenDecimals((await oracle.quoteTokenDecimals()) + 2);
+        // Increase by 2 decimal places (delta from underlying is +2), so multiply by 10^2
+        const expectedPrice = price.mul(100);
+        const expectedQuoteTokenLiquidity = quoteTokenLiquidity.mul(100);
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        await expect(oracle.update(token))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, quoteToken, timestamp, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity);
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(expectedPrice);
+        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+
+    it("Has correct price and quote token liquidity when the oracle has delta -2 quote token decimals", async function () {
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await oracle.stubSetQuoteTokenDecimals((await oracle.quoteTokenDecimals()) - 2);
+        // Decrease by 2 decimal places (delta from underlying is -2), so divide by 10^2
+        const expectedPrice = price.div(100);
+        const expectedQuoteTokenLiquidity = quoteTokenLiquidity.div(100);
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        await expect(oracle.update(token))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, quoteToken, timestamp, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity);
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(expectedPrice);
+        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+
     it("Shouldn't use old rates", async () => {
         const price = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
@@ -1155,7 +1221,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         );
     });
 
-    it("Should update successfully", async () => {
+    it("Should update successfully w/ same prices and liquidities", async () => {
         const price = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
@@ -1201,7 +1267,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         expect(oTimestamp).to.equal(timestamp);
     });
 
-    it("Should update successfully with differing prices", async () => {
+    it("Should update successfully w/ differing prices and liquidities", async () => {
         const price1 = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity1 = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity1 = ethers.utils.parseUnits("1", 18);
@@ -1252,6 +1318,136 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
         expect(oQuoteTokenLiquidity).to.equal(totalQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+});
+
+describe("AggregatedOracle#update w/ 1 general underlying oracle and one token specific oracle", function () {
+    const quoteToken = USDC;
+    var token = GRT;
+
+    var underlyingOracle;
+    var tokenSpecificOracle;
+
+    var oracle;
+
+    beforeEach(async () => {
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+
+        underlyingOracle = await mockOracleFactory.deploy(quoteToken);
+        await underlyingOracle.deployed();
+
+        tokenSpecificOracle = await mockOracleFactory.deploy(quoteToken);
+        await tokenSpecificOracle.deployed();
+
+        oracle = await oracleFactory.deploy(
+            "USD Coin",
+            quoteToken,
+            "USDC",
+            6,
+            [underlyingOracle.address],
+            [
+                {
+                    token: GRT,
+                    oracle: tokenSpecificOracle.address,
+                },
+            ],
+            PERIOD
+        );
+    });
+
+    it("Should call update on both the general oracle and the token specific oracle (underlying)", async () => {
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await tokenSpecificOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        const totalTokenLiquidity = tokenLiquidity.mul(2);
+        const totalQuoteTokenLiquidity = quoteTokenLiquidity.mul(2);
+
+        await expect(oracle.update(token))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, quoteToken, timestamp, price, totalTokenLiquidity, totalQuoteTokenLiquidity);
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+        expect(await tokenSpecificOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(price);
+        expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(totalQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+
+    it("Should call update on only the general oracle (underlying)", async () => {
+        token = BAT; // Not covered by the token specific oracle
+
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await tokenSpecificOracle.stubSetObservation(
+            token,
+            ethers.utils.parseUnits("3", 18),
+            ethers.utils.parseUnits("30", 18),
+            ethers.utils.parseUnits("30", 18),
+            await currentBlockTimestamp()
+        );
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        await expect(oracle.update(token))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, quoteToken, timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+        expect(await tokenSpecificOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(0)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(price);
+        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
         expect(oTimestamp).to.equal(timestamp);
     });
 });
