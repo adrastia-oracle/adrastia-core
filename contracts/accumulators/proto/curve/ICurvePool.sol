@@ -11,6 +11,4 @@ interface ICurvePool {
     function coins(uint256 index) external view returns (address);
 
     function balances(uint256 index) external view returns (uint256);
-
-    function fee() external view returns (uint256);
 }
