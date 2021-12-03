@@ -84,6 +84,8 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
+        require(token != address(0), "UniswapV3LiquidityAccumulator: INVALID_TOKEN");
+
         uint256 fees0;
         uint256 fees1;
 
