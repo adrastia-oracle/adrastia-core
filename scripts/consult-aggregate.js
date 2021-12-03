@@ -168,6 +168,8 @@ async function main() {
     const quoteTokenSymbol = await oracle.quoteTokenSymbol();
     const quoteTokenDecimals = await oracle.quoteTokenDecimals();
 
+    var lastConsultGas = 0;
+
     while (true) {
         try {
             if (await uniswapV2.liquidityAccumulator.needsUpdate(token)) {
@@ -219,6 +221,14 @@ async function main() {
                 console.log(
                     "\u001b[" + 93 + "m" + "Oracle updated. Gas used = " + updateReceipt["gasUsed"] + "\u001b[0m"
                 );
+            }
+
+            const consultGas = await oracle.estimateGas["consult(address)"](token);
+
+            if (!consultGas.eq(lastConsultGas)) {
+                console.log("\u001b[" + 93 + "m" + "Consult gas used = " + consultGas + "\u001b[0m");
+
+                lastConsultGas = consultGas;
             }
 
             const consultation = await oracle["consult(address)"](token);

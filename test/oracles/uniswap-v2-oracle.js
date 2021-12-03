@@ -277,7 +277,7 @@ describe("UniswapV2Oracle#consultPrice(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -301,6 +301,14 @@ describe("UniswapV2Oracle#consultPrice(token)", function () {
 
         expect(await oracle["consultPrice(address)"](AddressZero)).to.equal(price);
     });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const price = await oracle["consultPrice(address)"](await oracle.quoteTokenAddress());
+
+        const expectedPrice = ethers.utils.parseUnits("1.0", await oracle.quoteTokenDecimals());
+
+        expect(price).to.equal(expectedPrice);
+    });
 });
 
 describe("UniswapV2Oracle#consultPrice(token, maxAge)", function () {
@@ -311,7 +319,7 @@ describe("UniswapV2Oracle#consultPrice(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -394,6 +402,14 @@ describe("UniswapV2Oracle#consultPrice(token, maxAge)", function () {
 
         expect(await oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.equal(price);
     });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const price = await oracle["consultPrice(address,uint256)"](await oracle.quoteTokenAddress(), MAX_AGE);
+
+        const expectedPrice = ethers.utils.parseUnits("1.0", await oracle.quoteTokenDecimals());
+
+        expect(price).to.equal(expectedPrice);
+    });
 });
 
 describe("UniswapV2Oracle#consultLiquidity(token)", function () {
@@ -433,13 +449,22 @@ describe("UniswapV2Oracle#consultLiquidity(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consultLiquidity(address)"](AddressZero)).to.be.revertedWith(
             "AbstractOracle: MISSING_OBSERVATION"
         );
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const [tokenLiqudity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](
+            await oracle.quoteTokenAddress()
+        );
+
+        expect(tokenLiqudity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
     });
 
     tests.forEach(({ args }) => {
@@ -499,7 +524,7 @@ describe("UniswapV2Oracle#consultLiquidity(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -563,6 +588,16 @@ describe("UniswapV2Oracle#consultLiquidity(token, maxAge)", function () {
 
         expect(await currentBlockTimestamp()).to.equal(time);
         await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const [tokenLiqudity, quoteTokenLiquidity] = await oracle["consultLiquidity(address,uint256)"](
+            await oracle.quoteTokenAddress(),
+            MAX_AGE
+        );
+
+        expect(tokenLiqudity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
     });
 
     tests.forEach(({ args }) => {
@@ -651,11 +686,23 @@ describe("UniswapV2Oracle#consult(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
     });
 
     it("Should revert when there's no observation", async () => {
         await expect(oracle["consult(address)"](AddressZero)).to.be.revertedWith("AbstractOracle: MISSING_OBSERVATION");
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const [price, tokenLiqudity, quoteTokenLiquidity] = await oracle["consult(address)"](
+            await oracle.quoteTokenAddress()
+        );
+
+        const expectedPrice = ethers.utils.parseUnits("1.0", await oracle.quoteTokenDecimals());
+
+        expect(price).to.equal(expectedPrice);
+        expect(tokenLiqudity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
     });
 
     tests.forEach(({ args }) => {
@@ -744,7 +791,7 @@ describe("UniswapV2Oracle#consult(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -808,6 +855,19 @@ describe("UniswapV2Oracle#consult(token, maxAge)", function () {
 
         expect(await currentBlockTimestamp()).to.equal(time);
         await expect(oracle["consult(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const [price, tokenLiqudity, quoteTokenLiquidity] = await oracle["consult(address,uint256)"](
+            await oracle.quoteTokenAddress(),
+            MAX_AGE
+        );
+
+        const expectedPrice = ethers.utils.parseUnits("1.0", await oracle.quoteTokenDecimals());
+
+        expect(price).to.equal(expectedPrice);
+        expect(tokenLiqudity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
     });
 
     tests.forEach(({ args }) => {

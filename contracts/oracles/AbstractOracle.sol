@@ -36,6 +36,8 @@ abstract contract AbstractOracle is IOracle {
     }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
+        if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -44,6 +46,8 @@ abstract contract AbstractOracle is IOracle {
     }
 
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
+        if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -59,6 +63,8 @@ abstract contract AbstractOracle is IOracle {
         override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
+        if (token == quoteTokenAddress()) return (0, 0);
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -74,6 +80,8 @@ abstract contract AbstractOracle is IOracle {
         override
         returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
     {
+        if (token == quoteTokenAddress()) return (0, 0);
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -94,6 +102,8 @@ abstract contract AbstractOracle is IOracle {
             uint256 quoteTokenLiquidity
         )
     {
+        if (token == quoteTokenAddress()) return (10**quoteTokenDecimals(), 0, 0);
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -114,6 +124,8 @@ abstract contract AbstractOracle is IOracle {
             uint256 quoteTokenLiquidity
         )
     {
+        if (token == quoteTokenAddress()) return (10**quoteTokenDecimals(), 0, 0);
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
