@@ -7,6 +7,8 @@ contract AggregatedOracleStub is AggregatedOracle {
     struct Config {
         bool needsUpdateOverridden;
         bool needsUpdate;
+        bool quoteTokenDecimalsOverridden;
+        uint8 quoteTokenDecimals;
     }
 
     Config public config;
@@ -32,7 +34,8 @@ contract AggregatedOracleStub is AggregatedOracle {
     {}
 
     function stubSetQuoteTokenDecimals(uint8 decimals) public {
-        _quoteTokenDecimals = decimals;
+        config.quoteTokenDecimalsOverridden = true;
+        config.quoteTokenDecimals = decimals;
     }
 
     function stubSetObservation(
@@ -60,5 +63,10 @@ contract AggregatedOracleStub is AggregatedOracle {
     function needsUpdate(address token) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
         else return super.needsUpdate(token);
+    }
+
+    function quoteTokenDecimals() public view virtual override returns (uint8) {
+        if (config.quoteTokenDecimalsOverridden) return config.quoteTokenDecimals;
+        else return super.quoteTokenDecimals();
     }
 }

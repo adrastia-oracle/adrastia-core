@@ -17,9 +17,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     mapping(address => uint8) public oracleQuoteTokenDecimals;
 
     string internal _quoteTokenName;
-    address internal _quoteTokenAddress;
     string internal _quoteTokenSymbol;
-    uint8 internal _quoteTokenDecimals;
+    address internal immutable _quoteTokenAddress;
+    uint8 internal immutable _quoteTokenDecimals;
 
     mapping(address => bool) private oracleExists;
     mapping(address => mapping(address => bool)) private oracleForExists;
