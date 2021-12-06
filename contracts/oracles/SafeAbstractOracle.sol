@@ -47,7 +47,7 @@ abstract contract SafeAbstractOracle is IOracle {
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
 
-        return observations[token].price;
+        return observation.price;
     }
 
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
