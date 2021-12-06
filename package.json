@@ -18,11 +18,16 @@
   },
   "files": [
     "contracts",
+    "!contracts/test",
     "artifacts/contracts/**/*.json",
+    "!artifacts/contracts/test/**/*.json",
     "!artifacts/contracts/**/*.dbg.json"
   ],
   "engines": {
     "node": ">=14"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@openzeppelin-v3/contracts": "npm:@openzeppelin/contracts@3.4.2",
