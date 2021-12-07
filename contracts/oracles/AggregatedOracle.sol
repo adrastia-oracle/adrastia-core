@@ -157,7 +157,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             uint256 validResponses
         )
     {
-        uint256 qtDecimals = _quoteTokenDecimals;
+        uint256 qtDecimals = quoteTokenDecimals();
 
         /*
          * Compute harmonic mean
