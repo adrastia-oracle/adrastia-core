@@ -159,6 +159,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     {
         uint256 qtDecimals = quoteTokenDecimals();
 
+        uint256 maxAge = period * 2;
+
         /*
          * Compute harmonic mean
          */
@@ -177,7 +179,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                 //
                 // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed
                 // -> We don't want to use old data.w
-                try IOracle(_oracles[i]).consult(token, period * 2) returns (
+                try IOracle(_oracles[i]).consult(token, maxAge) returns (
                     uint256 oraclePrice,
                     uint256 oracleTokenLiquidity,
                     uint256 oracleQuoteTokenLiquidity
