@@ -79,7 +79,11 @@ contract UniswapV2Oracle is PeriodicOracle {
                 priceAccumulation.timestamp = timestamp;
             }
 
-            uint32 timeElapsed = blockTimestamp - uint32(priceAccumulation.timestamp);
+            uint32 timeElapsed;
+            unchecked {
+                // Subtraction underflow is desired
+                timeElapsed = blockTimestamp - uint32(priceAccumulation.timestamp);
+            }
             if (timeElapsed != 0) {
                 // Store price and current time
                 observation.price = computeAmountOut(
