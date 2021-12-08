@@ -114,6 +114,12 @@ module.exports = {
                 url: "https://eth-mainnet.alchemyapi.io/v2/VCgYDancQJkTUUroC021s8qizSktMDQJ",
                 //blockNumber: 13567142,
             },
+            mining: {
+                auto: true,
+                mempool: {
+                    order: "fifo",
+                },
+            },
         },
     },
 };
