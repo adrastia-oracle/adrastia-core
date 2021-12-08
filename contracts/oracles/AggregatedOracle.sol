@@ -5,6 +5,10 @@ import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
 
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
+    /*
+     * Structs
+     */
+
     struct TokenSpecificOracle {
         address token;
         address oracle;
@@ -15,6 +19,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         uint8 quoteTokenDecimals;
     }
 
+    /*
+     * Internal variables
+     */
+
     OracleConfig[] internal oracles;
     mapping(address => OracleConfig[]) internal tokenSpecificOracles;
 
@@ -23,8 +31,16 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     address internal immutable _quoteTokenAddress;
     uint8 internal immutable _quoteTokenDecimals;
 
+    /*
+     * Private variables
+     */
+
     mapping(address => bool) private oracleExists;
     mapping(address => mapping(address => bool)) private oracleForExists;
+
+    /*
+     * Constructors
+     */
 
     constructor(
         string memory quoteTokenName_,
@@ -70,21 +86,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         _quoteTokenDecimals = quoteTokenDecimals_;
     }
 
-    function quoteTokenName() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
-        return _quoteTokenName;
-    }
-
-    function quoteTokenAddress() public view virtual override(IOracle, AbstractOracle) returns (address) {
-        return _quoteTokenAddress;
-    }
-
-    function quoteTokenSymbol() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
-        return _quoteTokenSymbol;
-    }
-
-    function quoteTokenDecimals() public view virtual override(IOracle, AbstractOracle) returns (uint8) {
-        return _quoteTokenDecimals;
-    }
+    /*
+     * External functions
+     */
 
     function getOracles() external view virtual override returns (address[] memory) {
         OracleConfig[] memory _oracles = oracles;
@@ -112,6 +116,30 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
         return allOracles;
     }
+
+    /*
+     * Public functions
+     */
+
+    function quoteTokenName() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
+        return _quoteTokenName;
+    }
+
+    function quoteTokenAddress() public view virtual override(IOracle, AbstractOracle) returns (address) {
+        return _quoteTokenAddress;
+    }
+
+    function quoteTokenSymbol() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
+        return _quoteTokenSymbol;
+    }
+
+    function quoteTokenDecimals() public view virtual override(IOracle, AbstractOracle) returns (uint8) {
+        return _quoteTokenDecimals;
+    }
+
+    /*
+     * Internal functions
+     */
 
     function _update(address token) internal override returns (bool) {
         bool underlyingUpdated;
