@@ -62,7 +62,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle {
                 liquidityAccumulator
             ).getCurrentAccumulation(token);
 
-            uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
+            AccumulationLibrary.LiquidityAccumulator storage lastAccumulation = liquidityAccumulations[token];
+
+            uint256 lastAccumulationTime = lastAccumulation.timestamp;
 
             if (freshAccumulation.timestamp > lastAccumulationTime) {
                 // Accumulator updated, so we update our observation
@@ -71,10 +73,12 @@ contract PeriodicAccumulationOracle is PeriodicOracle {
                     // We have two accumulations -> calculate liquidity from them
                     (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
                         liquidityAccumulator
-                    ).calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
+                    ).calculateLiquidity(lastAccumulation, freshAccumulation);
                 }
 
-                liquidityAccumulations[token] = freshAccumulation;
+                lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
+                lastAccumulation.cumulativeQuoteTokenLiquidity = freshAccumulation.cumulativeQuoteTokenLiquidity;
+                lastAccumulation.timestamp = freshAccumulation.timestamp;
             }
         }
 
