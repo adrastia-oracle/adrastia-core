@@ -84,7 +84,7 @@ contract UniswapV3Oracle is SafePeriodicOracle {
         );
     }
 
-    function calculatePrice(address token) internal returns (uint256 price) {
+    function calculatePrice(address token) internal view returns (uint256 price) {
         uint256 len = poolFees.length;
 
         OracleLibrary.WeightedTickData[] memory periodObservations = new OracleLibrary.WeightedTickData[](len);
@@ -133,7 +133,9 @@ contract UniswapV3Oracle is SafePeriodicOracle {
                 liquidityAccumulator
             ).getCurrentAccumulation(token);
 
-            uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
+            AccumulationLibrary.LiquidityAccumulator storage lastAccumulation = liquidityAccumulations[token];
+
+            uint256 lastAccumulationTime = lastAccumulation.timestamp;
 
             if (freshAccumulation.timestamp > lastAccumulationTime) {
                 // Accumulator updated, so we update our observation
@@ -142,10 +144,12 @@ contract UniswapV3Oracle is SafePeriodicOracle {
                     // We have two accumulations -> calculate liquidity from them
                     (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
                         liquidityAccumulator
-                    ).calculateLiquidity(liquidityAccumulations[token], freshAccumulation);
+                    ).calculateLiquidity(lastAccumulation, freshAccumulation);
                 }
 
-                liquidityAccumulations[token] = freshAccumulation;
+                lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
+                lastAccumulation.cumulativeQuoteTokenLiquidity = freshAccumulation.cumulativeQuoteTokenLiquidity;
+                lastAccumulation.timestamp = freshAccumulation.timestamp;
             }
         }
 
