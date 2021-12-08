@@ -10,11 +10,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         address oracle;
     }
 
-    address[] public oracles;
+    struct OracleConfig {
+        address oracle;
+        uint8 quoteTokenDecimals;
+    }
 
-    mapping(address => address[]) public tokenSpecificOracles;
-
-    mapping(address => uint8) public oracleQuoteTokenDecimals;
+    OracleConfig[] internal oracles;
+    mapping(address => OracleConfig[]) internal tokenSpecificOracles;
 
     string internal _quoteTokenName;
     string internal _quoteTokenSymbol;
@@ -35,35 +37,37 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     ) PeriodicOracle(address(0), period_) {
         require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");
 
+        // Setup general oracles
         for (uint256 i = 0; i < oracles_.length; ++i) {
             require(!oracleExists[oracles_[i]], "AggregatedOracle: DUPLICATE_ORACLE");
 
             oracleExists[oracles_[i]] = true;
 
-            oracleQuoteTokenDecimals[oracles_[i]] = IOracle(oracles_[i]).quoteTokenDecimals();
+            oracles.push(
+                OracleConfig({oracle: oracles_[i], quoteTokenDecimals: IOracle(oracles_[i]).quoteTokenDecimals()})
+            );
         }
 
-        // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
-        // Note: All underlying quote tokens must be loosly equal (i.e. equal in value and in number of decimals).
-        _quoteTokenName = quoteTokenName_;
-        _quoteTokenAddress = quoteTokenAddress_;
-        _quoteTokenSymbol = quoteTokenSymbol_;
-        _quoteTokenDecimals = quoteTokenDecimals_;
-
-        oracles = oracles_;
-
+        // Setup token-specific oracles
         for (uint256 i = 0; i < tokenSpecificOracles_.length; ++i) {
             TokenSpecificOracle memory oracle = tokenSpecificOracles_[i];
 
             require(!oracleExists[oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
             require(!oracleForExists[oracle.token][oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
 
-            tokenSpecificOracles[oracle.token].push(oracle.oracle);
-
             oracleForExists[oracle.token][oracle.oracle] = true;
 
-            oracleQuoteTokenDecimals[oracle.oracle] = IOracle(oracle.oracle).quoteTokenDecimals();
+            tokenSpecificOracles[oracle.token].push(
+                OracleConfig({oracle: oracle.oracle, quoteTokenDecimals: IOracle(oracle.oracle).quoteTokenDecimals()})
+            );
         }
+
+        // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
+        // Note: All underlying quote tokens must be loosly equal (i.e. equal in value).
+        _quoteTokenName = quoteTokenName_;
+        _quoteTokenAddress = quoteTokenAddress_;
+        _quoteTokenSymbol = quoteTokenSymbol_;
+        _quoteTokenDecimals = quoteTokenDecimals_;
     }
 
     function quoteTokenName() public view virtual override(IOracle, AbstractOracle) returns (string memory) {
@@ -83,21 +87,28 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     }
 
     function getOracles() external view virtual override returns (address[] memory) {
-        return oracles;
+        OracleConfig[] memory _oracles = oracles;
+
+        address[] memory allOracles = new address[](_oracles.length);
+
+        // Add the general oracles
+        for (uint256 i = 0; i < _oracles.length; ++i) allOracles[i] = _oracles[i].oracle;
+
+        return allOracles;
     }
 
     function getOraclesFor(address token) external view virtual override returns (address[] memory) {
-        address[] memory _tokenSpecificOracles = tokenSpecificOracles[token];
-        address[] memory _oracles = oracles;
+        OracleConfig[] memory _tokenSpecificOracles = tokenSpecificOracles[token];
+        OracleConfig[] memory _oracles = oracles;
 
         address[] memory allOracles = new address[](_oracles.length + _tokenSpecificOracles.length);
 
         // Add the general oracles
-        for (uint256 i = 0; i < _oracles.length; ++i) allOracles[i] = _oracles[i];
+        for (uint256 i = 0; i < _oracles.length; ++i) allOracles[i] = _oracles[i].oracle;
 
         // Add the token specific oracles
         for (uint256 i = 0; i < _tokenSpecificOracles.length; ++i)
-            allOracles[_oracles.length + i] = _tokenSpecificOracles[i];
+            allOracles[_oracles.length + i] = _tokenSpecificOracles[i].oracle;
 
         return allOracles;
     }
@@ -107,7 +118,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
         // Ensure all underlying oracles are up-to-date
         for (uint256 j = 0; j < 2; ++j) {
-            address[] memory _oracles;
+            OracleConfig[] memory _oracles;
 
             if (j == 0) _oracles = oracles;
             else _oracles = tokenSpecificOracles[token];
@@ -115,12 +126,12 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             for (uint256 i = 0; i < _oracles.length; ++i) {
                 // We don't want any problematic underlying oracles to prevent this oracle from updating
                 // so we put update in a try-catch block
-                try IOracle(_oracles[i]).update(token) returns (bool updated) {
+                try IOracle(_oracles[i].oracle).update(token) returns (bool updated) {
                     underlyingUpdated = underlyingUpdated || updated;
                 } catch Error(string memory reason) {
-                    emit UpdateErrorWithReason(_oracles[i], token, reason);
+                    emit UpdateErrorWithReason(_oracles[i].oracle, token, reason);
                 } catch (bytes memory err) {
-                    emit UpdateError(_oracles[i], token, err);
+                    emit UpdateError(_oracles[i].oracle, token, err);
                 }
             }
         }
@@ -159,33 +170,28 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     {
         uint256 qtDecimals = quoteTokenDecimals();
 
+        // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed.
+        // We don't want to use old data.
         uint256 maxAge = period * 2;
-
-        /*
-         * Compute harmonic mean
-         */
 
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
         for (uint256 j = 0; j < 2; ++j) {
-            address[] memory _oracles;
+            OracleConfig[] memory _oracles;
 
             if (j == 0) _oracles = oracles;
             else _oracles = tokenSpecificOracles[token];
 
             for (uint256 i = 0; i < _oracles.length; ++i) {
                 // We don't want problematic underlying oracles to prevent us from calculating the aggregated
-                // results from the other working oracles, so we use a try-catch block
-                //
-                // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed
-                // -> We don't want to use old data.w
-                try IOracle(_oracles[i]).consult(token, maxAge) returns (
+                // results from the other working oracles, so we use a try-catch block.
+                try IOracle(_oracles[i].oracle).consult(token, maxAge) returns (
                     uint256 oraclePrice,
                     uint256 oracleTokenLiquidity,
                     uint256 oracleQuoteTokenLiquidity
                 ) {
                     if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
-                        uint256 decimals = oracleQuoteTokenDecimals[_oracles[i]];
+                        uint256 decimals = _oracles[i].quoteTokenDecimals;
 
                         ++validResponses;
 
@@ -211,9 +217,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                         quoteTokenLiquidity += oracleQuoteTokenLiquidity;
                     }
                 } catch Error(string memory reason) {
-                    emit ConsultErrorWithReason(oracles[i], token, reason);
+                    emit ConsultErrorWithReason(oracles[i].oracle, token, reason);
                 } catch (bytes memory err) {
-                    emit ConsultError(oracles[i], token, err);
+                    emit ConsultError(oracles[i].oracle, token, err);
                 }
             }
         }
