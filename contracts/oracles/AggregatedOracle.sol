@@ -190,25 +190,25 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                     uint256 oracleTokenLiquidity,
                     uint256 oracleQuoteTokenLiquidity
                 ) {
-                    if (oracleQuoteTokenLiquidity != 0 && oraclePrice != 0) {
-                        uint256 decimals = _oracles[i].quoteTokenDecimals;
+                    uint256 decimals = _oracles[i].quoteTokenDecimals;
 
+                    // Fix differing quote token decimal places
+                    if (decimals < qtDecimals) {
+                        // Scale up
+                        uint256 scalar = 10**(qtDecimals - decimals);
+
+                        oraclePrice *= scalar;
+                        oracleQuoteTokenLiquidity *= scalar;
+                    } else if (decimals > qtDecimals) {
+                        // Scale down
+                        uint256 scalar = 10**(decimals - qtDecimals);
+
+                        oraclePrice /= scalar;
+                        oracleQuoteTokenLiquidity /= scalar;
+                    }
+
+                    if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) {
                         ++validResponses;
-
-                        // Fix differing quote token decimal places
-                        if (decimals < qtDecimals) {
-                            // Scale up
-                            uint256 scalar = 10**(qtDecimals - decimals);
-
-                            oraclePrice *= scalar;
-                            oracleQuoteTokenLiquidity *= scalar;
-                        } else if (decimals > qtDecimals) {
-                            // Scale down
-                            uint256 scalar = 10**(decimals - qtDecimals);
-
-                            oraclePrice /= scalar;
-                            oracleQuoteTokenLiquidity /= scalar;
-                        }
 
                         denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
