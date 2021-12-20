@@ -50,11 +50,14 @@
     "hardhat-tracer": "^1.0.0-alpha.6",
     "prettier": "^2.4.1",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
+    "solhint": "^3.3.6",
+    "solhint-plugin-prettier": "^0.0.5",
     "solidity-coverage": "^0.7.17"
   },
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "lint": "solhint 'contracts/**/*.sol'"
   }
 }
