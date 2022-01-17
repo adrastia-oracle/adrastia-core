@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity =0.8.11;
 
 import "../../PeriodicOracle.sol";
 import "../../../interfaces/ILiquidityAccumulator.sol";
