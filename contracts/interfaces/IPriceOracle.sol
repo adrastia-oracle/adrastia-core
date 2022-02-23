@@ -31,7 +31,7 @@ abstract contract IPriceOracle is IUpdateByToken {
      */
     function consultPrice(address token) public view virtual returns (uint256 price);
 
-`   /**
+    /**
      * @notice Gets the price of a token in terms of the quote token, reverting if the quotation is older than the
      *  maximum allowable age.
      * @param token The token to get the price of.
