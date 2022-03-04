@@ -1,5 +1,5 @@
 {
-  "name": "@pythia-oracle/pythia-library",
+  "name": "@pythia-oracle/pythia-core",
   "version": "0.0.2",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
