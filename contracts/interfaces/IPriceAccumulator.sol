@@ -23,11 +23,14 @@ abstract contract IPriceAccumulator is IUpdateByToken {
     /// @return The number of decimal places to be used for calculating changes in price.
     function changePrecision() external view virtual returns (uint256);
 
-    /// @notice Calculates a price from two different cumulative prices.
-    /// @param firstAccumulation The first cumulative price.
-    /// @param secondAccumulation The last cumulative price.
-    /// @dev Reverts if the timestamp of the first accumulation is 0, or if it's not strictly less than the timestamp of the second.
-    /// @return price A time-weighted average price derived from two cumulative prices.
+    /**
+     * @notice Calculates a price from two different cumulative prices.
+     * @param firstAccumulation The first cumulative price.
+     * @param secondAccumulation The last cumulative price.
+     * @dev Reverts if the timestamp of the first accumulation is 0, or if it's not strictly less than the timestamp of
+     *  the second.
+     * @return price A time-weighted average price derived from two cumulative prices.
+     */
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
         AccumulationLibrary.PriceAccumulator calldata secondAccumulation
