@@ -26,23 +26,6 @@ abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
         uint256 quoteTokenLiquidity
     );
 
-    /// @notice Gets the quote token (or currency) name.
-    /// @return The name of the quote token (or currency).
-    function quoteTokenName() public view virtual override(IPriceOracle, ILiquidityOracle) returns (string memory);
-
-    /// @notice Gets the quote token address (if any).
-    /// @dev This may return address(0) if no specific quote token is used (such as an aggregate of quote tokens).
-    /// @return The address of the quote token, or address(0) if no specific quote token is used.
-    function quoteTokenAddress() public view virtual override(IPriceOracle, ILiquidityOracle) returns (address);
-
-    /// @notice Gets the quote token (or currency) symbol.
-    /// @return The symbol of the quote token (or currency).
-    function quoteTokenSymbol() public view virtual override(IPriceOracle, ILiquidityOracle) returns (string memory);
-
-    /// @notice Gets the number of decimal places that quote prices have.
-    /// @return The number of decimals of the quote token (or currency) that quote prices have.
-    function quoteTokenDecimals() public view virtual override(IPriceOracle, ILiquidityOracle) returns (uint8);
-
     /**
      * @notice Gets the price of a token in terms of the quote token along with the liquidity levels of the token
      *  andquote token in the underlying pool.
