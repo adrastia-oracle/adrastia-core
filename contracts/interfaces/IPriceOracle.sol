@@ -2,9 +2,26 @@
 pragma solidity >=0.5.0 <0.9.0;
 
 import "./IUpdateByToken.sol";
+import "./IQuoteToken.sol";
 
-abstract contract IPriceOracle is IUpdateByToken {
-    function consultPrice(address token) external view virtual returns (uint256 price);
+/// @title IPriceOracle
+/// @notice An interface that defines a price oracle with a single quote token (or currency) and many exchange tokens.
+abstract contract IPriceOracle is IUpdateByToken, IQuoteToken {
+    /**
+     * @notice Gets the price of a token in terms of the quote token.
+     * @param token The token to get the price of.
+     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
+     *  places.
+     */
+    function consultPrice(address token) public view virtual returns (uint256 price);
 
-    function consultPrice(address token, uint256 maxAge) external view virtual returns (uint256 price);
+    /**
+     * @notice Gets the price of a token in terms of the quote token, reverting if the quotation is older than the
+     *  maximum allowable age.
+     * @param token The token to get the price of.
+     * @param maxAge The maximum age of the quotation, in seconds.
+     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
+     *  places.
+     */
+    function consultPrice(address token, uint256 maxAge) public view virtual returns (uint256 price);
 }

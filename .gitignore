@@ -4,6 +4,10 @@ node_modules
 cache
 artifacts
 
+# Coverage reports
+coverage.json
+coverage
+
 # IDEs
 .vscode
 

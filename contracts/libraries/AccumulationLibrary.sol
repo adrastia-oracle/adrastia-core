@@ -11,8 +11,7 @@ library AccumulationLibrary {
     }
 
     struct PriceAccumulator {
-        uint256 cumulativeTokenPrice;
-        uint256 cumulativeQuoteTokenPrice;
+        uint256 cumulativePrice;
         uint256 timestamp;
     }
 }

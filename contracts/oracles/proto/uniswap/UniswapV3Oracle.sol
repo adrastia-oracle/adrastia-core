@@ -1,131 +1,112 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity =0.7.6;
+pragma experimental ABIEncoderV2;
 
-import "../../../interfaces/IOracle.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
+import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
+
+import "../../SafePeriodicOracle.sol";
+import "../../../interfaces/ILiquidityAccumulator.sol";
+
+import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
 
-import "../../../libraries/uniswap-v3-periphery/OracleLibrary.sol";
-import "../../../libraries/uniswap-v3-periphery/WeightedOracleLibrary.sol";
-import "../../../libraries/uniswap-v3-periphery/PoolAddress.sol";
-import "../../../libraries/uniswap-v3-periphery/LiquidityAmounts.sol";
+contract UniswapV3Oracle is SafePeriodicOracle {
+    /// @notice The identifying key of the pool
+    struct PoolKey {
+        address token0;
+        address token1;
+        uint24 fee;
+    }
 
-import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
+    address public immutable liquidityAccumulator;
 
-contract UniswapV3Oracle is IOracle {
-    address immutable uniswapFactory;
+    address public immutable uniswapFactory;
 
-    address immutable quoteToken;
+    bytes32 public immutable initCodeHash;
 
-    uint32 immutable period;
+    uint24[] public poolFees;
 
-    mapping(address => ObservationLibrary.Observation) observations;
+    mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
 
     constructor(
+        address liquidityAccumulator_,
         address uniswapFactory_,
+        bytes32 initCodeHash_,
+        uint24[] memory poolFees_,
         address quoteToken_,
-        uint32 period_
-    ) {
+        uint256 period_
+    ) SafePeriodicOracle(quoteToken_, period_) {
+        liquidityAccumulator = liquidityAccumulator_;
         uniswapFactory = uniswapFactory_;
-        quoteToken = quoteToken_;
-        period = period_;
+        initCodeHash = initCodeHash_;
+        poolFees = poolFees_;
     }
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp - observations[token].timestamp;
-
-        return deltaTime >= period;
+    /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
+    /// @param tokenA The first token of a pool, unsorted
+    /// @param tokenB The second token of a pool, unsorted
+    /// @param fee The fee level of the pool
+    /// @return Poolkey The pool details with ordered token0 and token1 assignments
+    function getPoolKey(
+        address tokenA,
+        address tokenB,
+        uint24 fee
+    ) internal pure returns (PoolKey memory) {
+        if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
     }
 
-    function update(address token) external virtual override returns (bool) {
-        if (needsUpdate(token)) {
-            ObservationLibrary.Observation storage observation = observations[token];
+    /// @notice Deterministically computes the pool address given the factory and PoolKey
+    /// @param factory The Uniswap V3 factory contract address
+    /// @param key The PoolKey
+    /// @return pool The contract address of the V3 pool
+    function computeAddress(
+        address factory,
+        bytes32 _initCodeHash,
+        PoolKey memory key
+    ) internal pure returns (address pool) {
+        require(key.token0 < key.token1);
+        pool = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            hex"ff",
+                            factory,
+                            keccak256(abi.encode(key.token0, key.token1, key.fee)),
+                            _initCodeHash
+                        )
+                    )
+                )
+            )
+        );
+    }
 
-            (observation.price, observation.tokenLiquidity, observation.baseLiquidity) = consultFresh(token);
-            observation.timestamp = block.timestamp;
+    function calculatePrice(address token) internal view returns (uint256 price) {
+        uint256 len = poolFees.length;
 
-            return true;
+        OracleLibrary.WeightedTickData[] memory periodObservations = new OracleLibrary.WeightedTickData[](len);
+
+        bool hasLiquidity;
+
+        for (uint256 i = 0; i < len; ++i) {
+            address pool = computeAddress(uniswapFactory, initCodeHash, getPoolKey(token, quoteToken, poolFees[i]));
+
+            if (isContract(pool)) {
+                (periodObservations[i].tick, periodObservations[i].weight) = OracleLibrary.consult(
+                    pool,
+                    uint32(period)
+                );
+
+                hasLiquidity = hasLiquidity || periodObservations[i].weight > 0;
+            }
         }
 
-        return false;
-    }
+        require(hasLiquidity, "UniswapV3Oracle: NO_LIQUIDITY");
 
-    function consult(address token)
-        external
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 baseLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV3Oracle: MISSING_OBSERVATION");
-
-        price = observation.price;
-        tokenLiquidity = observation.tokenLiquidity;
-        baseLiquidity = observation.baseLiquidity;
-    }
-
-    function consult(address token, uint256 maxAge)
-        external
-        view
-        virtual
-        override
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 baseLiquidity
-        )
-    {
-        ObservationLibrary.Observation storage observation = observations[token];
-
-        require(observation.timestamp != 0, "UniswapV3Oracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp - maxAge, "UniswapV3Oracle: RATE_TOO_OLD");
-
-        price = observation.price;
-        tokenLiquidity = observation.tokenLiquidity;
-        baseLiquidity = observation.baseLiquidity;
-    }
-
-    function consultFresh(address token)
-        internal
-        view
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 baseLiquidity
-        )
-    {
-        address poolAddress500 = PoolAddress.computeAddress(
-            uniswapFactory,
-            PoolAddress.getPoolKey(token, quoteToken, 500)
-        );
-        address poolAddress3000 = PoolAddress.computeAddress(
-            uniswapFactory,
-            PoolAddress.getPoolKey(token, quoteToken, 3000)
-        );
-        address poolAddress10000 = PoolAddress.computeAddress(
-            uniswapFactory,
-            PoolAddress.getPoolKey(token, quoteToken, 10000)
-        );
-
-        WeightedOracleLibrary.PeriodObservation[]
-            memory periodObservations = new WeightedOracleLibrary.PeriodObservation[](3);
-
-        if (isContract(poolAddress500)) periodObservations[0] = WeightedOracleLibrary.consult(poolAddress500, period);
-
-        if (isContract(poolAddress3000)) periodObservations[1] = WeightedOracleLibrary.consult(poolAddress3000, period);
-
-        if (isContract(poolAddress10000))
-            periodObservations[2] = WeightedOracleLibrary.consult(poolAddress10000, period);
-
-        int24 timeWeightedAverageTick = WeightedOracleLibrary.getArithmeticMeanTickWeightedByLiquidity(
-            periodObservations
-        );
+        int24 timeWeightedAverageTick = OracleLibrary.getWeightedArithmeticMeanTick(periodObservations);
 
         price = OracleLibrary.getQuoteAtTick(
             timeWeightedAverageTick,
@@ -133,27 +114,58 @@ contract UniswapV3Oracle is IOracle {
             token,
             quoteToken
         );
+    }
 
-        uint128 liquidity = periodObservations[0].harmonicMeanLiquidity +
-            periodObservations[1].harmonicMeanLiquidity +
-            periodObservations[2].harmonicMeanLiquidity;
+    function _update(address token) internal virtual override returns (bool) {
+        ObservationLibrary.Observation storage observation = observations[token];
 
-        // TODO: Better overflow checking
-        require(liquidity >= periodObservations[1].harmonicMeanLiquidity, "UniswapV3DataSource: LIQUIDITY_OVERFLOW");
+        /*
+         * 1. Update price
+         */
+        observation.price = calculatePrice(token);
 
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(timeWeightedAverageTick);
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(timeWeightedAverageTick + 1);
+        /*
+         * 2. Update liquidity
+         */
+        {
+            // Note: We assume the accumulator is up-to-date (gas savings)
+            AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
+                liquidityAccumulator
+            ).getCurrentAccumulation(token);
 
-        uint256 amount0 = LiquidityAmounts.getAmount0ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
-        uint256 amount1 = LiquidityAmounts.getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+            AccumulationLibrary.LiquidityAccumulator storage lastAccumulation = liquidityAccumulations[token];
 
-        if (token < quoteToken) {
-            tokenLiquidity = amount0;
-            baseLiquidity = amount1;
-        } else {
-            tokenLiquidity = amount1;
-            baseLiquidity = amount0;
+            uint256 lastAccumulationTime = lastAccumulation.timestamp;
+
+            if (freshAccumulation.timestamp > lastAccumulationTime) {
+                // Accumulator updated, so we update our observation
+
+                if (lastAccumulationTime != 0) {
+                    // We have two accumulations -> calculate liquidity from them
+                    (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                        liquidityAccumulator
+                    ).calculateLiquidity(lastAccumulation, freshAccumulation);
+                }
+
+                lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
+                lastAccumulation.cumulativeQuoteTokenLiquidity = freshAccumulation.cumulativeQuoteTokenLiquidity;
+                lastAccumulation.timestamp = freshAccumulation.timestamp;
+            }
         }
+
+        // Update observation timestamp so that the oracle doesn't update again until the next period
+        observation.timestamp = block.timestamp;
+
+        emit Updated(
+            token,
+            quoteToken,
+            block.timestamp,
+            observation.price,
+            observation.tokenLiquidity,
+            observation.quoteTokenLiquidity
+        );
+
+        return true;
     }
 
     function isContract(address addr) internal view returns (bool) {
