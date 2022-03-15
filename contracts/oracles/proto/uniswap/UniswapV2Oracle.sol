@@ -39,6 +39,10 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
         initCodeHash = initCodeHash_;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IHasLiquidityAccumulator).interfaceId || super.supportsInterface(interfaceId);
+    }
+
     function _update(address token) internal virtual override returns (bool) {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 

@@ -27,6 +27,13 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         priceAccumulator = priceAccumulator_;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IHasLiquidityAccumulator).interfaceId ||
+            interfaceId == type(IHasPriceAccumulator).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     function _update(address token) internal virtual override returns (bool) {
         ObservationLibrary.Observation storage observation = observations[token];
 
