@@ -4,12 +4,14 @@ pragma experimental ABIEncoderV2;
 
 import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 
+import "../interfaces/IPeriodic.sol";
+
 import "./SafeAbstractOracle.sol";
 
-abstract contract SafePeriodicOracle is SafeAbstractOracle {
+abstract contract SafePeriodicOracle is IPeriodic, SafeAbstractOracle {
     using LowGasSafeMath for uint256;
 
-    uint256 public immutable period;
+    uint256 public immutable override period;
 
     constructor(address quoteToken_, uint256 period_) SafeAbstractOracle(quoteToken_) {
         period = period_;
@@ -25,6 +27,10 @@ abstract contract SafePeriodicOracle is SafeAbstractOracle {
         uint256 deltaTime = block.timestamp.sub(observations[token].timestamp);
 
         return deltaTime >= period;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IPeriodic).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function _update(address token) internal virtual returns (bool);
