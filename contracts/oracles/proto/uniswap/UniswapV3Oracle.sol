@@ -45,6 +45,10 @@ contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
         poolFees = poolFees_;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IHasLiquidityAccumulator).interfaceId || super.supportsInterface(interfaceId);
+    }
+
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
     /// @param tokenA The first token of a pool, unsorted
     /// @param tokenB The second token of a pool, unsorted
