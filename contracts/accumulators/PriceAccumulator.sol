@@ -3,10 +3,12 @@ pragma solidity =0.8.11;
 
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+
 import "../interfaces/IPriceAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
-abstract contract PriceAccumulator is IPriceAccumulator {
+abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
     uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
     uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
 
@@ -169,6 +171,10 @@ abstract contract PriceAccumulator is IPriceAccumulator {
     {
         observation.price = fetchPrice(token);
         observation.timestamp = block.timestamp;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IPriceAccumulator).interfaceId;
     }
 
     function changeThresholdSurpassed(

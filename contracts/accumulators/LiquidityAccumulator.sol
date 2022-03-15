@@ -3,10 +3,12 @@ pragma solidity =0.8.11;
 
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
-abstract contract LiquidityAccumulator is ILiquidityAccumulator {
+abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
     uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
 
@@ -186,6 +188,10 @@ abstract contract LiquidityAccumulator is ILiquidityAccumulator {
     {
         (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
         observation.timestamp = block.timestamp;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(ILiquidityAccumulator).interfaceId;
     }
 
     function changeThresholdSurpassed(
