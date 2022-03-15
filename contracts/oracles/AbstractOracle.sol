@@ -142,6 +142,7 @@ abstract contract AbstractOracle is IERC165, IOracle {
             interfaceId == type(IOracle).interfaceId ||
             interfaceId == type(IUpdateByToken).interfaceId ||
             interfaceId == type(IPriceOracle).interfaceId ||
-            interfaceId == type(ILiquidityOracle).interfaceId;
+            interfaceId == type(ILiquidityOracle).interfaceId ||
+            interfaceId == type(IQuoteToken).interfaceId;
     }
 }
