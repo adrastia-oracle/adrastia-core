@@ -996,3 +996,56 @@ describe("PeriodicAccumulationOracle#update", function () {
         describeSingleTokenTests();
     });
 });
+
+describe("PeriodicAccumulationOracle#supportsInterface(interfaceId)", function () {
+    var oracle;
+    var interfaceIds;
+
+    beforeEach(async () => {
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support IOracle", async () => {
+        const interfaceId = await interfaceIds.iOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPeriodic", async () => {
+        const interfaceId = await interfaceIds.iPeriodic();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPriceOracle", async () => {
+        const interfaceId = await interfaceIds.iPriceOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support ILiquidityOracle", async () => {
+        const interfaceId = await interfaceIds.iLiquidityOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IUpdateByToken", async () => {
+        const interfaceId = await interfaceIds.iUpdateByToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHasLiquidityAccumulator", async () => {
+        const interfaceId = await interfaceIds.iHasLiquidityAccumulator();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHasPriceAccumulator", async () => {
+        const interfaceId = await interfaceIds.iHasPriceAccumulator();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});

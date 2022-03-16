@@ -870,3 +870,24 @@ describe("PriceAccumulator#update", () => {
         }
     });
 });
+
+describe("PriceAccumulator#supportsInterface(interfaceId)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+    var interfaceIds;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+        await accumulator.deployed();
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support IPriceAccumulator", async () => {
+        const interfaceId = await interfaceIds.iPriceAccumulator();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});

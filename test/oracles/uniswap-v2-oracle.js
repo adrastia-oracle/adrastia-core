@@ -1430,3 +1430,51 @@ describe("UniswapV2Oracle#update", function () {
         }
     );
 });
+
+describe("UniswapV2Oracle#supportsInterface(interfaceId)", function () {
+    var oracle;
+    var interfaceIds;
+
+    beforeEach(async () => {
+        const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support IOracle", async () => {
+        const interfaceId = await interfaceIds.iOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPeriodic", async () => {
+        const interfaceId = await interfaceIds.iPeriodic();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPriceOracle", async () => {
+        const interfaceId = await interfaceIds.iPriceOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support ILiquidityOracle", async () => {
+        const interfaceId = await interfaceIds.iLiquidityOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IUpdateByToken", async () => {
+        const interfaceId = await interfaceIds.iUpdateByToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHasLiquidityAccumulator", async () => {
+        const interfaceId = await interfaceIds.iHasLiquidityAccumulator();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
