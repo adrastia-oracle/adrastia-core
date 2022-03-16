@@ -967,6 +967,7 @@ describe("UniswapV3Oracle#update", function () {
     var liquidityAccumulator;
     var oracle;
     var helper;
+    var addressHelper;
 
     var expectedTokenLiquidity;
     var expectedQuoteTokenLiquidity;
@@ -978,13 +979,16 @@ describe("UniswapV3Oracle#update", function () {
         const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulator");
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
         const helperFactory = await ethers.getContractFactory("UniswapV3Helper");
+        const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
+
+        addressHelper = await addressHelperFactory.deploy();
 
         var tokens = [undefined, undefined, undefined];
 
         for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
         for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
 
-        tokens = tokens.sort((a, b) => a.address < b.address);
+        tokens = tokens.sort(async (a, b) => await addressHelper.lessThan(a.address, b.address));
 
         token = ltToken = tokens[0];
         quoteToken = tokens[1];
@@ -1037,7 +1041,7 @@ describe("UniswapV3Oracle#update", function () {
         var amount0;
         var amount1;
 
-        if (token.address < quoteToken.address) {
+        if (await addressHelper.lessThan(token.address, quoteToken.address)) {
             token0 = token.address;
             token1 = quoteToken.address;
 
@@ -1071,7 +1075,7 @@ describe("UniswapV3Oracle#update", function () {
 
         await helper.helperAddLiquidity(params);
 
-        if (token.address < quoteToken.address) {
+        if (await addressHelper.lessThan(token.address, quoteToken.address)) {
             expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount0);
             expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount1);
         } else {
@@ -1124,10 +1128,9 @@ describe("UniswapV3Oracle#update", function () {
     });
 
     const testUpdateSuccess = async function (_tokenLiquidity, _quoteTokenLiquidity) {
-        const sqrtPrice =
-            token.address > quoteToken.address
-                ? encodePriceSqrt(_tokenLiquidity, _quoteTokenLiquidity)
-                : encodePriceSqrt(_quoteTokenLiquidity, _tokenLiquidity);
+        const sqrtPrice = (await addressHelper.greaterThan(token.address, quoteToken.address))
+            ? encodePriceSqrt(_tokenLiquidity, _quoteTokenLiquidity)
+            : encodePriceSqrt(_quoteTokenLiquidity, _tokenLiquidity);
 
         await createPool(sqrtPrice);
         await addLiquidity(_tokenLiquidity, _quoteTokenLiquidity);
