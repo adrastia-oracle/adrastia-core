@@ -3,14 +3,16 @@ pragma solidity =0.8.11;
 
 import "./PeriodicOracle.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
+import "../interfaces/IHasLiquidityAccumulator.sol";
 import "../interfaces/IPriceAccumulator.sol";
+import "../interfaces/IHasPriceAccumulator.sol";
 
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
-contract PeriodicAccumulationOracle is PeriodicOracle {
-    address public immutable liquidityAccumulator;
-    address public immutable priceAccumulator;
+contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator, IHasPriceAccumulator {
+    address public immutable override liquidityAccumulator;
+    address public immutable override priceAccumulator;
 
     mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
@@ -23,6 +25,13 @@ contract PeriodicAccumulationOracle is PeriodicOracle {
     ) PeriodicOracle(quoteToken_, period_) {
         liquidityAccumulator = liquidityAccumulator_;
         priceAccumulator = priceAccumulator_;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IHasLiquidityAccumulator).interfaceId ||
+            interfaceId == type(IHasPriceAccumulator).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function _update(address token) internal virtual override returns (bool) {

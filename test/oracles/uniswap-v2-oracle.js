@@ -1119,6 +1119,7 @@ describe("UniswapV2Oracle#update", function () {
     var uniswapFactory;
     var liquidityAccumulator;
     var oracle;
+    var addressHelper;
 
     async function createPair() {
         await uniswapFactory.createPair(token.address, quoteToken.address);
@@ -1280,13 +1281,16 @@ describe("UniswapV2Oracle#update", function () {
         const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
         const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV2LiquidityAccumulator");
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
+        const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
+
+        addressHelper = await addressHelperFactory.deploy();
 
         var tokens = [undefined, undefined, undefined];
 
         for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
         for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
 
-        tokens = tokens.sort((a, b) => a.address < b.address);
+        tokens = tokens.sort(async (a, b) => await addressHelper.lessThan(a.address, b.address));
 
         token = ltToken = tokens[0];
         quoteToken = tokens[1];
@@ -1429,4 +1433,52 @@ describe("UniswapV2Oracle#update", function () {
             });
         }
     );
+});
+
+describe("UniswapV2Oracle#supportsInterface(interfaceId)", function () {
+    var oracle;
+    var interfaceIds;
+
+    beforeEach(async () => {
+        const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, uniswapV2InitCodeHash, USDC, PERIOD);
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support IOracle", async () => {
+        const interfaceId = await interfaceIds.iOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPeriodic", async () => {
+        const interfaceId = await interfaceIds.iPeriodic();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPriceOracle", async () => {
+        const interfaceId = await interfaceIds.iPriceOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support ILiquidityOracle", async () => {
+        const interfaceId = await interfaceIds.iLiquidityOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IUpdateByToken", async () => {
+        const interfaceId = await interfaceIds.iUpdateByToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHasLiquidityAccumulator", async () => {
+        const interfaceId = await interfaceIds.iHasLiquidityAccumulator();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });

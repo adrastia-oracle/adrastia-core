@@ -12,7 +12,7 @@ contract FakeERC20 is ERC20 {
         uint8 decimals_
     ) ERC20(name, symbol) {
         _decimals = decimals_;
-        _mint(msg.sender, 1000000 * 10**decimals_);
+        _mint(msg.sender, 1000000000 * 10**decimals_);
     }
 
     function decimals() public view virtual override returns (uint8) {

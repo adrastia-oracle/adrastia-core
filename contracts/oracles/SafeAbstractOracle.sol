@@ -2,6 +2,8 @@
 pragma solidity =0.7.6;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin-v3/contracts/introspection/IERC165.sol";
+
 import "@uniswap/v2-core/contracts/interfaces/IERC20.sol";
 
 import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
@@ -9,7 +11,7 @@ import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 import "../interfaces/IOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 
-abstract contract SafeAbstractOracle is IOracle {
+abstract contract SafeAbstractOracle is IERC165, IOracle {
     using LowGasSafeMath for uint256;
 
     address public immutable quoteToken;
@@ -139,5 +141,14 @@ abstract contract SafeAbstractOracle is IOracle {
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IOracle).interfaceId ||
+            interfaceId == type(IUpdateByToken).interfaceId ||
+            interfaceId == type(IPriceOracle).interfaceId ||
+            interfaceId == type(ILiquidityOracle).interfaceId ||
+            interfaceId == type(IQuoteToken).interfaceId;
     }
 }

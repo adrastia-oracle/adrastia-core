@@ -8,11 +8,12 @@ import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 import "../../SafePeriodicOracle.sol";
 import "../../../interfaces/ILiquidityAccumulator.sol";
+import "../../../interfaces/IHasLiquidityAccumulator.sol";
 
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
 
-contract UniswapV3Oracle is SafePeriodicOracle {
+contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
     /// @notice The identifying key of the pool
     struct PoolKey {
         address token0;
@@ -20,7 +21,7 @@ contract UniswapV3Oracle is SafePeriodicOracle {
         uint24 fee;
     }
 
-    address public immutable liquidityAccumulator;
+    address public immutable override liquidityAccumulator;
 
     address public immutable uniswapFactory;
 
@@ -42,6 +43,10 @@ contract UniswapV3Oracle is SafePeriodicOracle {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         poolFees = poolFees_;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IHasLiquidityAccumulator).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels

@@ -1,3 +1,4 @@
 * text eol=lf
 *.pdf binary
+*.png binary
 *.sol linguist-language=Solidity

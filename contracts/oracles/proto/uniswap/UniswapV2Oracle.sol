@@ -3,6 +3,7 @@ pragma solidity =0.8.11;
 
 import "../../PeriodicOracle.sol";
 import "../../../interfaces/ILiquidityAccumulator.sol";
+import "../../../interfaces/IHasLiquidityAccumulator.sol";
 
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
@@ -14,10 +15,10 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "hardhat/console.sol";
 
-contract UniswapV2Oracle is PeriodicOracle {
+contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
     using FixedPoint for *;
 
-    address public immutable liquidityAccumulator;
+    address public immutable override liquidityAccumulator;
 
     address public immutable uniswapFactory;
 
@@ -36,6 +37,10 @@ contract UniswapV2Oracle is PeriodicOracle {
         liquidityAccumulator = liquidityAccumulator_;
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IHasLiquidityAccumulator).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function _update(address token) internal virtual override returns (bool) {

@@ -137,6 +137,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return _quoteTokenDecimals;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IAggregatedOracle).interfaceId || super.supportsInterface(interfaceId);
+    }
+
     /*
      * Internal functions
      */

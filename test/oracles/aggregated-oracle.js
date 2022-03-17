@@ -1511,3 +1511,55 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         expect(oTimestamp).to.equal(timestamp);
     });
 });
+
+describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
+    var oracle;
+    var interfaceIds;
+
+    beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+
+        const underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 18, [underlyingOracle.address], [], PERIOD);
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support IAggregatedOracle", async () => {
+        const interfaceId = await interfaceIds.iAggregatedOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IOracle", async () => {
+        const interfaceId = await interfaceIds.iOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPeriodic", async () => {
+        const interfaceId = await interfaceIds.iPeriodic();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPriceOracle", async () => {
+        const interfaceId = await interfaceIds.iPriceOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support ILiquidityOracle", async () => {
+        const interfaceId = await interfaceIds.iLiquidityOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IUpdateByToken", async () => {
+        const interfaceId = await interfaceIds.iUpdateByToken();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});

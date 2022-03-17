@@ -2,11 +2,12 @@
 pragma solidity =0.8.11;
 
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/IOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 
-abstract contract AbstractOracle is IOracle {
+abstract contract AbstractOracle is IERC165, IOracle {
     address public immutable quoteToken;
 
     mapping(address => ObservationLibrary.Observation) public observations;
@@ -134,5 +135,14 @@ abstract contract AbstractOracle is IOracle {
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IOracle).interfaceId ||
+            interfaceId == type(IUpdateByToken).interfaceId ||
+            interfaceId == type(IPriceOracle).interfaceId ||
+            interfaceId == type(ILiquidityOracle).interfaceId ||
+            interfaceId == type(IQuoteToken).interfaceId;
     }
 }

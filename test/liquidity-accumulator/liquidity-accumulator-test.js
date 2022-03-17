@@ -1139,3 +1139,29 @@ describe("LiquidityAccumulator#update", () => {
         }
     });
 });
+
+describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var liquidityAccumulator;
+    var interfaceIds;
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+        liquidityAccumulator = await LiquidityAccumulator.deploy(
+            USDC,
+            TWO_PERCENT_CHANGE,
+            minUpdateDelay,
+            maxUpdateDelay
+        );
+        await liquidityAccumulator.deployed();
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support ILiquidityAccumulator", async () => {
+        const interfaceId = await interfaceIds.iLiquidityAccumulator();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
