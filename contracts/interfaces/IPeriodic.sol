@@ -9,5 +9,5 @@ pragma solidity >=0.5.0 <0.9.0;
 interface IPeriodic {
     /// @notice Gets the period, in seconds.
     /// @return periodSeconds The period, in seconds.
-    function period() external returns (uint256 periodSeconds);
+    function period() external view returns (uint256 periodSeconds);
 }
