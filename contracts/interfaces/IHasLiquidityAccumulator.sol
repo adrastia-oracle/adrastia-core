@@ -8,5 +8,5 @@ pragma solidity >=0.5.0 <0.9.0;
 interface IHasLiquidityAccumulator {
     /// @notice Gets the address of the liquidity accumulator.
     /// @return la The address of the liquidity accumulator.
-    function liquidityAccumulator() external returns (address la);
+    function liquidityAccumulator() external view returns (address la);
 }
