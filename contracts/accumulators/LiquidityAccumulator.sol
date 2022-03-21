@@ -20,8 +20,8 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
-    mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
-    mapping(address => ObservationLibrary.LiquidityObservation) observations;
+    mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
+    mapping(address => ObservationLibrary.LiquidityObservation) public observations;
 
     event Updated(
         address indexed token,

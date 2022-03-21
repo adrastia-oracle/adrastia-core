@@ -20,8 +20,8 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
     uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
-    mapping(address => AccumulationLibrary.PriceAccumulator) accumulations;
-    mapping(address => ObservationLibrary.PriceObservation) observations;
+    mapping(address => AccumulationLibrary.PriceAccumulator) public accumulations;
+    mapping(address => ObservationLibrary.PriceObservation) public observations;
 
     event Updated(address indexed token, address indexed quoteToken, uint256 indexed timestamp, uint256 price);
 
