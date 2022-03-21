@@ -9,6 +9,13 @@ import "../interfaces/IPriceAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
 
 abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
+    struct PendingObservation {
+        uint256 blockNumber;
+        uint256 price;
+    }
+
+    uint256 public constant OBSERVATION_BLOCK_PERIOD = 10;
+
     uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
     uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
 
@@ -22,6 +29,10 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
     mapping(address => AccumulationLibrary.PriceAccumulator) public accumulations;
     mapping(address => ObservationLibrary.PriceObservation) public observations;
+
+    /// @notice Stores observations held for OBSERVATION_BLOCK_PERIOD before being committed to an update.
+    /// @dev address(token) => address(poster) => PendingObservation
+    mapping(address => mapping(address => PendingObservation)) public pendingObservations;
 
     event Updated(address indexed token, address indexed quoteToken, uint256 indexed timestamp, uint256 price);
 
@@ -98,6 +109,14 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
             if (deltaTime != 0) {
                 unchecked {
+                    // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
+                    // This prevents the following manipulation:
+                    //   A user trades a large amount of tokens in this pool to create an invalid price, updates this
+                    //   accumulator, then performs a reverse trade all in the same transaction.
+                    // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
+                    // and stop/limit such an attack.
+                    if (!validateObservation(token, price)) return false;
+
                     // Overflow is desired and results in correct functionality
                     // We add the last price multiplied by the time that price was active
                     accumulation.cumulativePrice += observation.price * deltaTime;
@@ -175,6 +194,31 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IPriceAccumulator).interfaceId;
+    }
+
+    function validateObservation(address token, uint256 price) internal returns (bool) {
+        PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
+
+        if (pendingObservation.blockNumber == 0) {
+            // New observation (first update call), store it
+            pendingObservation.blockNumber = block.number;
+            pendingObservation.price = price;
+
+            return false; // Needs to validate this observation
+        }
+
+        // Validating observation (second update call)
+
+        // Check if observation period has passed
+        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_PERIOD) return false;
+
+        // Check if the observations are approximately the same
+        bool validated = !changeThresholdSurpassed(price, pendingObservation.price, updateThreshold);
+
+        // Validation performed. Delete the pending observation
+        delete pendingObservations[token][msg.sender];
+
+        return validated;
     }
 
     function changeThresholdSurpassed(
