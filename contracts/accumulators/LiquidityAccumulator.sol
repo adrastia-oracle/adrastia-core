@@ -96,6 +96,10 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
             changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
     }
 
+    /// @notice Updates the accumulator.
+    /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
+    /// @param token The address of the token to accumulate the liquidities of.
+    /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
     function update(address token) external virtual override returns (bool) {
         if (needsUpdate(token)) {
             (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
@@ -124,7 +128,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
             if (deltaTime != 0) {
                 // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
-                // This prevents the following manipulation:
+                // This limits the following manipulation:
                 //   A user adds a lot of liquidity to a [low liquidity] pool with an invalid price, updates this
                 //   accumulator, then removes the liquidity in a single transaction.
                 // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
@@ -214,11 +218,25 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         return interfaceId == type(ILiquidityAccumulator).interfaceId;
     }
 
+    function _isContract(address addr) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(addr)
+        }
+        return size > 0;
+    }
+
     function validateObservation(
         address token,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) internal returns (bool) {
+        // Require updaters to be EOAs to limit the attack vector that this function addresses
+        // Note: isContract will return false in the constructor of contracts, but since we require two observations
+        //   from the same updater spanning across several blocks, the second call will always return true if the caller
+        //   is a smart contract.
+        require(!_isContract(msg.sender), "LiquidityAccumulator: MUST_BE_EOA");
+
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 
         if (pendingObservation.blockNumber == 0) {

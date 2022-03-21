@@ -82,6 +82,10 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         return changeThresholdSurpassed(price, lastObservation.price, updateThreshold);
     }
 
+    /// @notice Updates the accumulator.
+    /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
+    /// @param token The address of the token to accumulate the price of.
+    /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
     function update(address token) external virtual override returns (bool) {
         if (needsUpdate(token)) {
             uint256 price = fetchPrice(token);
@@ -110,7 +114,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
             if (deltaTime != 0) {
                 unchecked {
                     // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
-                    // This prevents the following manipulation:
+                    // This limits the following manipulation:
                     //   A user trades a large amount of tokens in this pool to create an invalid price, updates this
                     //   accumulator, then performs a reverse trade all in the same transaction.
                     // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
@@ -196,7 +200,21 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         return interfaceId == type(IPriceAccumulator).interfaceId;
     }
 
+    function _isContract(address addr) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(addr)
+        }
+        return size > 0;
+    }
+
     function validateObservation(address token, uint256 price) internal returns (bool) {
+        // Require updaters to be EOAs to limit the attack vector that this function addresses
+        // Note: isContract will return false in the constructor of contracts, but since we require two observations
+        //   from the same updater spanning across several blocks, the second call will always return true if the caller
+        //   is a smart contract.
+        require(!_isContract(msg.sender), "LiquidityAccumulator: MUST_BE_EOA");
+
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 
         if (pendingObservation.blockNumber == 0) {
