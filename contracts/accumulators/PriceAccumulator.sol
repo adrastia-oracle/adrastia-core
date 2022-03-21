@@ -14,7 +14,8 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         uint256 price;
     }
 
-    uint256 public constant OBSERVATION_BLOCK_PERIOD = 10;
+    uint256 public constant OBSERVATION_BLOCK_MIN_PERIOD = 10;
+    uint256 public constant OBSERVATION_BLOCK_MAX_PERIOD = 20;
 
     uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
     uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
@@ -228,10 +229,12 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         // Validating observation (second update call)
 
         // Check if observation period has passed
-        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_PERIOD) return false;
+        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_MIN_PERIOD) return false;
 
-        // Check if the observations are approximately the same
-        bool validated = !changeThresholdSurpassed(price, pendingObservation.price, updateThreshold);
+        // Check if the observations are approximately the same, and that the observation has not spanned too many
+        // blocks
+        bool validated = block.number - pendingObservation.blockNumber <= OBSERVATION_BLOCK_MAX_PERIOD &&
+            !changeThresholdSurpassed(price, pendingObservation.price, updateThreshold);
 
         // Validation performed. Delete the pending observation
         delete pendingObservations[token][msg.sender];
