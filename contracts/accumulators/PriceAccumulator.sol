@@ -213,7 +213,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         return size > 0;
     }
 
-    function validateObservation(address token, uint256 price) internal returns (bool) {
+    function validateObservation(address token, uint256 price) internal virtual returns (bool) {
         // Require updaters to be EOAs to limit the attack vector that this function addresses
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
