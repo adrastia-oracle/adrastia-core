@@ -88,54 +88,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
     /// @param token The address of the token to accumulate the price of.
     /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
     function update(address token) external virtual override returns (bool) {
-        if (needsUpdate(token)) {
-            uint256 price = fetchPrice(token);
-
-            ObservationLibrary.PriceObservation storage observation = observations[token];
-            AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
-
-            if (observation.timestamp == 0) {
-                /*
-                 * Initialize
-                 */
-                observation.price = price;
-                observation.timestamp = block.timestamp;
-
-                emit Updated(token, quoteToken, block.timestamp, price);
-
-                return true;
-            }
-
-            /*
-             * Update
-             */
-
-            uint256 deltaTime = block.timestamp - observation.timestamp;
-
-            if (deltaTime != 0) {
-                unchecked {
-                    // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
-                    // This limits the following manipulation:
-                    //   A user trades a large amount of tokens in this pool to create an invalid price, updates this
-                    //   accumulator, then performs a reverse trade all in the same transaction.
-                    // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
-                    // and stop/limit such an attack.
-                    if (!validateObservation(token, price)) return false;
-
-                    // Overflow is desired and results in correct functionality
-                    // We add the last price multiplied by the time that price was active
-                    accumulation.cumulativePrice += observation.price * deltaTime;
-
-                    observation.price = price;
-
-                    observation.timestamp = accumulation.timestamp = block.timestamp;
-                }
-
-                emit Updated(token, quoteToken, block.timestamp, price);
-
-                return true;
-            }
-        }
+        if (needsUpdate(token)) return _update(token);
 
         return false;
     }
@@ -199,6 +152,57 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IPriceAccumulator).interfaceId;
+    }
+
+    function _update(address token) internal virtual returns (bool) {
+        uint256 price = fetchPrice(token);
+
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+        AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
+
+        if (observation.timestamp == 0) {
+            /*
+             * Initialize
+             */
+            observation.price = price;
+            observation.timestamp = block.timestamp;
+
+            emit Updated(token, quoteToken, block.timestamp, price);
+
+            return true;
+        }
+
+        /*
+         * Update
+         */
+
+        uint256 deltaTime = block.timestamp - observation.timestamp;
+
+        if (deltaTime != 0) {
+            unchecked {
+                // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
+                // This limits the following manipulation:
+                //   A user trades a large amount of tokens in this pool to create an invalid price, updates this
+                //   accumulator, then performs a reverse trade all in the same transaction.
+                // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
+                // and stop/limit such an attack.
+                if (!validateObservation(token, price)) return false;
+
+                // Overflow is desired and results in correct functionality
+                // We add the last price multiplied by the time that price was active
+                accumulation.cumulativePrice += observation.price * deltaTime;
+
+                observation.price = price;
+
+                observation.timestamp = accumulation.timestamp = block.timestamp;
+            }
+
+            emit Updated(token, quoteToken, block.timestamp, price);
+
+            return true;
+        }
+
+        return false;
     }
 
     function _isContract(address addr) internal view returns (bool) {
