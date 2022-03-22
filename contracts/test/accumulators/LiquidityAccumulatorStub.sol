@@ -14,6 +14,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         bool changeThresholdPassed;
         bool needsUpdateOverridden;
         bool needsUpdate;
+        bool validateObservationOverridden;
+        bool validateObservation;
     }
 
     mapping(address => MockLiquidity) public mockLiquidity;
@@ -50,6 +52,11 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         config.needsUpdate = needsUpdate_;
     }
 
+    function overrideValidateObservation(bool overridden, bool validateObservation_) public {
+        config.validateObservationOverridden = overridden;
+        config.validateObservation = validateObservation_;
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,
@@ -63,6 +70,15 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     function needsUpdate(address token) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
         else return super.needsUpdate(token);
+    }
+
+    function validateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) internal virtual override returns (bool) {
+        if (config.validateObservationOverridden) return config.validateObservation;
+        else return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function fetchLiquidity(address token)

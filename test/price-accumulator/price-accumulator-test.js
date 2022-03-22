@@ -616,6 +616,8 @@ describe("PriceAccumulator#update", () => {
         accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
         await accumulator.deployed();
 
+        await accumulator.overrideValidateObservation(true, true);
+
         startingTime = BigNumber.from(0);
     });
 

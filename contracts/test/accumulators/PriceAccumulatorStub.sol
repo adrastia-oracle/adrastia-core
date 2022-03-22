@@ -9,6 +9,8 @@ contract PriceAccumulatorStub is PriceAccumulator {
         bool changeThresholdPassed;
         bool needsUpdateOverridden;
         bool needsUpdate;
+        bool validateObservationOverridden;
+        bool validateObservation;
     }
 
     mapping(address => uint256) public mockPrices;
@@ -38,6 +40,11 @@ contract PriceAccumulatorStub is PriceAccumulator {
         config.needsUpdate = needsUpdate_;
     }
 
+    function overrideValidateObservation(bool overridden, bool validateObservation_) public {
+        config.validateObservationOverridden = overridden;
+        config.validateObservation = validateObservation_;
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,
@@ -51,6 +58,11 @@ contract PriceAccumulatorStub is PriceAccumulator {
     function needsUpdate(address token) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
         else return super.needsUpdate(token);
+    }
+
+    function validateObservation(address token, uint256 price) internal virtual override returns (bool) {
+        if (config.validateObservationOverridden) return config.validateObservation;
+        else return super.validateObservation(token, price);
     }
 
     function fetchPrice(address token) internal view virtual override returns (uint256) {

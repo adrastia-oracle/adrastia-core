@@ -31,4 +31,12 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
     {
         return super.fetchLiquidity(token);
     }
+
+    function validateObservation(
+        address,
+        uint256,
+        uint256
+    ) internal virtual override returns (bool) {
+        return true; // Disable for simplicity
+    }
 }

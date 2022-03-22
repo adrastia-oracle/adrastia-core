@@ -808,6 +808,8 @@ describe("LiquidityAccumulator#update", () => {
         );
         await liquidityAccumulator.deployed();
 
+        await liquidityAccumulator.overrideValidateObservation(true, true);
+
         startingTime = BigNumber.from(0);
     });
 
