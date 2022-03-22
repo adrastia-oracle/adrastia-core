@@ -254,31 +254,3 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
         liquidityTests([500, 3000, 10000]);
     });
 });
-
-describe("UniswapV3LiquidityAccumulator#isContract", function () {
-    var liquidityAccumulator;
-
-    beforeEach(async () => {
-        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulatorStub");
-
-        liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
-            AddressZero,
-            uniswapV3InitCodeHash,
-            POOL_FEES,
-            AddressZero,
-            TWO_PERCENT_CHANGE,
-            MIN_UPDATE_DELAY,
-            MAX_UPDATE_DELAY
-        );
-    });
-
-    it("Should return false for our account address", async () => {
-        const [owner] = await ethers.getSigners();
-
-        expect(await liquidityAccumulator.stubIsContract(owner.address)).to.equal(false);
-    });
-
-    it("Should return true for a contract address", async () => {
-        expect(await liquidityAccumulator.stubIsContract(liquidityAccumulator.address)).to.equal(true);
-    });
-});

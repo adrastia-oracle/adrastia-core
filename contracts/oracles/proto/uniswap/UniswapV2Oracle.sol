@@ -7,6 +7,7 @@ import "../../../interfaces/IHasLiquidityAccumulator.sol";
 
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
+import "../../../libraries/AddressLibrary.sol";
 
 import "../../../libraries/uniswap-lib/FixedPoint.sol";
 import "../../../libraries/uniswap-v2-periphery/UniswapV2OracleLibrary.sol";
@@ -16,6 +17,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "hardhat/console.sol";
 
 contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
+    using AddressLibrary for address;
     using FixedPoint for *;
 
     address public immutable override liquidityAccumulator;
@@ -46,7 +48,7 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
     function _update(address token) internal virtual override returns (bool) {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
-        require(isContract(pairAddress), "UniswapV2Oracle: POOL_NOT_FOUND");
+        require(pairAddress.isContract(), "UniswapV2Oracle: POOL_NOT_FOUND");
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -193,13 +195,5 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
                 )
             )
         );
-    }
-
-    function isContract(address addr) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(addr)
-        }
-        return size > 0;
     }
 }

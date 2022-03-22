@@ -4,6 +4,8 @@ pragma solidity =0.7.6;
 import "../../../../oracles/proto/uniswap/UniswapV3Oracle.sol";
 
 contract UniswapV3OracleStub is UniswapV3Oracle {
+    using AddressLibrary for address;
+
     struct Config {
         bool needsUpdateOverridden;
         bool needsUpdate;
@@ -33,10 +35,6 @@ contract UniswapV3OracleStub is UniswapV3Oracle {
         observation.tokenLiquidity = tokenLiquidity;
         observation.quoteTokenLiquidity = quoteTokenLiquidity;
         observation.timestamp = timestamp;
-    }
-
-    function stubIsContract(address addr) public view returns (bool) {
-        return isContract(addr);
     }
 
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {

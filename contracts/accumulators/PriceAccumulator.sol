@@ -7,8 +7,11 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/IPriceAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
+import "../libraries/AddressLibrary.sol";
 
 abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
+    using AddressLibrary for address;
+
     struct PendingObservation {
         uint256 blockNumber;
         uint256 price;
@@ -205,20 +208,12 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         return false;
     }
 
-    function _isContract(address addr) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(addr)
-        }
-        return size > 0;
-    }
-
     function validateObservation(address token, uint256 price) internal virtual returns (bool) {
         // Require updaters to be EOAs to limit the attack vector that this function addresses
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
         //   is a smart contract.
-        require(!_isContract(msg.sender), "LiquidityAccumulator: MUST_BE_EOA");
+        require(!msg.sender.isContract(), "LiquidityAccumulator: MUST_BE_EOA");
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 

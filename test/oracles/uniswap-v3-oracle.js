@@ -1273,33 +1273,6 @@ describe("UniswapV3Oracle#update", function () {
     });
 });
 
-describe("UniswapV3Oracle#isContract", function () {
-    var oracle;
-
-    beforeEach(async () => {
-        const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
-
-        oracle = await oracleFactory.deploy(
-            AddressZero,
-            AddressZero,
-            uniswapV3InitCodeHash,
-            [3000],
-            AddressZero,
-            PERIOD
-        );
-    });
-
-    it("Should return false for our account address", async () => {
-        const [owner] = await ethers.getSigners();
-
-        expect(await oracle.stubIsContract(owner.address)).to.equal(false);
-    });
-
-    it("Should return true for a contract address", async () => {
-        expect(await oracle.stubIsContract(oracle.address)).to.equal(true);
-    });
-});
-
 describe("UniswapV3Oracle#supportsInterface(interfaceId)", function () {
     var oracle;
     var interfaceIds;

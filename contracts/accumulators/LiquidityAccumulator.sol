@@ -7,8 +7,11 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
+import "../libraries/AddressLibrary.sol";
 
 abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
+    using AddressLibrary for address;
+
     struct PendingObservation {
         uint256 blockNumber;
         uint256 tokenLiquidity;
@@ -223,14 +226,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         return false;
     }
 
-    function _isContract(address addr) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(addr)
-        }
-        return size > 0;
-    }
-
     function validateObservation(
         address token,
         uint256 tokenLiquidity,
@@ -240,7 +235,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
         //   is a smart contract.
-        require(!_isContract(msg.sender), "LiquidityAccumulator: MUST_BE_EOA");
+        require(!msg.sender.isContract(), "LiquidityAccumulator: MUST_BE_EOA");
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 

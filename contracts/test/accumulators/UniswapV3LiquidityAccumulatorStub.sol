@@ -41,8 +41,4 @@ contract UniswapV3LiquidityAccumulatorStub is UniswapV3LiquidityAccumulator {
     ) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
-
-    function stubIsContract(address addr) public view returns (bool) {
-        return isContract(addr);
-    }
 }
