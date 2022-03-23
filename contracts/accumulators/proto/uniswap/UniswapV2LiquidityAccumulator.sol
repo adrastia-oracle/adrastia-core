@@ -8,6 +8,8 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
+    using AddressLibrary for address;
+
     address public immutable uniswapFactory;
 
     bytes32 public immutable initCodeHash;
@@ -33,7 +35,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
-        require(isContract(pairAddress), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
+        require(pairAddress.isContract(), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
 
         (uint256 reserve0, uint256 reserve1, uint32 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
 
@@ -72,13 +74,5 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
                 )
             )
         );
-    }
-
-    function isContract(address addr) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(addr)
-        }
-        return size > 0;
     }
 }

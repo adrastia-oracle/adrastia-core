@@ -62,6 +62,7 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
 
     var uniswapFactory;
     var liquidityAccumulator;
+    var addressHelper;
 
     var expectedTokenLiquidity;
     var expectedQuoteTokenLiquidity;
@@ -79,13 +80,16 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
         const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
         const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulatorStub");
         const helperFactory = await ethers.getContractFactory("UniswapV3Helper");
+        const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
+
+        addressHelper = await addressHelperFactory.deploy();
 
         var tokens = [undefined, undefined, undefined];
 
         for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
         for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
 
-        tokens = tokens.sort((a, b) => a.address < b.address);
+        tokens = tokens.sort(async (a, b) => await addressHelper.lessThan(a.address, b.address));
 
         token = ltToken = tokens[0];
         quoteToken = tokens[1];
@@ -130,7 +134,7 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
         var amount0;
         var amount1;
 
-        if (token.address < quoteToken.address) {
+        if (await addressHelper.lessThan(token.address, quoteToken.address)) {
             token0 = token.address;
             token1 = quoteToken.address;
 
@@ -164,7 +168,7 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
 
         await helper.helperAddLiquidity(params);
 
-        if (token.address < quoteToken.address) {
+        if (await addressHelper.lessThan(token.address, quoteToken.address)) {
             expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount0);
             expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount1);
         } else {
@@ -197,10 +201,9 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
     function liquidityTests(poolFees) {
         tests.forEach(({ args }) => {
             it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
-                const sqrtPrice =
-                    token.address < quoteToken.address
-                        ? encodePriceSqrt(args[1], args[0])
-                        : encodePriceSqrt(args[0], args[1]);
+                const sqrtPrice = (await addressHelper.lessThan(token.address, quoteToken.address))
+                    ? encodePriceSqrt(args[1], args[0])
+                    : encodePriceSqrt(args[0], args[1]);
 
                 var tokenLiquiditySum = BigNumber.from(0);
                 var quoteTokenLiquiditySum = BigNumber.from(0);
@@ -252,33 +255,5 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
 
     describe("Providing liquidity for poolFees = [ 500, 3000, 10000 ]", function () {
         liquidityTests([500, 3000, 10000]);
-    });
-});
-
-describe("UniswapV3LiquidityAccumulator#isContract", function () {
-    var liquidityAccumulator;
-
-    beforeEach(async () => {
-        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulatorStub");
-
-        liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
-            AddressZero,
-            uniswapV3InitCodeHash,
-            POOL_FEES,
-            AddressZero,
-            TWO_PERCENT_CHANGE,
-            MIN_UPDATE_DELAY,
-            MAX_UPDATE_DELAY
-        );
-    });
-
-    it("Should return false for our account address", async () => {
-        const [owner] = await ethers.getSigners();
-
-        expect(await liquidityAccumulator.stubIsContract(owner.address)).to.equal(false);
-    });
-
-    it("Should return true for a contract address", async () => {
-        expect(await liquidityAccumulator.stubIsContract(liquidityAccumulator.address)).to.equal(true);
     });
 });

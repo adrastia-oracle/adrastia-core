@@ -12,8 +12,11 @@ import "../../../interfaces/IHasLiquidityAccumulator.sol";
 
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
+import "../../../libraries/AddressLibrary.sol";
 
 contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
+    using AddressLibrary for address;
+
     /// @notice The identifying key of the pool
     struct PoolKey {
         address token0;
@@ -99,7 +102,7 @@ contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
         for (uint256 i = 0; i < len; ++i) {
             address pool = computeAddress(uniswapFactory, initCodeHash, getPoolKey(token, quoteToken, poolFees[i]));
 
-            if (isContract(pool)) {
+            if (pool.isContract()) {
                 (periodObservations[i].tick, periodObservations[i].weight) = OracleLibrary.consult(
                     pool,
                     uint32(period)
@@ -171,13 +174,5 @@ contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
         );
 
         return true;
-    }
-
-    function isContract(address addr) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(addr)
-        }
-        return size > 0;
     }
 }

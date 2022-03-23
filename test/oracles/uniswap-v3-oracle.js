@@ -976,7 +976,7 @@ describe("UniswapV3Oracle#update", function () {
     beforeEach(async () => {
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
         const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
-        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulator");
+        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
         const helperFactory = await ethers.getContractFactory("UniswapV3Helper");
         const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
@@ -1270,33 +1270,6 @@ describe("UniswapV3Oracle#update", function () {
         });
 
         describeMultiTokenTests();
-    });
-});
-
-describe("UniswapV3Oracle#isContract", function () {
-    var oracle;
-
-    beforeEach(async () => {
-        const oracleFactory = await ethers.getContractFactory("UniswapV3OracleStub");
-
-        oracle = await oracleFactory.deploy(
-            AddressZero,
-            AddressZero,
-            uniswapV3InitCodeHash,
-            [3000],
-            AddressZero,
-            PERIOD
-        );
-    });
-
-    it("Should return false for our account address", async () => {
-        const [owner] = await ethers.getSigners();
-
-        expect(await oracle.stubIsContract(owner.address)).to.equal(false);
-    });
-
-    it("Should return true for a contract address", async () => {
-        expect(await oracle.stubIsContract(oracle.address)).to.equal(true);
     });
 });
 

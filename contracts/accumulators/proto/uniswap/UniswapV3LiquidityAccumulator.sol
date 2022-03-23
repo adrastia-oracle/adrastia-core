@@ -10,6 +10,8 @@ import "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
+    using AddressLibrary for address;
+
     /// @notice The identifying key of the pool
     struct PoolKey {
         address token0;
@@ -97,7 +99,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         for (uint256 i = 0; i < _poolFees.length; ++i) {
             address pool = computeAddress(_uniswapFactory, _initCodeHash, getPoolKey(token, _quoteToken, _poolFees[i]));
 
-            if (isContract(pool)) {
+            if (pool.isContract()) {
                 tokenLiquidity += IERC20Minimal(token).balanceOf(pool);
                 quoteTokenLiquidity += IERC20Minimal(_quoteToken).balanceOf(pool);
 
@@ -116,13 +118,5 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
             tokenLiquidity -= fees1;
             quoteTokenLiquidity -= fees0;
         }
-    }
-
-    function isContract(address addr) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(addr)
-        }
-        return size > 0;
     }
 }

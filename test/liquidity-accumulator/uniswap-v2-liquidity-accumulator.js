@@ -15,6 +15,7 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
 
     var fakeUniswapV2Factory;
     var liquidityAccumulator;
+    var addressHelper;
 
     var quoteToken;
     var token;
@@ -33,6 +34,10 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
         await fakeUniswapV2Factory.deployed();
 
+        const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
+
+        addressHelper = await addressHelperFactory.deploy();
+
         // Create tokens
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
 
@@ -48,9 +53,7 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
             await tokens[i].deployed();
         }
 
-        tokens = tokens.sort((a, b) => {
-            a.address < b.address;
-        });
+        tokens = tokens.sort(async (a, b) => await addressHelper.lessThan(a.address, b.address));
 
         ltToken = tokens[0];
         quoteToken = tokens[1];

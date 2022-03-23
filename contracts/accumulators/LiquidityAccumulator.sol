@@ -7,8 +7,20 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
+import "../libraries/AddressLibrary.sol";
 
 abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
+    using AddressLibrary for address;
+
+    struct PendingObservation {
+        uint256 blockNumber;
+        uint256 tokenLiquidity;
+        uint256 quoteTokenLiquidity;
+    }
+
+    uint256 public constant OBSERVATION_BLOCK_MIN_PERIOD = 10;
+    uint256 public constant OBSERVATION_BLOCK_MAX_PERIOD = 20;
+
     uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
     uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
 
@@ -20,8 +32,12 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
-    mapping(address => AccumulationLibrary.LiquidityAccumulator) accumulations;
-    mapping(address => ObservationLibrary.LiquidityObservation) observations;
+    mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
+    mapping(address => ObservationLibrary.LiquidityObservation) public observations;
+
+    /// @notice Stores observations held for OBSERVATION_BLOCK_PERIOD before being committed to an update.
+    /// @dev address(token) => address(poster) => PendingObservation
+    mapping(address => mapping(address => PendingObservation)) public pendingObservations;
 
     event Updated(
         address indexed token,
@@ -84,50 +100,12 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
             changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
     }
 
+    /// @notice Updates the accumulator.
+    /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
+    /// @param token The address of the token to accumulate the liquidities of.
+    /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
     function update(address token) external virtual override returns (bool) {
-        if (needsUpdate(token)) {
-            (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
-
-            ObservationLibrary.LiquidityObservation storage observation = observations[token];
-            AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
-
-            if (observation.timestamp == 0) {
-                /*
-                 * Initialize
-                 */
-                observation.tokenLiquidity = tokenLiquidity;
-                observation.quoteTokenLiquidity = quoteTokenLiquidity;
-                observation.timestamp = block.timestamp;
-
-                emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
-
-                return true;
-            }
-
-            /*
-             * Update
-             */
-
-            uint256 deltaTime = block.timestamp - observation.timestamp;
-
-            if (deltaTime != 0) {
-                unchecked {
-                    // Overflow is desired and results in correct functionality
-                    // We add the liquidites multiplied by the time those liquidities were present
-                    accumulation.cumulativeTokenLiquidity += observation.tokenLiquidity * deltaTime;
-                    accumulation.cumulativeQuoteTokenLiquidity += observation.quoteTokenLiquidity * deltaTime;
-
-                    observation.tokenLiquidity = tokenLiquidity;
-                    observation.quoteTokenLiquidity = quoteTokenLiquidity;
-
-                    observation.timestamp = accumulation.timestamp = block.timestamp;
-                }
-
-                emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
-
-                return true;
-            }
-        }
+        if (needsUpdate(token)) return _update(token);
 
         return false;
     }
@@ -192,6 +170,99 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(ILiquidityAccumulator).interfaceId;
+    }
+
+    function _update(address token) internal virtual returns (bool) {
+        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
+
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+        AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
+
+        if (observation.timestamp == 0) {
+            /*
+             * Initialize
+             */
+            observation.tokenLiquidity = tokenLiquidity;
+            observation.quoteTokenLiquidity = quoteTokenLiquidity;
+            observation.timestamp = block.timestamp;
+
+            emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+
+            return true;
+        }
+
+        /*
+         * Update
+         */
+
+        uint256 deltaTime = block.timestamp - observation.timestamp;
+
+        if (deltaTime != 0) {
+            // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
+            // This limits the following manipulation:
+            //   A user adds a lot of liquidity to a [low liquidity] pool with an invalid price, updates this
+            //   accumulator, then removes the liquidity in a single transaction.
+            // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
+            // and stop/limit such an attack.
+            if (!validateObservation(token, tokenLiquidity, quoteTokenLiquidity)) return false;
+
+            unchecked {
+                // Overflow is desired and results in correct functionality
+                // We add the liquidites multiplied by the time those liquidities were present
+                accumulation.cumulativeTokenLiquidity += observation.tokenLiquidity * deltaTime;
+                accumulation.cumulativeQuoteTokenLiquidity += observation.quoteTokenLiquidity * deltaTime;
+
+                observation.tokenLiquidity = tokenLiquidity;
+                observation.quoteTokenLiquidity = quoteTokenLiquidity;
+
+                observation.timestamp = accumulation.timestamp = block.timestamp;
+            }
+
+            emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    function validateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) internal virtual returns (bool) {
+        // Require updaters to be EOAs to limit the attack vector that this function addresses
+        // Note: isContract will return false in the constructor of contracts, but since we require two observations
+        //   from the same updater spanning across several blocks, the second call will always return true if the caller
+        //   is a smart contract.
+        require(!msg.sender.isContract(), "LiquidityAccumulator: MUST_BE_EOA");
+
+        PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
+
+        if (pendingObservation.blockNumber == 0) {
+            // New observation (first update call), store it
+            pendingObservation.blockNumber = block.number;
+            pendingObservation.tokenLiquidity = tokenLiquidity;
+            pendingObservation.quoteTokenLiquidity = quoteTokenLiquidity;
+
+            return false; // Needs to validate this observation
+        }
+
+        // Validating observation (second update call)
+
+        // Check if observation period has passed
+        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_MIN_PERIOD) return false;
+
+        // Check if the observations are approximately the same, and that the observation has not spanned too many
+        // blocks
+        bool validated = block.number - pendingObservation.blockNumber <= OBSERVATION_BLOCK_MAX_PERIOD &&
+            !changeThresholdSurpassed(tokenLiquidity, pendingObservation.tokenLiquidity, updateThreshold) &&
+            !changeThresholdSurpassed(quoteTokenLiquidity, pendingObservation.quoteTokenLiquidity, updateThreshold);
+
+        // Validation performed. Delete the pending observation
+        delete pendingObservations[token][msg.sender];
+
+        return validated;
     }
 
     function changeThresholdSurpassed(

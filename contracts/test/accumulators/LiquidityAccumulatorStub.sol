@@ -14,6 +14,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         bool changeThresholdPassed;
         bool needsUpdateOverridden;
         bool needsUpdate;
+        bool validateObservationOverridden;
+        bool validateObservation;
     }
 
     mapping(address => MockLiquidity) public mockLiquidity;
@@ -50,6 +52,19 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         config.needsUpdate = needsUpdate_;
     }
 
+    function overrideValidateObservation(bool overridden, bool validateObservation_) public {
+        config.validateObservationOverridden = overridden;
+        config.validateObservation = validateObservation_;
+    }
+
+    function stubValidateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) public returns (bool) {
+        return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,
@@ -63,6 +78,15 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     function needsUpdate(address token) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
         else return super.needsUpdate(token);
+    }
+
+    function validateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) internal virtual override returns (bool) {
+        if (config.validateObservationOverridden) return config.validateObservation;
+        else return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function fetchLiquidity(address token)
@@ -84,5 +108,21 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     ) internal view virtual override returns (bool) {
         if (config.changeThresholdOverridden) return config.changeThresholdPassed;
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
+    }
+}
+
+contract LiquidityAccumulatorStubCaller {
+    LiquidityAccumulatorStub immutable callee;
+
+    constructor(LiquidityAccumulatorStub callee_) {
+        callee = callee_;
+    }
+
+    function stubValidateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) public returns (bool) {
+        return callee.stubValidateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }
 }

@@ -1279,7 +1279,7 @@ describe("UniswapV2Oracle#update", function () {
 
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
         const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
-        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV2LiquidityAccumulator");
+        const liquidityAccumulatorFactory = await ethers.getContractFactory("UniswapV2LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("UniswapV2OracleStub");
         const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
 
