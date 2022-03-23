@@ -57,6 +57,14 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         config.validateObservation = validateObservation_;
     }
 
+    function stubValidateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) public returns (bool) {
+        return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,
@@ -100,5 +108,21 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     ) internal view virtual override returns (bool) {
         if (config.changeThresholdOverridden) return config.changeThresholdPassed;
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
+    }
+}
+
+contract LiquidityAccumulatorStubCaller {
+    LiquidityAccumulatorStub immutable callee;
+
+    constructor(LiquidityAccumulatorStub callee_) {
+        callee = callee_;
+    }
+
+    function stubValidateObservation(
+        address token,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) public returns (bool) {
+        return callee.stubValidateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }
 }

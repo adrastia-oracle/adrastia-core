@@ -1,5 +1,6 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
@@ -1140,6 +1141,44 @@ describe("LiquidityAccumulator#update", () => {
             await ethers.provider.send("evm_setAutomine", [true]);
         }
     });
+
+    it("Shouldn't update when validateObservation returns false", async () => {
+        // Configure initial liquidity
+        const initialTokenLiquidity = ethers.utils.parseEther("100");
+        const initialQuoteTokenLiquidity = ethers.utils.parseEther("100");
+        await (await liquidityAccumulator.setLiquidity(GRT, initialTokenLiquidity, initialQuoteTokenLiquidity)).wait();
+
+        // Override needsUpdate
+        await (await liquidityAccumulator.overrideNeedsUpdate(true, true)).wait();
+
+        // Initial update
+        const initialUpdateReceipt = await liquidityAccumulator.update(GRT);
+        await initialUpdateReceipt.wait();
+        const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
+
+        // Configure liquidity(1)
+        const firstTokenLiquidity = ethers.utils.parseEther("200");
+        const firstQuoteTokenLiquidity = ethers.utils.parseEther("200");
+        await (await liquidityAccumulator.setLiquidity(GRT, firstTokenLiquidity, firstQuoteTokenLiquidity)).wait();
+
+        // Make validateObservation return false
+        await liquidityAccumulator.overrideValidateObservation(true, false);
+
+        // Perform update(1)
+        const firstUpdateReceipt = await liquidityAccumulator.update(GRT);
+
+        await expect(firstUpdateReceipt).to.not.emit(liquidityAccumulator, "Updated");
+
+        const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
+        const observation = await liquidityAccumulator.getLastObservation(GRT);
+
+        expect(accumulation["cumulativeTokenLiquidity"]).to.equal(0);
+        expect(accumulation["cumulativeQuoteTokenLiquidity"]).to.equal(0);
+
+        expect(observation["tokenLiquidity"]).to.equal(initialTokenLiquidity);
+        expect(observation["quoteTokenLiquidity"]).to.equal(initialQuoteTokenLiquidity);
+        expect(observation["timestamp"]).to.equal(initialUpdateTime);
+    });
 });
 
 describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
@@ -1165,5 +1204,361 @@ describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
     it("Should support ILiquidityAccumulator", async () => {
         const interfaceId = await interfaceIds.iLiquidityAccumulator();
         expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
+
+describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteTokenLiquidity)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+    var accumulatorCaller;
+    var token;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const accumulatorCallerFactory = await ethers.getContractFactory("LiquidityAccumulatorStubCaller");
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
+
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+        await accumulator.deployed();
+
+        accumulatorCaller = await accumulatorCallerFactory.deploy(accumulator.address);
+
+        token = await erc20Factory.deploy("Token", "T", 18);
+        await token.deployed();
+    });
+
+    it("Should revert when caller is a smart contract", async () => {
+        await expect(accumulatorCaller.stubValidateObservation(token.address, 0, 0)).to.be.revertedWith(
+            "LiquidityAccumulator: MUST_BE_EOA"
+        );
+    });
+
+    it("Should return false for the first observation", async () => {
+        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0, 0)).to.equal(false);
+    });
+
+    const tests = [
+        {
+            tokenLiquidity: ethers.utils.parseEther("0"),
+            quoteTokenLiquidity: ethers.utils.parseEther("0"),
+        },
+        {
+            tokenLiquidity: ethers.utils.parseEther("100"),
+            quoteTokenLiquidity: ethers.utils.parseEther("0"),
+        },
+        {
+            tokenLiquidity: ethers.utils.parseEther("0"),
+            quoteTokenLiquidity: ethers.utils.parseEther("100"),
+        },
+        {
+            tokenLiquidity: ethers.utils.parseEther("100"),
+            quoteTokenLiquidity: ethers.utils.parseEther("100"),
+        },
+    ];
+
+    describe("Should store the observation upon first call", async () => {
+        async function validate(tokenLiquidity, quoteTokenLiquidity) {
+            const receipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            const [owner] = await ethers.getSigners();
+
+            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
+
+            expect(pendingObservation["blockNumber"]).to.equal(receipt.blockNumber);
+            expect(pendingObservation["tokenLiquidity"]).to.equal(tokenLiquidity);
+            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
+        }
+
+        tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+            it("tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity, async () => {
+                await validate(tokenLiquidity, quoteTokenLiquidity);
+            });
+        });
+    });
+
+    describe("Second call", async () => {
+        async function validateBeforeMinPeriod(tokenLiquidity, quoteTokenLiquidity) {
+            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+
+            const firstReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
+            ).to.equal(false);
+
+            const secondReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.lessThan(minPeriod.toNumber());
+
+            const [owner] = await ethers.getSigners();
+
+            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
+
+            expect(pendingObservation["blockNumber"]).to.equal(firstReceipt.blockNumber);
+            expect(pendingObservation["tokenLiquidity"]).to.equal(tokenLiquidity);
+            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
+        }
+
+        async function validateReturnWithinPeriod(tokenLiquidity, quoteTokenLiquidity, useMin) {
+            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
+
+            await accumulator.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity);
+
+            await hre.timeAndMine.mine(useMin ? minPeriod : maxPeriod);
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
+            ).to.equal(true);
+        }
+
+        async function validateDeletesWithinPeriod(tokenLiquidity, quoteTokenLiquidity, useMin) {
+            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
+
+            const firstReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            await hre.timeAndMine.mine((useMin ? minPeriod : maxPeriod) - 1);
+
+            const secondReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.within(
+                minPeriod.toNumber(),
+                maxPeriod.toNumber()
+            );
+
+            const [owner] = await ethers.getSigners();
+
+            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
+
+            expect(pendingObservation["blockNumber"]).to.equal(0);
+            expect(pendingObservation["tokenLiquidity"]).to.equal(0);
+            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(0);
+        }
+
+        async function validateAfterMaxPeriod(tokenLiquidity, quoteTokenLiquidity) {
+            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
+
+            const firstReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            await hre.timeAndMine.mine(maxPeriod.add(1));
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
+            ).to.equal(false);
+
+            const secondReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.greaterThan(maxPeriod.toNumber());
+
+            const [owner] = await ethers.getSigners();
+
+            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
+
+            expect(pendingObservation["blockNumber"]).to.equal(0);
+            expect(pendingObservation["tokenLiquidity"]).to.equal(0);
+            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(0);
+        }
+
+        async function validateWithinPeriodButOverChangeThreshold(
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            changeTokenLiquidity,
+            changeQuoteTokenLiquidity
+        ) {
+            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
+
+            const firstReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            await hre.timeAndMine.mine(minPeriod.add(1));
+
+            if (changeTokenLiquidity) tokenLiquidity = tokenLiquidity.add(ethers.utils.parseEther("10000"));
+
+            if (changeQuoteTokenLiquidity)
+                quoteTokenLiquidity = quoteTokenLiquidity.add(ethers.utils.parseEther("10000"));
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
+            ).to.equal(false);
+
+            const secondReceipt = await accumulator.stubValidateObservation(
+                token.address,
+                tokenLiquidity,
+                quoteTokenLiquidity
+            );
+
+            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.within(
+                minPeriod.toNumber(),
+                maxPeriod.toNumber()
+            );
+
+            const [owner] = await ethers.getSigners();
+
+            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
+
+            expect(pendingObservation["blockNumber"]).to.equal(0);
+            expect(pendingObservation["tokenLiquidity"]).to.equal(0);
+            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(0);
+        }
+
+        describe("Should return false and keep the pending observation when delta blocks < min period", async () => {
+            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                it(
+                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
+                    async () => {
+                        await validateBeforeMinPeriod(tokenLiquidity, quoteTokenLiquidity);
+                    }
+                );
+            });
+        });
+
+        describe("Should return true when delta blocks = min period", async () => {
+            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                it(
+                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
+                    async () => {
+                        await validateReturnWithinPeriod(tokenLiquidity, quoteTokenLiquidity, true);
+                    }
+                );
+            });
+        });
+
+        describe("Should return true when delta blocks = max period", async () => {
+            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                it(
+                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
+                    async () => {
+                        await validateReturnWithinPeriod(tokenLiquidity, quoteTokenLiquidity, false);
+                    }
+                );
+            });
+        });
+
+        describe("Should delete the pending observation when delta blocks = min period", async () => {
+            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                it(
+                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
+                    async () => {
+                        await validateDeletesWithinPeriod(tokenLiquidity, quoteTokenLiquidity, true);
+                    }
+                );
+            });
+        });
+
+        describe("Should delete the pending observation when delta blocks = max period", async () => {
+            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                it(
+                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
+                    async () => {
+                        await validateDeletesWithinPeriod(tokenLiquidity, quoteTokenLiquidity, false);
+                    }
+                );
+            });
+        });
+
+        describe("Should return false and delete the pending observation when delta blocks > max period", async () => {
+            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                it(
+                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
+                    async () => {
+                        await validateAfterMaxPeriod(tokenLiquidity, quoteTokenLiquidity);
+                    }
+                );
+            });
+        });
+
+        describe("Should return false and delete the pending observation when change threshold surpassed", async () => {
+            describe("tokenLiquidity change threshold surpassed", async () => {
+                tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                    it(
+                        "initial tokenLiquidity = " +
+                            tokenLiquidity +
+                            ", initial quoteTokenLiquidity = " +
+                            quoteTokenLiquidity,
+                        async () => {
+                            await validateWithinPeriodButOverChangeThreshold(
+                                tokenLiquidity,
+                                quoteTokenLiquidity,
+                                true,
+                                false
+                            );
+                        }
+                    );
+                });
+            });
+
+            describe("quoteTokenLiquidity change threshold surpassed", async () => {
+                tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                    it(
+                        "initial tokenLiquidity = " +
+                            tokenLiquidity +
+                            ", initial quoteTokenLiquidity = " +
+                            quoteTokenLiquidity,
+                        async () => {
+                            await validateWithinPeriodButOverChangeThreshold(
+                                tokenLiquidity,
+                                quoteTokenLiquidity,
+                                false,
+                                true
+                            );
+                        }
+                    );
+                });
+            });
+
+            describe("tokenLiquidity and quoteTokenLiquidity change threshold surpassed", async () => {
+                tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
+                    it(
+                        "initial tokenLiquidity = " +
+                            tokenLiquidity +
+                            ", initial quoteTokenLiquidity = " +
+                            quoteTokenLiquidity,
+                        async () => {
+                            await validateWithinPeriodButOverChangeThreshold(
+                                tokenLiquidity,
+                                quoteTokenLiquidity,
+                                true,
+                                true
+                            );
+                        }
+                    );
+                });
+            });
+        });
     });
 });
