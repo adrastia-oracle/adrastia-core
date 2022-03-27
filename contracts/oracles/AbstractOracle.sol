@@ -20,6 +20,8 @@ abstract contract AbstractOracle is IERC165, IOracle {
 
     function needsUpdate(address token) public view virtual override returns (bool);
 
+    function canUpdate(address token) public view virtual override returns (bool);
+
     function quoteTokenName() public view virtual override returns (string memory) {
         return IERC20Metadata(quoteToken).name();
     }

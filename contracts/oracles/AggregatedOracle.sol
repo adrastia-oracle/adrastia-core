@@ -141,6 +141,39 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return interfaceId == type(IAggregatedOracle).interfaceId || super.supportsInterface(interfaceId);
     }
 
+    function canUpdate(address token) public view virtual override(IUpdateByToken, PeriodicOracle) returns (bool) {
+        // If the parent contract can't update, this contract can't update
+        if (!super.canUpdate(token)) return false;
+
+        uint256 maxAge = calculateMaxAge();
+        uint256 validResponses = 0;
+
+        // Loop through all of the oracles, checking for valid responses
+        for (uint256 j = 0; j < 2; ++j) {
+            OracleConfig[] memory _oracles;
+
+            if (j == 0) _oracles = oracles;
+            else _oracles = tokenSpecificOracles[token];
+
+            for (uint256 i = 0; i < _oracles.length; ++i) {
+                // If the underlying oracle needs an update, we return true; we can update this oracle.
+                if (IOracle(_oracles[i].oracle).needsUpdate(token)) return true;
+
+                // Try and consult with the underlying oracle
+                try IOracle(_oracles[i].oracle).consult(token, maxAge) returns (
+                    uint256 oraclePrice,
+                    uint256,
+                    uint256 oracleQuoteTokenLiquidity
+                ) {
+                    if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) ++validResponses;
+                } catch Error(string memory) {} catch (bytes memory) {}
+            }
+        }
+
+        // Only return true if we have reached the minimum number of valid underlying oracle consultations
+        return validResponses >= 1;
+    }
+
     /*
      * Internal functions
      */
@@ -191,6 +224,12 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return underlyingUpdated;
     }
 
+    function calculateMaxAge() internal view returns (uint256) {
+        // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed.
+        // We don't want to use old data.
+        return period * 2;
+    }
+
     function consultFresh(address token)
         internal
         returns (
@@ -202,9 +241,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     {
         uint256 qtDecimals = quoteTokenDecimals();
 
-        // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed.
-        // We don't want to use old data.
-        uint256 maxAge = period * 2;
+        uint256 maxAge = calculateMaxAge();
 
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 

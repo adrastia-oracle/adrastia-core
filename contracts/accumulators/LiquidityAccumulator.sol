@@ -100,6 +100,11 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
             changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
     }
 
+    function canUpdate(address token) public view virtual override returns (bool) {
+        // If this accumulator doesn't need an update, it can't (won't) update
+        return needsUpdate(token);
+    }
+
     /// @notice Updates the accumulator.
     /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
     /// @param token The address of the token to accumulate the liquidities of.

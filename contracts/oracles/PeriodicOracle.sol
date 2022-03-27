@@ -24,6 +24,11 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
         return deltaTime >= period;
     }
 
+    function canUpdate(address token) public view virtual override returns (bool) {
+        // If this oracle doesn't need an update, it can't (won't) update
+        return needsUpdate(token);
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IPeriodic).interfaceId || super.supportsInterface(interfaceId);
     }

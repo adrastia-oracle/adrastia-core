@@ -99,4 +99,8 @@ contract MockOracle is AbstractOracle {
     ) public view virtual override returns (bool) {
         return _needsUpdate;
     }
+
+    function canUpdate(address token) public view virtual override returns (bool) {
+        return needsUpdate(token);
+    }
 }

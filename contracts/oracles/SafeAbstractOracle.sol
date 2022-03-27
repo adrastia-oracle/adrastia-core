@@ -26,6 +26,8 @@ abstract contract SafeAbstractOracle is IERC165, IOracle {
 
     function needsUpdate(address token) public view virtual override returns (bool);
 
+    function canUpdate(address token) public view virtual override returns (bool);
+
     function quoteTokenName() public view virtual override returns (string memory) {
         return IERC20(quoteToken).name();
     }
