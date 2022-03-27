@@ -224,10 +224,14 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return underlyingUpdated;
     }
 
+    /**
+     * @notice Calculates the maximum age of the underlying oracles' responses when updating this oracle's observation.
+     * @dev We use this to prevent old data from skewing our observations. Underlying oracles must update at least as
+     *   frequently as this oracle does.
+     * @return maxAge The maximum age of underlying oracles' responses, in seconds.
+     */
     function calculateMaxAge() internal view returns (uint256) {
-        // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed.
-        // We don't want to use old data.
-        return period * 2;
+        return period;
     }
 
     function consultFresh(address token)
