@@ -83,9 +83,13 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
         uint256 deltaTime = block.timestamp - lastObservation.timestamp;
-        if (deltaTime < minUpdateDelay) return false;
-        // Ensures updates occur at most once every minUpdateDelay (seconds)
-        else if (deltaTime >= maxUpdateDelay) return true; // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        if (deltaTime < minUpdateDelay) {
+            // Ensures updates occur at most once every minUpdateDelay (seconds)
+            return false;
+        } else if (deltaTime >= maxUpdateDelay) {
+            // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+            return true;
+        }
 
         /*
          * maxUpdateDelay > deltaTime >= minUpdateDelay
