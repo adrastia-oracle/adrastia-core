@@ -59,8 +59,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     function stubValidateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) public returns (bool) {
         return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }
@@ -82,8 +82,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     function validateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
         else return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
@@ -120,8 +120,8 @@ contract LiquidityAccumulatorStubCaller {
 
     function stubValidateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) public returns (bool) {
         return callee.stubValidateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }

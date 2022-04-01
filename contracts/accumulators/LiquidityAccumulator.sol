@@ -16,8 +16,8 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     struct PendingObservation {
         uint256 blockNumber;
-        uint256 tokenLiquidity;
-        uint256 quoteTokenLiquidity;
+        uint112 tokenLiquidity;
+        uint112 quoteTokenLiquidity;
     }
 
     uint256 public constant OBSERVATION_BLOCK_MIN_PERIOD = 10;
@@ -239,8 +239,8 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     function validateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) internal virtual returns (bool) {
         // Require updaters to be EOAs to limit the attack vector that this function addresses
         // Note: isContract will return false in the constructor of contracts, but since we require two observations

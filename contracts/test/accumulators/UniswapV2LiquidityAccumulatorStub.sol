@@ -34,8 +34,8 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
 
     function validateObservation(
         address,
-        uint256,
-        uint256
+        uint112,
+        uint112
     ) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
