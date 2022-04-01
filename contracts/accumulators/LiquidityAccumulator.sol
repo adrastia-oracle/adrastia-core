@@ -108,7 +108,19 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     function canUpdate(address token) public view virtual override returns (bool) {
         // If this accumulator doesn't need an update, it can't (won't) update
-        return needsUpdate(token);
+        if (!needsUpdate(token)) return false;
+
+        PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
+
+        // Check if pending update can be initialized (or if it's the first update)
+        if (pendingObservation.blockNumber == 0) return true;
+
+        // Validating observation (second update call)
+
+        // Check if observation period has passed
+        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_MIN_PERIOD) return false;
+
+        return true;
     }
 
     /// @notice Updates the accumulator.
