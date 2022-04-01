@@ -172,7 +172,7 @@ async function main() {
 
     while (true) {
         try {
-            if (await uniswapV2.liquidityAccumulator.needsUpdate(token)) {
+            if (await uniswapV2.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await uniswapV2.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -186,7 +186,7 @@ async function main() {
                 );
             }
 
-            if (await uniswapV3.liquidityAccumulator.needsUpdate(token)) {
+            if (await uniswapV3.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await uniswapV3.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -200,7 +200,7 @@ async function main() {
                 );
             }
 
-            if (await sushiswap.liquidityAccumulator.needsUpdate(token)) {
+            if (await sushiswap.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await sushiswap.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -214,7 +214,7 @@ async function main() {
                 );
             }
 
-            if (await oracle.needsUpdate(token)) {
+            if (await oracle.canUpdate(token)) {
                 const updateTx = await oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 

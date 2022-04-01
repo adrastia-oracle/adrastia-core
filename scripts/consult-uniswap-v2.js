@@ -84,7 +84,7 @@ async function main() {
 
     while (true) {
         try {
-            if (await uniswapV2.liquidityAccumulator.needsUpdate(token)) {
+            if (await uniswapV2.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await uniswapV2.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -98,7 +98,7 @@ async function main() {
                 );
             }
 
-            if (await uniswapV2.oracle.needsUpdate(token)) {
+            if (await uniswapV2.oracle.canUpdate(token)) {
                 const updateTx = await uniswapV2.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 

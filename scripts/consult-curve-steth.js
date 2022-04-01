@@ -86,7 +86,7 @@ async function main() {
 
     while (true) {
         try {
-            if (await curve.liquidityAccumulator.needsUpdate(token)) {
+            if (await curve.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await curve.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -100,7 +100,7 @@ async function main() {
                 );
             }
 
-            if (await curve.priceAccumulator.needsUpdate(token)) {
+            if (await curve.priceAccumulator.canUpdate(token)) {
                 const updateTx = await curve.priceAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -114,7 +114,7 @@ async function main() {
                 );
             }
 
-            if (await curve.oracle.needsUpdate(token)) {
+            if (await curve.oracle.canUpdate(token)) {
                 const updateTx = await curve.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 
