@@ -8,17 +8,17 @@ import "../../../interfaces/IHasLiquidityAccumulator.sol";
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
 import "../../../libraries/AddressLibrary.sol";
+import "../../../libraries/SafeCastExt.sol";
 
 import "../../../libraries/uniswap-lib/FixedPoint.sol";
 import "../../../libraries/uniswap-v2-periphery/UniswapV2OracleLibrary.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
-import "hardhat/console.sol";
-
 contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
     using AddressLibrary for address;
     using FixedPoint for *;
+    using SafeCastExt for uint256;
 
     address public immutable override liquidityAccumulator;
 
@@ -26,7 +26,7 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
 
     bytes32 public immutable initCodeHash;
 
-    mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
+    mapping(address => AccumulationLibrary.UniswapV2PriceAccumulator) public priceAccumulations;
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
 
     constructor(
@@ -63,18 +63,22 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
 
             require(timestamp != 0, "UniswapV2Oracle: MISSING_RESERVES_TIMESTAMP");
 
-            AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+            AccumulationLibrary.UniswapV2PriceAccumulator storage priceAccumulation = priceAccumulations[token];
 
-            // Get current accumulations from Uniswap's price accumulator
-            (
-                uint256 cumulativeQuoteTokenPrice,
-                uint256 cumulativeTokenPrice,
-                uint32 blockTimestamp
-            ) = UniswapV2OracleLibrary.currentCumulativePrices(pairAddress);
+            uint256 cumulativeTokenPrice;
+            uint32 blockTimestamp;
 
-            if (token < quoteToken) {
-                // Rearrange the values so that token0 in the underlying is always 'token'
-                cumulativeTokenPrice = cumulativeQuoteTokenPrice;
+            {
+                uint256 cumulativeQuoteTokenPrice;
+
+                // Get current accumulations from Uniswap's price accumulator
+                (cumulativeQuoteTokenPrice, cumulativeTokenPrice, blockTimestamp) = UniswapV2OracleLibrary
+                    .currentCumulativePrices(pairAddress);
+
+                if (token < quoteToken) {
+                    // Rearrange the values so that token0 in the underlying is always 'token'
+                    cumulativeTokenPrice = cumulativeQuoteTokenPrice;
+                }
             }
 
             if (priceAccumulation.timestamp == 0) {
@@ -98,7 +102,7 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
                     cumulativeTokenPrice,
                     timeElapsed,
                     computeWholeUnitAmount(token)
-                );
+                ).toUint112();
 
                 // Store current accumulations and the timestamp of them
                 priceAccumulation.cumulativePrice = cumulativeTokenPrice;
@@ -136,7 +140,7 @@ contract UniswapV2Oracle is PeriodicOracle, IHasLiquidityAccumulator {
         }
 
         // Update observation timestamp so that the oracle doesn't update again until the next period
-        observation.timestamp = block.timestamp;
+        observation.timestamp = uint32(block.timestamp % 2**32);
 
         emit Updated(
             token,

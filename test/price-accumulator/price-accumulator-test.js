@@ -6,6 +6,8 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const TWO_PERCENT_CHANGE = 2000000;
 
+const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(112).sub(1);
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -262,7 +264,7 @@ describe("PriceAccumulator#calculatePrice", () => {
             // deltaTime = 1
             args: [
                 {
-                    cumulativePrice: ethers.constants.MaxUint256,
+                    cumulativePrice: MAX_CUMULATIVE_VALUE,
                     timestamp: 10,
                 },
                 { cumulativePrice: 9, timestamp: 11 },
@@ -393,7 +395,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
             },
             expectedReturn: true,
         },
@@ -454,7 +456,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
                 overrideNeedsUpdate: {
                     needsUpdate: false,
                 },
@@ -518,7 +520,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
                 overrideNeedsUpdate: {
                     needsUpdate: true,
                 },
@@ -601,7 +603,7 @@ describe("PriceAccumulator#update", () => {
         {
             // ** Overflow test **
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
                 secondPrice: ethers.utils.parseEther("100"),
                 overrideNeedsUpdate: {
                     needsUpdate: true,
@@ -658,9 +660,9 @@ describe("PriceAccumulator#update", () => {
                 expectedCumulativePrice = BigNumber.from(initialPrice).mul(BigNumber.from(deltaTime));
 
                 // Process overflows
-                while (expectedCumulativePrice.gt(ethers.constants.MaxUint256)) {
+                while (expectedCumulativePrice.gt(MAX_CUMULATIVE_VALUE)) {
                     expectedCumulativePrice = expectedCumulativePrice.sub(
-                        ethers.constants.MaxUint256.add(1) // = 2e256
+                        MAX_CUMULATIVE_VALUE.add(1) // = 2e256
                     );
                 }
 
@@ -742,9 +744,9 @@ describe("PriceAccumulator#update", () => {
         }
 
         // Process overflows
-        while (expectedCumulativePrice.gt(ethers.constants.MaxUint256)) {
+        while (expectedCumulativePrice.gt(MAX_CUMULATIVE_VALUE)) {
             expectedCumulativePrice = expectedCumulativePrice.sub(
-                ethers.constants.MaxUint256.add(1) // = 2e256
+                MAX_CUMULATIVE_VALUE.add(1) // = 2e256
             );
         }
 

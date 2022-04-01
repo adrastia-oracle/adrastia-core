@@ -24,10 +24,10 @@ contract UniswapV3OracleStub is UniswapV3Oracle {
 
     function stubSetObservation(
         address token,
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity,
-        uint256 timestamp
+        uint112 price,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 timestamp
     ) public {
         ObservationLibrary.Observation storage observation = observations[token];
 

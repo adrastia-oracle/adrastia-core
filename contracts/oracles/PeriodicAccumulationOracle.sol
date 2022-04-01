@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
+import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+
 import "./PeriodicOracle.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../interfaces/IHasLiquidityAccumulator.sol";
@@ -11,6 +13,8 @@ import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
 contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator, IHasPriceAccumulator {
+    using SafeCast for uint256;
+
     address public immutable override liquidityAccumulator;
     address public immutable override priceAccumulator;
 
@@ -92,7 +96,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         }
 
         // Update observation timestamp so that the oracle doesn't update again until the next period
-        observation.timestamp = block.timestamp;
+        observation.timestamp = block.timestamp.toUint32();
 
         emit Updated(
             token,

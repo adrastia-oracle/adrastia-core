@@ -8,10 +8,14 @@ import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
+import "../../../libraries/SafeCastExt.sol";
+
 import "./ICurvePool.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract CurveLiquidityAccumulator is LiquidityAccumulator {
+    using SafeCastExt for uint256;
+
     address public immutable curvePool;
 
     uint256 public immutable quoteTokenIndex;
@@ -58,14 +62,14 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         ICurvePool pool = ICurvePool(curvePool);
 
         uint256 tokenIndex = tokenIndices[token];
         require(tokenIndex != 0, "CurveLiquidityAccumulator: INVALID_TOKEN");
 
-        tokenLiquidity = pool.balances(tokenIndex - 1); // Subtract the added one
-        quoteTokenLiquidity = pool.balances(quoteTokenIndex);
+        tokenLiquidity = pool.balances(tokenIndex - 1).toUint112(); // Subtract the added one
+        quoteTokenLiquidity = pool.balances(quoteTokenIndex).toUint112();
     }
 }

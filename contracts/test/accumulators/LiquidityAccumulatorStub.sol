@@ -5,8 +5,8 @@ import "../../accumulators/LiquidityAccumulator.sol";
 
 contract LiquidityAccumulatorStub is LiquidityAccumulator {
     struct MockLiquidity {
-        uint256 tokenLiquidity;
-        uint256 quoteTokenLiquidity;
+        uint112 tokenLiquidity;
+        uint112 quoteTokenLiquidity;
     }
 
     struct Config {
@@ -33,8 +33,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     function setLiquidity(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) public {
         MockLiquidity storage liquidity = mockLiquidity[token];
 
@@ -94,7 +94,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         MockLiquidity storage liquidity = mockLiquidity[token];
 

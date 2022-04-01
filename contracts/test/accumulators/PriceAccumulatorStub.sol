@@ -13,7 +13,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         bool validateObservation;
     }
 
-    mapping(address => uint256) public mockPrices;
+    mapping(address => uint112) public mockPrices;
 
     Config public config;
 
@@ -26,7 +26,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
 
     /* Stub functions */
 
-    function setPrice(address token, uint256 price) public {
+    function setPrice(address token, uint112 price) public {
         mockPrices[token] = price;
     }
 
@@ -69,7 +69,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         else return super.validateObservation(token, price);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint256) {
+    function fetchPrice(address token) internal view virtual override returns (uint112) {
         return mockPrices[token];
     }
 

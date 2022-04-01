@@ -7,6 +7,8 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const TWO_PERCENT_CHANGE = 2000000;
 
+const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(112).sub(1);
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -330,8 +332,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaTime = 1
             args: [
                 {
-                    cumulativeTokenLiquidity: ethers.constants.MaxUint256,
-                    cumulativeQuoteTokenLiquidity: ethers.constants.MaxUint256,
+                    cumulativeTokenLiquidity: MAX_CUMULATIVE_VALUE,
+                    cumulativeQuoteTokenLiquidity: MAX_CUMULATIVE_VALUE,
                     timestamp: 10,
                 },
                 { cumulativeTokenLiquidity: 9, cumulativeQuoteTokenLiquidity: 9, timestamp: 11 },
@@ -489,8 +491,8 @@ describe("LiquidityAccumulator#update", () => {
         {
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
             },
             expectedReturn: true,
@@ -571,8 +573,8 @@ describe("LiquidityAccumulator#update", () => {
         {
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
                 overrideNeedsUpdate: {
                     needsUpdate: false,
@@ -656,8 +658,8 @@ describe("LiquidityAccumulator#update", () => {
         {
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
                 overrideNeedsUpdate: {
                     needsUpdate: true,
@@ -784,8 +786,8 @@ describe("LiquidityAccumulator#update", () => {
             // ** Overflow test **
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
                 secondLiquidity: {
                     token: ethers.utils.parseEther("100"),
@@ -865,14 +867,14 @@ describe("LiquidityAccumulator#update", () => {
                 );
 
                 // Process overflows
-                while (expectedCumulativeTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+                while (expectedCumulativeTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
                     expectedCumulativeTokenLiquidity = expectedCumulativeTokenLiquidity.sub(
-                        ethers.constants.MaxUint256.add(1) // = 2e256
+                        MAX_CUMULATIVE_VALUE.add(1) // = 2e256
                     );
                 }
-                while (expectedCumulativeQuoteTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+                while (expectedCumulativeQuoteTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
                     expectedCumulativeQuoteTokenLiquidity = expectedCumulativeQuoteTokenLiquidity.sub(
-                        ethers.constants.MaxUint256.add(1) // = 2e256
+                        MAX_CUMULATIVE_VALUE.add(1) // = 2e256
                     );
                 }
 
@@ -970,14 +972,14 @@ describe("LiquidityAccumulator#update", () => {
         }
 
         // Process overflows
-        while (expectedCumulativeTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+        while (expectedCumulativeTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
             expectedCumulativeTokenLiquidity = expectedCumulativeTokenLiquidity.sub(
-                ethers.constants.MaxUint256.add(1) // = 2e256
+                MAX_CUMULATIVE_VALUE.add(1) // = 2e256
             );
         }
-        while (expectedCumulativeQuoteTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+        while (expectedCumulativeQuoteTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
             expectedCumulativeQuoteTokenLiquidity = expectedCumulativeQuoteTokenLiquidity.sub(
-                ethers.constants.MaxUint256.add(1) // = 2e256
+                MAX_CUMULATIVE_VALUE.add(1) // = 2e256
             );
         }
 

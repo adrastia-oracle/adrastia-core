@@ -1,10 +1,16 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
+import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+
 import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
+import "../libraries/SafeCastExt.sol";
 
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
+    using SafeCast for uint256;
+    using SafeCastExt for uint256;
+
     /*
      * Structs
      */
@@ -145,7 +151,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         // If the parent contract can't update, this contract can't update
         if (!super.canUpdate(token)) return false;
 
+        uint256 price;
+        uint256 tokenLiquidity;
+        uint256 quoteTokenLiquidity;
+
+        uint256 qtDecimals = quoteTokenDecimals();
         uint256 maxAge = calculateMaxAge();
+        uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
         uint256 validResponses = 0;
 
         // Loop through all of the oracles, checking for valid responses
@@ -162,13 +174,44 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                 // Try and consult with the underlying oracle
                 try IOracle(_oracles[i].oracle).consult(token, maxAge) returns (
                     uint256 oraclePrice,
-                    uint256,
+                    uint256 oracleTokenLiquidity,
                     uint256 oracleQuoteTokenLiquidity
                 ) {
-                    if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) ++validResponses;
+                    uint256 decimals = _oracles[i].quoteTokenDecimals;
+
+                    // Fix differing quote token decimal places
+                    if (decimals < qtDecimals) {
+                        // Scale up
+                        uint256 scalar = 10**(qtDecimals - decimals);
+
+                        oraclePrice *= scalar;
+                        oracleQuoteTokenLiquidity *= scalar;
+                    } else if (decimals > qtDecimals) {
+                        // Scale down
+                        uint256 scalar = 10**(decimals - qtDecimals);
+
+                        oraclePrice /= scalar;
+                        oracleQuoteTokenLiquidity /= scalar;
+                    }
+
+                    if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) {
+                        ++validResponses;
+
+                        denominator += oracleQuoteTokenLiquidity / oraclePrice;
+
+                        // These should never overflow: supply of an asset cannot be greater than uint256.max
+                        tokenLiquidity += oracleTokenLiquidity;
+                        quoteTokenLiquidity += oracleQuoteTokenLiquidity;
+                    }
                 } catch Error(string memory) {} catch (bytes memory) {}
             }
         }
+
+        price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
+
+        // Can't update if price or liquitities overflow uint112
+        if (price > type(uint112).max || tokenLiquidity > type(uint112).max || quoteTokenLiquidity > type(uint112).max)
+            return false;
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
         return validResponses >= 1;
@@ -211,10 +254,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         if (validResponses >= 1) {
             ObservationLibrary.Observation storage observation = observations[token];
 
-            observation.price = price;
-            observation.tokenLiquidity = tokenLiquidity;
-            observation.quoteTokenLiquidity = quoteTokenLiquidity;
-            observation.timestamp = block.timestamp;
+            observation.price = price.toUint112();
+            observation.tokenLiquidity = tokenLiquidity.toUint112();
+            observation.quoteTokenLiquidity = quoteTokenLiquidity.toUint112();
+            observation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, _quoteTokenAddress, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
 

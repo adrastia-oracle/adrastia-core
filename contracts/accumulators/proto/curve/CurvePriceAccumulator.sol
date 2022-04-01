@@ -8,10 +8,14 @@ import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
+import "../../../libraries/SafeCastExt.sol";
+
 import "./ICurvePool.sol";
 import "../../PriceAccumulator.sol";
 
 contract CurvePriceAccumulator is PriceAccumulator {
+    using SafeCastExt for uint256;
+
     struct TokenConfig {
         uint8 decimals;
         int128 index;
@@ -62,17 +66,19 @@ contract CurvePriceAccumulator is PriceAccumulator {
         return super.needsUpdate(token);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint256 price) {
+    function fetchPrice(address token) internal view virtual override returns (uint112 price) {
         ICurvePool pool = ICurvePool(curvePool);
 
         TokenConfig memory config = tokenIndices[token];
         require(config.index != 0, "CurvePriceAccumulator: INVALID_TOKEN");
 
         // Note: fees are included in the price
-        price = pool.get_dy(
-            config.index - 1, // Subtract the added one
-            quoteTokenIndex,
-            10**config.decimals // One whole token
-        );
+        price = pool
+            .get_dy(
+                config.index - 1, // Subtract the added one
+                quoteTokenIndex,
+                10**config.decimals // One whole token
+            )
+            .toUint112();
     }
 }

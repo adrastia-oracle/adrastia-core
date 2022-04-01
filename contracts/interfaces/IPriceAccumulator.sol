@@ -34,7 +34,7 @@ abstract contract IPriceAccumulator is IUpdateByToken {
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
         AccumulationLibrary.PriceAccumulator calldata secondAccumulation
-    ) external pure virtual returns (uint256 price);
+    ) external pure virtual returns (uint112 price);
 
     /// @notice Gets the last cumulative price that was stored.
     /// @param token The address of the token to get the cumulative price for.

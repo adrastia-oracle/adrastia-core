@@ -60,7 +60,7 @@ abstract contract SafeAbstractOracle is IERC165, IOracle {
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp.add(maxAge), "AbstractOracle: RATE_TOO_OLD");
+        require(block.timestamp <= uint256(observation.timestamp).add(maxAge), "AbstractOracle: RATE_TOO_OLD");
 
         return observation.price;
     }
@@ -94,7 +94,7 @@ abstract contract SafeAbstractOracle is IERC165, IOracle {
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp.add(maxAge), "AbstractOracle: RATE_TOO_OLD");
+        require(block.timestamp <= uint256(observation.timestamp).add(maxAge), "AbstractOracle: RATE_TOO_OLD");
 
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
@@ -138,7 +138,7 @@ abstract contract SafeAbstractOracle is IERC165, IOracle {
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
-        require(block.timestamp <= observation.timestamp.add(maxAge), "AbstractOracle: RATE_TOO_OLD");
+        require(block.timestamp <= uint256(observation.timestamp).add(maxAge), "AbstractOracle: RATE_TOO_OLD");
 
         price = observation.price;
         tokenLiquidity = observation.tokenLiquidity;

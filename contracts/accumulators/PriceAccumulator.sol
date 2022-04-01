@@ -4,6 +4,7 @@ pragma solidity =0.8.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
 import "../interfaces/IPriceAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
@@ -11,6 +12,7 @@ import "../libraries/AddressLibrary.sol";
 
 abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
     using AddressLibrary for address;
+    using SafeCast for uint256;
 
     struct PendingObservation {
         uint256 blockNumber;
@@ -55,10 +57,10 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
         AccumulationLibrary.PriceAccumulator calldata secondAccumulation
-    ) external pure virtual override returns (uint256 price) {
+    ) external pure virtual override returns (uint112 price) {
         require(firstAccumulation.timestamp != 0, "PriceAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
-        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "PriceAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
         unchecked {
@@ -126,7 +128,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
         accumulation = accumulations[token]; // Load last accumulation
 
-        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
 
         if (deltaTime != 0) {
             // The last observation price has existed for some time, so we add that
@@ -135,7 +137,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
                 // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += lastObservation.price * deltaTime;
 
-                accumulation.timestamp = block.timestamp;
+                accumulation.timestamp = block.timestamp.toUint32();
             }
         }
     }
@@ -158,7 +160,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         returns (ObservationLibrary.PriceObservation memory observation)
     {
         observation.price = fetchPrice(token);
-        observation.timestamp = block.timestamp;
+        observation.timestamp = block.timestamp.toUint32();
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
@@ -166,7 +168,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
     }
 
     function _update(address token) internal virtual returns (bool) {
-        uint256 price = fetchPrice(token);
+        uint112 price = fetchPrice(token);
 
         ObservationLibrary.PriceObservation storage observation = observations[token];
         AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
@@ -176,7 +178,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
              * Initialize
              */
             observation.price = price;
-            observation.timestamp = block.timestamp;
+            observation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, quoteToken, block.timestamp, price);
 
@@ -187,7 +189,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
          * Update
          */
 
-        uint256 deltaTime = block.timestamp - observation.timestamp;
+        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
             unchecked {
@@ -205,7 +207,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
                 observation.price = price;
 
-                observation.timestamp = accumulation.timestamp = block.timestamp;
+                observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
             }
 
             emit Updated(token, quoteToken, block.timestamp, price);
@@ -288,5 +290,5 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         }
     }
 
-    function fetchPrice(address token) internal view virtual returns (uint256 price);
+    function fetchPrice(address token) internal view virtual returns (uint112 price);
 }

@@ -4,6 +4,7 @@ pragma solidity =0.8.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../libraries/ObservationLibrary.sol";
@@ -11,6 +12,7 @@ import "../libraries/AddressLibrary.sol";
 
 abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     using AddressLibrary for address;
+    using SafeCast for uint256;
 
     struct PendingObservation {
         uint256 blockNumber;
@@ -62,10 +64,10 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
-    ) external pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
+    ) external pure virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
-        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
         unchecked {
@@ -141,7 +143,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
         accumulation = accumulations[token]; // Load last accumulation
 
-        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
 
         if (deltaTime != 0) {
             // The last observation liquidities have existed for some time, so we add that
@@ -151,7 +153,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
                 accumulation.cumulativeTokenLiquidity += lastObservation.tokenLiquidity * deltaTime;
                 accumulation.cumulativeQuoteTokenLiquidity += lastObservation.quoteTokenLiquidity * deltaTime;
 
-                accumulation.timestamp = block.timestamp;
+                accumulation.timestamp = block.timestamp.toUint32();
             }
         }
     }
@@ -174,7 +176,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         returns (ObservationLibrary.LiquidityObservation memory observation)
     {
         (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
-        observation.timestamp = block.timestamp;
+        observation.timestamp = block.timestamp.toUint32();
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
@@ -182,7 +184,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     }
 
     function _update(address token) internal virtual returns (bool) {
-        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
+        (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(token);
 
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
         AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
@@ -193,7 +195,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
              */
             observation.tokenLiquidity = tokenLiquidity;
             observation.quoteTokenLiquidity = quoteTokenLiquidity;
-            observation.timestamp = block.timestamp;
+            observation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
 
@@ -204,7 +206,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
          * Update
          */
 
-        uint256 deltaTime = block.timestamp - observation.timestamp;
+        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
             // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
@@ -224,7 +226,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
                 observation.tokenLiquidity = tokenLiquidity;
                 observation.quoteTokenLiquidity = quoteTokenLiquidity;
 
-                observation.timestamp = accumulation.timestamp = block.timestamp;
+                observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
             }
 
             emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
@@ -317,5 +319,5 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         internal
         view
         virtual
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 }

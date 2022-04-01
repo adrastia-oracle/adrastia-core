@@ -13,9 +13,11 @@ import "../../../interfaces/IHasLiquidityAccumulator.sol";
 import "../../../libraries/AccumulationLibrary.sol";
 import "../../../libraries/ObservationLibrary.sol";
 import "../../../libraries/AddressLibrary.sol";
+import "../../../libraries/SafeCastExt2.sol";
 
 contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
     using AddressLibrary for address;
+    using SafeCastExt2 for uint256;
 
     /// @notice The identifying key of the pool
     struct PoolKey {
@@ -130,7 +132,7 @@ contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
         /*
          * 1. Update price
          */
-        observation.price = calculatePrice(token);
+        observation.price = calculatePrice(token).toUint112();
 
         /*
          * 2. Update liquidity
@@ -162,7 +164,7 @@ contract UniswapV3Oracle is SafePeriodicOracle, IHasLiquidityAccumulator {
         }
 
         // Update observation timestamp so that the oracle doesn't update again until the next period
-        observation.timestamp = block.timestamp;
+        observation.timestamp = uint32(block.timestamp % 2**32);
 
         emit Updated(
             token,

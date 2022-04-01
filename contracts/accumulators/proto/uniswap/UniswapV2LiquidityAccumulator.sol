@@ -31,13 +31,13 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
         require(pairAddress.isContract(), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
 
-        (uint256 reserve0, uint256 reserve1, uint32 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
+        (uint112 reserve0, uint112 reserve1, uint32 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
 
         require(timestamp != 0, "UniswapV2LiquidityAccumulator: MISSING_RESERVES_TIMESTAMP");
 
