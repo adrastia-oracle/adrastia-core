@@ -235,7 +235,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
         //   is a smart contract.
-        require(!msg.sender.isContract(), "LiquidityAccumulator: MUST_BE_EOA");
+        require(!msg.sender.isContract() && msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 
