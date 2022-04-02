@@ -274,7 +274,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
      * @return maxAge The maximum age of underlying oracles' responses, in seconds.
      */
     function calculateMaxAge() internal view returns (uint256) {
-        return period;
+        return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
     }
 
     function consultFresh(address token)
