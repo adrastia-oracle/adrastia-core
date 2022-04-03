@@ -5,9 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-
 import "../../../libraries/SafeCastExt.sol";
 
 import "./ICurvePool.sol";
