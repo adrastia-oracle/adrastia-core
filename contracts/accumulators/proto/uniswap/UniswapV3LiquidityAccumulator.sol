@@ -105,6 +105,12 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
             address pool = computeAddress(_uniswapFactory, initCodeHash, getPoolKey(token, _quoteToken, _poolFees[i]));
 
             if (pool.isContract()) {
+                uint256 liquidity = IUniswapV3Pool(pool).liquidity();
+                if (liquidity == 0) {
+                    // No in-range liquidity, so ignore
+                    continue;
+                }
+
                 tokenLiquidity_ += IERC20Minimal(token).balanceOf(pool);
                 quoteTokenLiquidity_ += IERC20Minimal(_quoteToken).balanceOf(pool);
 
