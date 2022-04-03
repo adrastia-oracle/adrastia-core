@@ -26,6 +26,23 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
         initCodeHash = initCodeHash_;
     }
 
+    function canUpdate(address token) public view virtual override returns (bool) {
+        address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
+
+        if (!pairAddress.isContract()) {
+            // Pool doesn't exist
+            return false;
+        }
+
+        (, , uint256 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
+        if (timestamp == 0) {
+            // Pool doesn't have liquidity
+            return false;
+        }
+
+        return super.canUpdate(token);
+    }
+
     function fetchLiquidity(address token)
         internal
         view
