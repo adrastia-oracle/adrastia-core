@@ -46,10 +46,10 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    function canUpdate(address token) public view virtual override returns (bool) {
         if (tokenIndices[token] == 0) return false;
 
-        return super.needsUpdate(token);
+        return super.canUpdate(token);
     }
 
     function fetchLiquidity(address token)
