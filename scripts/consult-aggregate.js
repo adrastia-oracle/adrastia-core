@@ -83,18 +83,31 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    const oracle = await createContract(
-        "UniswapV3Oracle",
-        liquidityAccumulator.address,
+    const uniswapV3Util = await createContract("UniswapV3Util");
+
+    const priceAccumulator = await createContract(
+        "UniswapV3PriceAccumulator",
+        uniswapV3Util.address,
         factory,
         initCodeHash,
         poolFees,
+        quoteToken,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
+
+    const oracle = await createContract(
+        "PeriodicAccumulationOracle",
+        liquidityAccumulator.address,
+        priceAccumulator.address,
         quoteToken,
         period
     );
 
     return {
         liquidityAccumulator: liquidityAccumulator,
+        priceAccumulator: priceAccumulator,
         oracle: oracle,
     };
 }
@@ -195,6 +208,20 @@ async function main() {
                         93 +
                         "m" +
                         "Uniswap V3 liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await uniswapV3.priceAccumulator.canUpdate(token)) {
+                const updateTx = await uniswapV3.priceAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Uniswap V3 price accumulator updated. Gas used = " +
                         updateReceipt["gasUsed"] +
                         "\u001b[0m"
                 );
