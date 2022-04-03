@@ -50,17 +50,27 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    const oracle = await createContract(
-        "UniswapV2Oracle",
-        liquidityAccumulator.address,
+    const priceAccumulator = await createContract(
+        "UniswapV2PriceAccumulator",
         factory,
         initCodeHash,
+        quoteToken,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
+
+    const oracle = await createContract(
+        "PeriodicAccumulationOracle",
+        liquidityAccumulator.address,
+        priceAccumulator.address,
         quoteToken,
         period
     );
 
     return {
         liquidityAccumulator: liquidityAccumulator,
+        priceAccumulator: priceAccumulator,
         oracle: oracle,
     };
 }
@@ -199,6 +209,20 @@ async function main() {
                 );
             }
 
+            if (await uniswapV2.priceAccumulator.canUpdate(token)) {
+                const updateTx = await uniswapV2.priceAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Uniswap V2 price accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
             if (await uniswapV3.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await uniswapV3.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
@@ -236,6 +260,20 @@ async function main() {
                         93 +
                         "m" +
                         "Sushiswap liquidity accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await sushiswap.priceAccumulator.canUpdate(token)) {
+                const updateTx = await sushiswap.priceAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Sushiswap price accumulator updated. Gas used = " +
                         updateReceipt["gasUsed"] +
                         "\u001b[0m"
                 );
