@@ -34,12 +34,6 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
             return false;
         }
 
-        (, , uint256 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
-        if (timestamp == 0) {
-            // Pool doesn't have liquidity
-            return false;
-        }
-
         return super.canUpdate(token);
     }
 
@@ -54,9 +48,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
 
         require(pairAddress.isContract(), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
 
-        (uint112 reserve0, uint112 reserve1, uint32 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
-
-        require(timestamp != 0, "UniswapV2LiquidityAccumulator: MISSING_RESERVES_TIMESTAMP");
+        (uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(pairAddress).getReserves();
 
         if (token < quoteToken) {
             tokenLiquidity = reserve0;
