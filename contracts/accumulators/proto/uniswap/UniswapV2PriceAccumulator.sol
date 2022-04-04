@@ -41,8 +41,8 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        (, , uint256 timestamp) = IUniswapV2Pair(pairAddress).getReserves();
-        if (timestamp == 0) {
+        (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pairAddress).getReserves();
+        if (reserve0 == 0 || reserve1 == 0) {
             // Pool doesn't have liquidity
             return false;
         }
