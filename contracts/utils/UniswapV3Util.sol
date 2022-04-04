@@ -38,6 +38,12 @@ contract UniswapV3Util is IUniswapV3Util {
             );
 
             if (pool.isContract()) {
+                uint256 liquidity = IUniswapV3Pool(pool).liquidity();
+                if (liquidity == 0) {
+                    // No in-range liquidity, so ignore
+                    continue;
+                }
+
                 (periodObservations[i].tick, periodObservations[i].weight) = OracleLibrary.consult(pool, params.period);
 
                 hasLiquidity = hasLiquidity || periodObservations[i].weight > 0;
