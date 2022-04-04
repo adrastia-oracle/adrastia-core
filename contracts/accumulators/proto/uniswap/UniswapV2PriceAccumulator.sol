@@ -64,10 +64,7 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
         // Note: Reserves are actually stored in uint112, but we promote for handling the math below
         (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
 
-        if (reserve0 == 0 || reserve1 == 0) {
-            // Pool has 0 liquidity, return 0
-            return 0;
-        }
+        require(reserve0 > 0 && reserve1 > 0, "UniswapV2PriceAccumulator: NO_LIQUIDITY");
 
         if (token < quoteToken) {
             // reserve0 == tokenLiquidity, reserve1 == quoteTokenLiquidity
