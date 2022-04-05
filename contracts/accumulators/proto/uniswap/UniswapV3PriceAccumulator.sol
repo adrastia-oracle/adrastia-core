@@ -60,7 +60,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
             IUniswapV3Util.CalculateWeightedPriceParams({
                 token: token,
                 quoteToken: quoteToken,
-                tokenAmount: uint128(10**(IERC20Metadata(token).decimals())), // one whole unit
+                tokenAmount: computeWholeUnitAmount(token),
                 uniswapFactory: uniswapFactory,
                 initCodeHash: initCodeHash,
                 poolFees: poolFees,
@@ -76,5 +76,9 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         require(hasLiquidity, "UniswapV3PriceAccumulator: NO_LIQUIDITY");
 
         return _price.toUint112();
+    }
+
+    function computeWholeUnitAmount(address token) internal view returns (uint128 amount) {
+        amount = uint128(10)**IERC20Metadata(token).decimals();
     }
 }
