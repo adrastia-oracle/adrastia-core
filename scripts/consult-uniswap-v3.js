@@ -45,11 +45,8 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    const uniswapV3Util = await createContract("UniswapV3Util");
-
     const priceAccumulator = await createContract(
         "UniswapV3PriceAccumulator",
-        uniswapV3Util.address,
         factory,
         initCodeHash,
         poolFees,

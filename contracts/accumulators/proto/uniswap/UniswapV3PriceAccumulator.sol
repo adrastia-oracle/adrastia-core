@@ -3,11 +3,14 @@ pragma solidity =0.8.11;
 
 pragma experimental ABIEncoderV2;
 
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../../PriceAccumulator.sol";
 import "../../../libraries/SafeCastExt.sol";
-import "../../../utils/IUniswapV3Util.sol";
+import "../../../libraries/uniswap-lib/FullMath.sol";
 
 contract UniswapV3PriceAccumulator is PriceAccumulator {
     using AddressLibrary for address;
@@ -20,8 +23,6 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         uint24 fee;
     }
 
-    address public immutable uniswapUtil;
-
     address public immutable uniswapFactory;
 
     bytes32 public immutable initCodeHash;
@@ -29,7 +30,6 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
     uint24[] public poolFees;
 
     constructor(
-        address uniswapUtil_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         uint24[] memory poolFees_,
@@ -38,13 +38,17 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) PriceAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
-        uniswapUtil = uniswapUtil_;
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         poolFees = poolFees_;
     }
 
     function canUpdate(address token) public view virtual override returns (bool) {
+        if (token == address(0) || token == quoteToken) {
+            // Invalid token
+            return false;
+        }
+
         (bool hasLiquidity, ) = calculateWeightedPrice(token);
         if (!hasLiquidity) {
             // Can't update if there's no liquidity (reverts)
@@ -54,28 +58,115 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         return super.canUpdate(token);
     }
 
+    function calculatePriceFromSqrtPrice(
+        address token,
+        address quoteToken_,
+        uint160 sqrtPriceX96,
+        uint128 tokenAmount
+    ) internal pure returns (uint256 price) {
+        // Calculate quoteAmount with better precision if it doesn't overflow when multiplied by itself
+        if (sqrtPriceX96 <= type(uint128).max) {
+            uint256 ratioX192 = uint256(sqrtPriceX96) * sqrtPriceX96;
+            price = token < quoteToken_
+                ? FullMath.mulDiv(ratioX192, tokenAmount, 1 << 192)
+                : FullMath.mulDiv(1 << 192, tokenAmount, ratioX192);
+        } else {
+            uint256 ratioX128 = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, 1 << 64);
+            price = token < quoteToken_
+                ? FullMath.mulDiv(ratioX128, tokenAmount, 1 << 128)
+                : FullMath.mulDiv(1 << 128, tokenAmount, ratioX128);
+        }
+    }
+
     function calculateWeightedPrice(address token) internal view returns (bool hasLiquidity, uint256 price) {
-        // Calculate "current" price
-        (hasLiquidity, price) = IUniswapV3Util(uniswapUtil).calculateWeightedPrice(
-            IUniswapV3Util.CalculateWeightedPriceParams({
-                token: token,
-                quoteToken: quoteToken,
-                tokenAmount: computeWholeUnitAmount(token),
-                uniswapFactory: uniswapFactory,
-                initCodeHash: initCodeHash,
-                poolFees: poolFees,
-                period: uint32(10) // 10 seconds
-            })
-        );
+        uint24[] memory _poolFees = poolFees;
+
+        uint128 wholeTokenAmount = computeWholeUnitAmount(token);
+
+        uint256 numerator;
+        uint256 denominator;
+
+        for (uint256 i = 0; i < _poolFees.length; ++i) {
+            address pool = computeAddress(uniswapFactory, initCodeHash, getPoolKey(token, quoteToken, _poolFees[i]));
+
+            if (pool.isContract()) {
+                uint256 liquidity = IUniswapV3Pool(pool).liquidity();
+                if (liquidity == 0) {
+                    // No in-range liquidity, so ignore
+                    continue;
+                }
+
+                (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
+
+                uint256 poolPrice = calculatePriceFromSqrtPrice(token, quoteToken, sqrtPriceX96, wholeTokenAmount);
+                if (poolPrice == 0) {
+                    // Invalid price, ignore
+                    continue;
+                }
+
+                numerator += liquidity;
+                denominator += liquidity / poolPrice;
+            }
+        }
+
+        if (denominator == 0) {
+            // No in-range liquidity in any of the pools
+            return (false, 0);
+        }
+
+        return (true, numerator / denominator);
     }
 
     function fetchPrice(address token) internal view virtual override returns (uint112) {
+        require(token != quoteToken, "UniswapV3PriceAccumulator: IDENTICAL_ADDRESSES");
+        require(token != address(0), "UniswapV3PriceAccumulator: ZERO_ADDRESS");
+
         (bool hasLiquidity, uint256 _price) = calculateWeightedPrice(token);
 
         // Note: Will cause prices calculated from accumulations to be fixed to the last price
         require(hasLiquidity, "UniswapV3PriceAccumulator: NO_LIQUIDITY");
 
         return _price.toUint112();
+    }
+
+    /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
+    /// @param tokenA The first token of a pool, unsorted
+    /// @param tokenB The second token of a pool, unsorted
+    /// @param fee The fee level of the pool
+    /// @return Poolkey The pool details with ordered token0 and token1 assignments
+    function getPoolKey(
+        address tokenA,
+        address tokenB,
+        uint24 fee
+    ) internal pure returns (PoolKey memory) {
+        if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
+    }
+
+    /// @notice Deterministically computes the pool address given the factory and PoolKey
+    /// @param factory The Uniswap V3 factory contract address
+    /// @param key The PoolKey
+    /// @return pool The contract address of the V3 pool
+    function computeAddress(
+        address factory,
+        bytes32 _initCodeHash,
+        PoolKey memory key
+    ) internal pure returns (address pool) {
+        require(key.token0 < key.token1);
+        pool = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            hex"ff",
+                            factory,
+                            keccak256(abi.encode(key.token0, key.token1, key.fee)),
+                            _initCodeHash
+                        )
+                    )
+                )
+            )
+        );
     }
 
     function computeWholeUnitAmount(address token) internal view returns (uint128 amount) {
