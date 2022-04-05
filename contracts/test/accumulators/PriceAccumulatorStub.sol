@@ -53,7 +53,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         return changeThresholdSurpassed(a, b, updateThreshold);
     }
 
-    function stubValidateObservation(address token, uint256 price) public returns (bool) {
+    function stubValidateObservation(address token, uint112 price) public returns (bool) {
         return super.validateObservation(token, price);
     }
 
@@ -64,7 +64,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         else return super.needsUpdate(token);
     }
 
-    function validateObservation(address token, uint256 price) internal virtual override returns (bool) {
+    function validateObservation(address token, uint112 price) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
         else return super.validateObservation(token, price);
     }
@@ -90,7 +90,7 @@ contract PriceAccumulatorStubCaller {
         callee = callee_;
     }
 
-    function stubValidateObservation(address token, uint256 price) public returns (bool) {
+    function stubValidateObservation(address token, uint112 price) public returns (bool) {
         return callee.stubValidateObservation(token, price);
     }
 }

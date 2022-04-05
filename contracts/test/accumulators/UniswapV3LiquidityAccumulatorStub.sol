@@ -29,7 +29,7 @@ contract UniswapV3LiquidityAccumulatorStub is UniswapV3LiquidityAccumulator {
     function harnessFetchLiquidity(address token)
         public
         view
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         return super.fetchLiquidity(token);
     }

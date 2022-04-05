@@ -15,11 +15,11 @@ contract CurvePriceAccumulatorStub is CurvePriceAccumulator {
         uint256 maxUpdateDelay_
     ) CurvePriceAccumulator(pool_, nCoins_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
-    function harnessFetchPrice(address token) public view returns (uint256 price) {
+    function harnessFetchPrice(address token) public view returns (uint112 price) {
         return super.fetchPrice(token);
     }
 
-    function validateObservation(address, uint256) internal virtual override returns (bool) {
+    function validateObservation(address, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
 }

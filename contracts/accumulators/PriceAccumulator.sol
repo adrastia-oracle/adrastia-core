@@ -15,8 +15,8 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
     using SafeCast for uint256;
 
     struct PendingObservation {
-        uint256 blockNumber;
-        uint256 price;
+        uint32 blockNumber;
+        uint112 price;
     }
 
     uint256 public constant OBSERVATION_BLOCK_MIN_PERIOD = 10;
@@ -230,7 +230,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
         return false;
     }
 
-    function validateObservation(address token, uint256 price) internal virtual returns (bool) {
+    function validateObservation(address token, uint112 price) internal virtual returns (bool) {
         // Require updaters to be EOAs to limit the attack vector that this function addresses
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
@@ -241,7 +241,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator {
 
         if (pendingObservation.blockNumber == 0) {
             // New observation (first update call), store it
-            pendingObservation.blockNumber = block.number;
+            pendingObservation.blockNumber = block.number.toUint32();
             pendingObservation.price = price;
 
             return false; // Needs to validate this observation

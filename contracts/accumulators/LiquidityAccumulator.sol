@@ -15,7 +15,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     using SafeCast for uint256;
 
     struct PendingObservation {
-        uint256 blockNumber;
+        uint32 blockNumber;
         uint112 tokenLiquidity;
         uint112 quoteTokenLiquidity;
     }
@@ -264,7 +264,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
         if (pendingObservation.blockNumber == 0) {
             // New observation (first update call), store it
-            pendingObservation.blockNumber = block.number;
+            pendingObservation.blockNumber = block.number.toUint32();
             pendingObservation.tokenLiquidity = tokenLiquidity;
             pendingObservation.quoteTokenLiquidity = quoteTokenLiquidity;
 
