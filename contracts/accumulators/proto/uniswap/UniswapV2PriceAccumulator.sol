@@ -18,9 +18,6 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
 
     bytes32 public immutable initCodeHash;
 
-    mapping(address => AccumulationLibrary.UniswapV2PriceAccumulator) public uniPriceAccumulations;
-    mapping(address => uint112) public uniPrices;
-
     constructor(
         address uniswapFactory_,
         bytes32 initCodeHash_,
