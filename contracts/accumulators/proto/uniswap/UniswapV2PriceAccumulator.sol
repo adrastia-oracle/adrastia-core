@@ -31,6 +31,11 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
     }
 
     function canUpdate(address token) public view virtual override returns (bool) {
+        if (token == address(0) || token == quoteToken) {
+            // Invalid token
+            return false;
+        }
+
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
         if (!pairAddress.isContract()) {
