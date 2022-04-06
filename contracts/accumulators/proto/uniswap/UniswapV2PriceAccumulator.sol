@@ -52,10 +52,6 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
         return super.canUpdate(token);
     }
 
-    function _update(address token) internal virtual override returns (bool) {
-        return super._update(token);
-    }
-
     function fetchPrice(address token) internal view virtual override returns (uint112 price) {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
