@@ -137,6 +137,31 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
     });
 });
 
+describe("PeriodicAccumulationOracle#canUpdate", function () {
+    var oracle;
+
+    beforeEach(async () => {
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
+
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+    });
+
+    it("Can update when it needs an update", async function () {
+        await oracle.overrideNeedsUpdate(true, true);
+
+        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+    });
+
+    it("Can't update when it doesn't needs an update", async function () {
+        await oracle.overrideNeedsUpdate(true, false);
+
+        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+    });
+});
+
 describe("PeriodicAccumulationOracle#consultPrice(token)", function () {
     var oracle;
 
