@@ -189,6 +189,60 @@ describe("LiquidityAccumulator#needsUpdate", () => {
     });
 });
 
+describe("LiquidityAccumulator#canUpdate", () => {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        accumulator = await LiquidityAccumulator.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    describe("Can't update when it", function () {
+        it("Doesn't need an update", async function () {
+            await accumulator.overrideNeedsUpdate(true, false);
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        });
+
+        it("Observation is still pending", async function () {
+            await accumulator.overrideNeedsUpdate(true, true);
+
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+            await accumulator.setPendingObservation(GRT, 0, 0, currentBlockNumber + 1);
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        });
+    });
+
+    describe("Can update when it needs an update and it", function () {
+        beforeEach(async () => {
+            await accumulator.overrideNeedsUpdate(true, true);
+        });
+
+        it("Has no pending observation", async function () {
+            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        });
+
+        it("Has a pending observation which has passed the minimum block duration", async function () {
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            const minPendingPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+
+            await accumulator.setPendingObservation(
+                GRT,
+                0,
+                0,
+                BigNumber.from(currentBlockNumber).sub(minPendingPeriod)
+            );
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        });
+    });
+});
+
 describe("LiquidityAccumulator#changeThresholdSurpassed", () => {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;

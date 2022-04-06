@@ -30,6 +30,14 @@ contract PriceAccumulatorStub is PriceAccumulator {
         mockPrices[token] = price;
     }
 
+    function setPendingObservation(
+        address token,
+        uint112 price,
+        uint32 blockNumber
+    ) public {
+        pendingObservations[token][msg.sender] = PendingObservation({blockNumber: blockNumber, price: price});
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;

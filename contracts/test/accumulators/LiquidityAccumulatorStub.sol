@@ -42,6 +42,19 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         liquidity.quoteTokenLiquidity = quoteTokenLiquidity;
     }
 
+    function setPendingObservation(
+        address token,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 blockNumber
+    ) public {
+        pendingObservations[token][msg.sender] = PendingObservation({
+            blockNumber: blockNumber,
+            tokenLiquidity: tokenLiquidity,
+            quoteTokenLiquidity: quoteTokenLiquidity
+        });
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;
