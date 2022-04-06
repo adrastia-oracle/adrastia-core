@@ -1055,9 +1055,12 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
-            .to.emit(oracle, "ConsultErrorWithReason")
-            .withArgs(underlyingOracle.address, token, "AbstractOracle: RATE_TOO_OLD");
+        await oracle.update(token);
+
+        // Consult errors are no longer emitted
+        //await expect(oracle.update(token))
+        //    .to.emit(oracle, "ConsultErrorWithReason")
+        //    .withArgs(underlyingOracle.address, token, "AbstractOracle: RATE_TOO_OLD");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1097,13 +1100,16 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
-            .to.emit(oracle, "ConsultError")
-            .withArgs(
-                underlyingOracle.address,
-                token,
-                "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
-            );
+        await oracle.update(token);
+
+        // Consult errors are no longer emitted
+        //await expect(oracle.update(token))
+        //    .to.emit(oracle, "ConsultError")
+        //    .withArgs(
+        //        underlyingOracle.address,
+        //        token,
+        //        "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
+        //    );
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
