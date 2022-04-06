@@ -21,18 +21,6 @@ abstract contract IAggregatedOracle is IOracle {
     /// @param err Data corresponding with a low level error being thrown.
     event UpdateError(address indexed oracle, address indexed token, bytes err);
 
-    /// @notice Emitted when an underlying oracle throws a consultation error with a reason.
-    /// @param oracle The address or the oracle throwing the error.
-    /// @param token The token for which the oracle is throwing the error.
-    /// @param reason The reason for or description of the error.
-    event ConsultErrorWithReason(address indexed oracle, address indexed token, string reason);
-
-    /// @notice Emitted when an underlying oracle throws a consultation error without a reason.
-    /// @param oracle The address or the oracle throwing the error.
-    /// @param token The token for which the oracle is throwing the error.
-    /// @param err Data corresponding with a low level error being thrown.
-    event ConsultError(address indexed oracle, address indexed token, bytes err);
-
     /// @notice Gets the addresses of all underlying oracles that are used for all consultations.
     /// @dev Oracles only used for specific tokens are not included.
     /// @return An array of the addresses of all underlying oracles that are used for all consultations.
