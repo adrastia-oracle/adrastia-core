@@ -326,6 +326,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                     if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) {
                         ++validResponses;
 
+                        // Note: (oracleQuoteTokenLiquidity / oraclePrice) will equal 0 if oracleQuoteTokenLiquidity <
+                        //   oraclePrice (i.e. very low liquidity)
                         denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
                         // These should never overflow: supply of an asset cannot be greater than uint256.max

@@ -105,6 +105,8 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
                 }
 
                 numerator += liquidity;
+
+                // Note: (liquidity / poolPrice) will equal 0 if liquidity < pool price (i.e. very low liquidity)
                 denominator += liquidity / poolPrice;
             }
         }
