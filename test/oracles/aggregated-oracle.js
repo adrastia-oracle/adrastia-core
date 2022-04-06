@@ -214,6 +214,61 @@ describe("AggregatedOracle#needsUpdate", function () {
     });
 });
 
+describe("AggregatedOracle#canUpdate", function () {
+    var oracle;
+
+    var underlyingOracle;
+
+    beforeEach(async function () {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 18, [underlyingOracle.address], [], PERIOD);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+    });
+
+    describe("Can't update when it", function () {
+        it("Doesn't need an update", async function () {
+            await oracle.overrideNeedsUpdate(true, false);
+
+            expect(await oracle.canUpdate(AddressZero)).to.equal(false);
+        });
+
+        it("Needs an update but there are no valid underlying oracle responses", async function () {
+            await oracle.overrideNeedsUpdate(true, true);
+
+            expect(await oracle.canUpdate(AddressZero)).to.equal(false);
+        });
+    });
+
+    describe("Can update when it needs an update and when", function () {
+        beforeEach(async function () {
+            await oracle.overrideNeedsUpdate(true, true);
+        });
+
+        it("An underlying oracle needs an update", async function () {
+            await underlyingOracle.stubSetNeedsUpdate(true);
+
+            expect(await oracle.canUpdate(AddressZero)).to.equal(true);
+        });
+
+        it("An underlying oracle doesn't need an update but it has valid data", async function () {
+            await underlyingOracle.stubSetNeedsUpdate(false);
+
+            const currentTime = await currentBlockTimestamp();
+
+            await underlyingOracle.stubSetObservation(AddressZero, 1, 1, 1, currentTime);
+
+            expect(await oracle.canUpdate(AddressZero)).to.equal(true);
+        });
+    });
+});
+
 describe("AggregatedOracle#consultPrice(token)", function () {
     var oracle;
 
