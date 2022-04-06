@@ -39,7 +39,7 @@ describe("CurveLiquidityAccumulator#constructor", function () {
     });
 });
 
-describe("CurveLiquidityAccumulator#needsUpdate", function () {
+describe("CurveLiquidityAccumulator#canUpdate", function () {
     this.timeout(100000);
 
     const minUpdateDelay = 10000;
@@ -79,11 +79,11 @@ describe("CurveLiquidityAccumulator#needsUpdate", function () {
     });
 
     it("Should return false when given an invalid token", async function () {
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.canUpdate(GRT)).to.equal(false);
     });
 
     it("Should return true when given a valid token", async function () {
-        expect(await accumulator.needsUpdate(token.address)).to.equal(true);
+        expect(await accumulator.canUpdate(token.address)).to.equal(true);
     });
 });
 
