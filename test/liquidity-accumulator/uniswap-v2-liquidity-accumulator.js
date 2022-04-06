@@ -76,12 +76,6 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         );
     });
 
-    it("Should revert when reserves don't have a timestamp", async () => {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(token.address)).to.be.revertedWith(
-            "UniswapV2LiquidityAccumulator: MISSING_RESERVES_TIMESTAMP"
-        );
-    });
-
     it("Should revert when the pair does not exist", async () => {
         await expect(liquidityAccumulator.harnessFetchLiquidity(noPairToken.address)).to.be.revertedWith(
             "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND"
