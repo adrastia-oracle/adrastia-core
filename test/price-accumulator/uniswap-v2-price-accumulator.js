@@ -200,10 +200,11 @@ describe("UniswapV2PriceAccumulator", function () {
             return price;
         }
 
-        function describeFetchPriceTests(tokenDecimals) {
-            describe(`token decimals = ${tokenDecimals}`, function () {
+        function describeFetchPriceTests(tokenDecimals, quoteTokenDecimals) {
+            describe(`token decimals = ${tokenDecimals}, quote token decimals = ${quoteTokenDecimals}`, function () {
                 beforeEach(async () => {
                     await token.setDecimals(tokenDecimals);
+                    await quoteToken.setDecimals(quoteTokenDecimals);
                 });
 
                 tests.forEach(({ tokenAmount, quoteTokenAmount }) => {
@@ -265,8 +266,10 @@ describe("UniswapV2PriceAccumulator", function () {
                 token = ltToken;
             });
 
-            describeFetchPriceTests(6);
-            describeFetchPriceTests(18);
+            describeFetchPriceTests(6, 18);
+            describeFetchPriceTests(18, 18);
+            describeFetchPriceTests(6, 6);
+            describeFetchPriceTests(18, 6);
         });
 
         describe("token > quoteToken", function () {
@@ -274,8 +277,10 @@ describe("UniswapV2PriceAccumulator", function () {
                 token = gtToken;
             });
 
-            describeFetchPriceTests(6);
-            describeFetchPriceTests(18);
+            describeFetchPriceTests(6, 18);
+            describeFetchPriceTests(18, 18);
+            describeFetchPriceTests(6, 6);
+            describeFetchPriceTests(18, 6);
         });
     });
 });
