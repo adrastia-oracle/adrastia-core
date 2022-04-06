@@ -217,16 +217,20 @@ describe("AggregatedOracle#needsUpdate", function () {
 describe("AggregatedOracle#canUpdate", function () {
     var oracle;
 
-    var underlyingOracle;
+    var underlyingOracle1;
+    var underlyingOracle2;
 
     beforeEach(async function () {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
-        underlyingOracle = await mockOracleFactory.deploy(USDC);
-        await underlyingOracle.deployed();
+        underlyingOracle1 = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle1.deployed();
 
-        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 18, [underlyingOracle.address], [], PERIOD);
+        underlyingOracle2 = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle2.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 18, [underlyingOracle1.address], [], PERIOD);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -252,17 +256,17 @@ describe("AggregatedOracle#canUpdate", function () {
         });
 
         it("An underlying oracle needs an update", async function () {
-            await underlyingOracle.stubSetNeedsUpdate(true);
+            await underlyingOracle1.stubSetNeedsUpdate(true);
 
             expect(await oracle.canUpdate(AddressZero)).to.equal(true);
         });
 
         it("An underlying oracle doesn't need an update but it has valid data", async function () {
-            await underlyingOracle.stubSetNeedsUpdate(false);
+            await underlyingOracle1.stubSetNeedsUpdate(false);
 
             const currentTime = await currentBlockTimestamp();
 
-            await underlyingOracle.stubSetObservation(AddressZero, 1, 1, 1, currentTime);
+            await underlyingOracle1.stubSetObservation(AddressZero, 1, 1, 1, currentTime);
 
             expect(await oracle.canUpdate(AddressZero)).to.equal(true);
         });
@@ -1334,6 +1338,57 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             [],
             PERIOD
         );
+    });
+
+    it("Should set observation liquitities to (2^112)-1 when total liquitities >= 2^112", async function () {
+        var price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = BigNumber.from(2).pow(112).sub(1);
+        const quoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle1.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await underlyingOracle2.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        // Liquitities will overflow uint112, so rather than having the update fail, we set the observation liquitities
+        // to the max supported value.
+        const totalTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
+        const totalQuoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
+
+        // Slight loss of precision from the harmonic mean calculation, but this is okay (it's negligible)
+        price = BigNumber.from("1000000000000000121");
+
+        await expect(oracle.update(token), "Update log")
+            .to.emit(oracle, "Updated")
+            .withArgs(token, quoteToken, timestamp, price, totalTokenLiquidity, totalQuoteTokenLiquidity);
+
+        expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+        expect(await underlyingOracle2.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice, "Observation price").to.equal(price);
+        expect(oTokenLiquidity, "Observation token liquidity").to.equal(totalTokenLiquidity);
+        expect(oQuoteTokenLiquidity, "Observation quote token liquidity").to.equal(totalQuoteTokenLiquidity);
+        expect(oTimestamp, "Observation timestamp").to.equal(timestamp);
     });
 
     it("Should update successfully w/ same prices and liquidities", async () => {

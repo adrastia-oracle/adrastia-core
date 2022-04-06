@@ -166,16 +166,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             }
         }
 
-        (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity,
-            uint256 validResponses
-        ) = aggregateUnderlying(token);
-
-        // Can't update if price or liquitities overflow uint112
-        if (price > type(uint112).max || tokenLiquidity > type(uint112).max || quoteTokenLiquidity > type(uint112).max)
-            return false;
+        (, , , uint256 validResponses) = aggregateUnderlying(token);
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
         return validResponses >= 1;
@@ -215,12 +206,17 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
 
         (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token);
 
+        // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we set the observation to the max
+        // This allows the price to continue to be updated while tightly packing liquidities for gas efficiency
+        if (tokenLiquidity > type(uint112).max) tokenLiquidity = type(uint112).max;
+        if (quoteTokenLiquidity > type(uint112).max) quoteTokenLiquidity = type(uint112).max;
+
         if (validResponses >= 1) {
             ObservationLibrary.Observation storage observation = observations[token];
 
-            observation.price = price.toUint112();
-            observation.tokenLiquidity = tokenLiquidity.toUint112();
-            observation.quoteTokenLiquidity = quoteTokenLiquidity.toUint112();
+            observation.price = price.toUint112(); // Should never (realistically) overflow
+            observation.tokenLiquidity = uint112(tokenLiquidity); // Will never overflow
+            observation.quoteTokenLiquidity = uint112(quoteTokenLiquidity); // Will never overflow
             observation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, _quoteTokenAddress, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
