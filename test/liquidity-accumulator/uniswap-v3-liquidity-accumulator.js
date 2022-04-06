@@ -198,6 +198,25 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
         await expect(liquidityAccumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
     });
 
+    it("Pools with zero in-range liquidity should be ignored", async function () {
+        const sqrtPrice = encodePriceSqrt(ethers.utils.parseUnits("1.0", 18), ethers.utils.parseUnits("1.0", 18));
+        await createPool(sqrtPrice, 3000); // Initialize pool
+
+        // Get pool address
+        const pool = await uniswapFactory.getPool(token.address, quoteToken.address, 3000);
+
+        // Transfer tokens to pool (but do not mint)
+        await token.approve(pool, MaxUint256);
+        await quoteToken.approve(pool, MaxUint256);
+        await token.transfer(pool, ethers.utils.parseUnits("10000.0", 18));
+        await quoteToken.transfer(pool, ethers.utils.parseUnits("10000.0", 18));
+
+        const [tokenLiquidity, quoteTokenLiquidity] = await liquidityAccumulator.harnessFetchLiquidity(token.address);
+
+        expect(tokenLiquidity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
+    });
+
     function liquidityTests(poolFees) {
         tests.forEach(({ args }) => {
             it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
