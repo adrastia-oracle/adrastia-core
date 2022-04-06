@@ -14,7 +14,7 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
     const maxUpdateDelay = 30000;
 
     var fakeUniswapV2Factory;
-    var liquidityAccumulator;
+    var accumulator;
     var addressHelper;
 
     var quoteToken;
@@ -23,8 +23,6 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
     var gtToken;
 
     var noPairToken;
-
-    const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
 
     beforeEach(async () => {
         const [owner] = await ethers.getSigners();
@@ -59,14 +57,9 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         quoteToken = tokens[1];
         gtToken = tokens[2];
 
-        // Configure pairs
-        await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
-        await fakeUniswapV2Factory.createPair(ltToken.address, quoteToken.address);
-        await fakeUniswapV2Factory.createPair(gtToken.address, quoteToken.address);
-
         // Deploy uniswap v2 liquidity accumulator
         const LiquidityAccumulator = await ethers.getContractFactory("UniswapV2LiquidityAccumulatorStub");
-        liquidityAccumulator = await LiquidityAccumulator.deploy(
+        accumulator = await LiquidityAccumulator.deploy(
             fakeUniswapV2Factory.address,
             "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
             quoteToken.address,
@@ -76,62 +69,97 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
         );
     });
 
-    it("Should revert when the pair does not exist", async () => {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(noPairToken.address)).to.be.revertedWith(
-            "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND"
-        );
+    describe("UniswapV2LiquidityAccumulator#canUpdate", function () {
+        describe("Can't update when", function () {
+            it("token = address(0)", async function () {
+                expect(await accumulator.canUpdate(AddressZero)).to.equal(false);
+            });
+
+            it("token = quoteToken", async function () {
+                expect(await accumulator.canUpdate(quoteToken.address)).to.equal(false);
+            });
+
+            it("The pool doesn't exist", async function () {
+                expect(await accumulator.canUpdate(token.address)).to.equal(false);
+            });
+        });
+
+        describe("Can update when", function () {
+            it("The pool exists", async function () {
+                await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
+
+                expect(await accumulator.canUpdate(token.address)).to.equal(true);
+            });
+        });
     });
 
-    it("Should revert if token == quoteToken", async function () {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
-    });
+    describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
+        const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
 
-    it("Should revert if token == address(0)", async function () {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
-    });
+        beforeEach(async function () {
+            // Configure pairs
+            await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
+            await fakeUniswapV2Factory.createPair(ltToken.address, quoteToken.address);
+            await fakeUniswapV2Factory.createPair(gtToken.address, quoteToken.address);
+        });
 
-    tests.forEach(({ args }) => {
-        it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
-            const [owner] = await ethers.getSigners();
-
-            // Get pair
-            const ltPair = await fakeUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
-            const gtPair = await fakeUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
-            const ltPairContract = await ethers.getContractAt("FakeUniswapV2Pair", ltPair);
-            const gtPairContract = await ethers.getContractAt("FakeUniswapV2Pair", gtPair);
-
-            // Approve transfers to pair (ltToken, quoteToken)
-            await ltToken.approve(ltPair, args[0]);
-            await quoteToken.approve(ltPair, args[1]);
-
-            // Approve transfers to pair (gtToken, quoteToken)
-            await gtToken.approve(gtPair, args[0]);
-            await quoteToken.approve(gtPair, args[1]);
-
-            // Send tokens to pair (ltToken, quoteToken)
-            await ltToken.transfer(ltPair, args[0]);
-            await quoteToken.transfer(ltPair, args[1]);
-
-            // Send tokens to pair (gtToken, quoteToken)
-            await gtToken.transfer(gtPair, args[0]);
-            await quoteToken.transfer(gtPair, args[1]);
-
-            // Mint the pairs
-            await ltPairContract.mint(owner.address);
-            await gtPairContract.mint(owner.address);
-
-            const [ltTokenLiquidity, quoteTokenLiquidity1] = await liquidityAccumulator.harnessFetchLiquidity(
-                ltToken.address
+        it("Should revert when the pair does not exist", async () => {
+            await expect(accumulator.harnessFetchLiquidity(noPairToken.address)).to.be.revertedWith(
+                "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND"
             );
+        });
 
-            const [gtTokenLiquidity, quoteTokenLiquidity2] = await liquidityAccumulator.harnessFetchLiquidity(
-                gtToken.address
-            );
+        it("Should revert if token == quoteToken", async function () {
+            await expect(accumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
+        });
 
-            expect(ltTokenLiquidity).to.equal(BigNumber.from(args[0]));
-            expect(gtTokenLiquidity).to.equal(BigNumber.from(args[0]));
-            expect(quoteTokenLiquidity1).to.equal(BigNumber.from(args[1]));
-            expect(quoteTokenLiquidity2).to.equal(BigNumber.from(args[1]));
+        it("Should revert if token == address(0)", async function () {
+            await expect(accumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
+        });
+
+        tests.forEach(({ args }) => {
+            it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
+                const [owner] = await ethers.getSigners();
+
+                // Get pair
+                const ltPair = await fakeUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
+                const gtPair = await fakeUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
+                const ltPairContract = await ethers.getContractAt("FakeUniswapV2Pair", ltPair);
+                const gtPairContract = await ethers.getContractAt("FakeUniswapV2Pair", gtPair);
+
+                // Approve transfers to pair (ltToken, quoteToken)
+                await ltToken.approve(ltPair, args[0]);
+                await quoteToken.approve(ltPair, args[1]);
+
+                // Approve transfers to pair (gtToken, quoteToken)
+                await gtToken.approve(gtPair, args[0]);
+                await quoteToken.approve(gtPair, args[1]);
+
+                // Send tokens to pair (ltToken, quoteToken)
+                await ltToken.transfer(ltPair, args[0]);
+                await quoteToken.transfer(ltPair, args[1]);
+
+                // Send tokens to pair (gtToken, quoteToken)
+                await gtToken.transfer(gtPair, args[0]);
+                await quoteToken.transfer(gtPair, args[1]);
+
+                // Mint the pairs
+                await ltPairContract.mint(owner.address);
+                await gtPairContract.mint(owner.address);
+
+                const [ltTokenLiquidity, quoteTokenLiquidity1] = await accumulator.harnessFetchLiquidity(
+                    ltToken.address
+                );
+
+                const [gtTokenLiquidity, quoteTokenLiquidity2] = await accumulator.harnessFetchLiquidity(
+                    gtToken.address
+                );
+
+                expect(ltTokenLiquidity).to.equal(BigNumber.from(args[0]));
+                expect(gtTokenLiquidity).to.equal(BigNumber.from(args[0]));
+                expect(quoteTokenLiquidity1).to.equal(BigNumber.from(args[1]));
+                expect(quoteTokenLiquidity2).to.equal(BigNumber.from(args[1]));
+            });
         });
     });
 });
