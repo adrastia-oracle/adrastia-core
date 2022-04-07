@@ -378,7 +378,7 @@ describe("UniswapV3PriceAccumulator", function () {
                 );
 
                 await createPool(initialPrice);
-                await mint(ethers.utils.parseUnits("1.0", 18), ethers.utils.parseUnits("1.0", 18));
+                await mint(ethers.utils.parseUnits("1000.0", 18), ethers.utils.parseUnits("1000.0", 18));
 
                 expect(await accumulator.canUpdate(token.address)).to.equal(true);
             });
