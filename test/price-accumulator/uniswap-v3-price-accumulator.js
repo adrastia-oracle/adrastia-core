@@ -181,6 +181,42 @@ describe("UniswapV3PriceAccumulator#computeWholeUnitAmount", function () {
     });
 });
 
+describe("UniswapV3PriceAccumulator#computeAddress", function () {
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("UniswapV3PriceAccumulatorStub");
+
+        accumulator = await accumulatorFactory.deploy(
+            AddressZero,
+            INIT_CODE_HASH,
+            POOL_FEES,
+            AddressZero,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+    });
+
+    it("Reverts when token0 == token1", async function () {
+        const key = {
+            token0: AddressZero,
+            token1: AddressZero,
+            fee: 3000,
+        };
+        await expect(accumulator.stubComputeAddress(AddressZero, INIT_CODE_HASH, key)).to.be.reverted;
+    });
+
+    it("Reverts when token0 > token1", async function () {
+        const key = {
+            token0: "0x52bc44d5378309ee2abf1539bf71de1b7d7be3b5",
+            token1: AddressZero,
+            fee: 3000,
+        };
+        await expect(accumulator.stubComputeAddress(AddressZero, INIT_CODE_HASH, key)).to.be.reverted;
+    });
+});
+
 describe("UniswapV3PriceAccumulator", function () {
     var quoteToken;
     var token;

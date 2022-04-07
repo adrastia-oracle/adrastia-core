@@ -43,6 +43,14 @@ contract UniswapV3PriceAccumulatorStub is UniswapV3PriceAccumulator {
         return calculatePriceFromSqrtPrice(token, quoteToken_, sqrtPriceX96, tokenAmount);
     }
 
+    function stubComputeAddress(
+        address factory,
+        bytes32 _initCodeHash,
+        PoolKey memory key
+    ) public pure returns (address pool) {
+        return super.computeAddress(factory, _initCodeHash, key);
+    }
+
     function validateObservation(address, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
