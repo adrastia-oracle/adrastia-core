@@ -44,6 +44,95 @@ const TICK_SPACINGS = {
 const getMinTick = (tickSpacing) => Math.ceil(-887272 / tickSpacing) * tickSpacing;
 const getMaxTick = (tickSpacing) => Math.floor(887272 / tickSpacing) * tickSpacing;
 
+describe("UniswapV3PriceAccumulator#calculatePriceFromSqrtPrice", function () {
+    var quoteToken;
+    var token;
+    var ltToken;
+    var gtToken;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const erc20Factory = await ethers.getContractFactory("FakeERC20");
+        const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
+
+        addressHelper = await addressHelperFactory.deploy();
+
+        var tokens = [undefined, undefined, undefined];
+
+        for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
+        for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
+
+        tokens = tokens.sort(async (a, b) => await addressHelper.lessThan(a.address, b.address));
+
+        token = ltToken = tokens[0];
+        quoteToken = tokens[1];
+        gtToken = tokens[2];
+
+        const accumulatorFactory = await ethers.getContractFactory("UniswapV3PriceAccumulatorStub");
+
+        accumulator = await accumulatorFactory.deploy(
+            AddressZero,
+            INIT_CODE_HASH,
+            POOL_FEES,
+            AddressZero,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+    });
+    const tests = [
+        {
+            tokenAmount: BigNumber.from(2).pow(128),
+            quoteTokenAmount: BigNumber.from(2),
+        },
+        {
+            tokenAmount: BigNumber.from(2),
+            quoteTokenAmount: BigNumber.from(2).pow(128),
+        },
+    ];
+
+    function describeTests() {
+        tests.forEach(function ({ tokenAmount, quoteTokenAmount }) {
+            it(`Calculates correct price with tokenAmount = ${tokenAmount} and quoteTokenAmount = ${quoteTokenAmount}`, async function () {
+                const sqrtPrice = (await addressHelper.greaterThan(token.address, quoteToken.address))
+                    ? encodePriceSqrt(tokenAmount, quoteTokenAmount)
+                    : encodePriceSqrt(quoteTokenAmount, tokenAmount);
+
+                const wholeUnitAmount = BigNumber.from(10).pow(await token.decimals());
+                const price = await accumulator.stubCalculatePriceFromSqrtPrice(
+                    token.address,
+                    quoteToken.address,
+                    sqrtPrice,
+                    wholeUnitAmount
+                );
+
+                // Allow for 1% loss of precision
+                const expectedPriceFloor = price.sub(price.div(100));
+                const expectedPriceCeil = price.add(price.div(100));
+
+                expect(price).to.be.within(expectedPriceFloor, expectedPriceCeil);
+            });
+        });
+    }
+
+    describe("token < quoteToken", function () {
+        beforeEach(async () => {
+            token = ltToken;
+        });
+
+        describeTests();
+    });
+
+    describe("token > quoteToken", function () {
+        beforeEach(async () => {
+            token = gtToken;
+        });
+
+        describeTests();
+    });
+});
+
 describe("UniswapV3PriceAccumulator#computeWholeUnitAmount", function () {
     var accumulator;
 
