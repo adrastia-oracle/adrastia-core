@@ -143,7 +143,12 @@ describe("CurvePriceAccumulator#fetchPrice", function () {
 
             const price = await accumulator.harnessFetchPrice(token.address);
 
-            expect(price).to.equal(rate);
+            if (rate == 0) {
+                // 1 is reported rather than 0 because contracts may assume a price of 0 to be invalid
+                expect(price).to.equal(1);
+            } else {
+                expect(price).to.equal(rate);
+            }
         });
     }
 });

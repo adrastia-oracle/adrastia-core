@@ -63,6 +63,13 @@ contract CurvePriceAccumulator is PriceAccumulator {
         return super.canUpdate(token);
     }
 
+    /**
+     * @notice Calculates the price of a token.
+     * @dev When the price equals 0, a price of 1 is actually returned.
+     * @param token The token to get the price for.
+     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
+     *   places.
+     */
     function fetchPrice(address token) internal view virtual override returns (uint112 price) {
         ICurvePool pool = ICurvePool(curvePool);
 
@@ -77,5 +84,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
                 10**config.decimals // One whole token
             )
             .toUint112();
+
+        if (price == 0) return 1;
     }
 }
