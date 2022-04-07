@@ -52,6 +52,13 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
         return super.canUpdate(token);
     }
 
+    /**
+     * @notice Calculates the price of a token.
+     * @dev When the price equals 0, a price of 1 is actually returned.
+     * @param token The token to get the price for.
+     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
+     *   places.
+     */
     function fetchPrice(address token) internal view virtual override returns (uint112 price) {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
@@ -71,6 +78,8 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
             // reserve1 == tokenLiquidity, reserve0 == quoteTokenLiquidity
             price = ((computeWholeUnitAmount(token) * reserve0) / reserve1).toUint112();
         }
+
+        if (price == 0) return 1;
     }
 
     function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {

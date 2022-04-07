@@ -190,6 +190,11 @@ describe("UniswapV2PriceAccumulator", function () {
                 tokenAmount: ethers.utils.parseUnits("5.0", 18),
                 quoteTokenAmount: ethers.utils.parseUnits("3.0", 18),
             },
+            {
+                // This case results in a price of 0 in most cases (depends on decimals)
+                tokenAmount: ethers.utils.parseUnits("5000000000.0", 18),
+                quoteTokenAmount: ethers.utils.parseUnits("3000.0", 18),
+            },
         ];
 
         function calculatePrice(tokenAmount, quoteTokenAmount, tokenDecimals) {
@@ -216,9 +221,15 @@ describe("UniswapV2PriceAccumulator", function () {
                         await createPair();
                         await mint(tokenAmount, quoteTokenAmount);
 
+                        const expectedPrice = calculatePrice(tokenAmount, quoteTokenAmount, tokenDecimals);
                         const reportedPrice = await accumulator.stubFetchPrice(token.address);
 
-                        expect(reportedPrice).to.equal(calculatePrice(tokenAmount, quoteTokenAmount, tokenDecimals));
+                        if (expectedPrice == 0) {
+                            // 1 is reported rather than 0 because contracts may assume a price of 0 to be invalid
+                            expect(reportedPrice).to.equal(1);
+                        } else {
+                            expect(reportedPrice).to.equal(expectedPrice);
+                        }
                     });
                 });
             });
