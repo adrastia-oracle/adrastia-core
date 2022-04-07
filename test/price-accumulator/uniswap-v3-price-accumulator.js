@@ -371,6 +371,11 @@ describe("UniswapV3PriceAccumulator", function () {
                 tokenAmount: ethers.utils.parseUnits("5000.0", 18),
                 quoteTokenAmount: ethers.utils.parseUnits("3000.0", 18),
             },
+            {
+                // This case results in a price of 0 in most cases (depends on decimals)
+                tokenAmount: ethers.utils.parseUnits("5000000000.0", 18),
+                quoteTokenAmount: ethers.utils.parseUnits("3000.0", 18),
+            },
         ];
 
         function calculatePrice(tokenAmount, quoteTokenAmount, tokenDecimals) {
@@ -404,10 +409,17 @@ describe("UniswapV3PriceAccumulator", function () {
                         const reportedPrice = await accumulator.stubFetchPrice(token.address);
                         const expectedPrice = calculatePrice(tokenAmount, quoteTokenAmount, tokenDecimals);
 
-                        const expectedPriceFloor = expectedPrice.sub(expectedPrice.div(100));
-                        const expectedPriceCeil = expectedPrice.add(expectedPrice.div(100));
+                        if (expectedPrice == 0) {
+                            // 1 is reported rather than 0 for two reasons:
+                            // 1. So that it can be used in harmonic means without problem (i.e. divide by zero)
+                            // 2. Contracts may assume a price of 0 to be invalid
+                            expect(reportedPrice).to.equal(1);
+                        } else {
+                            const expectedPriceFloor = expectedPrice.sub(expectedPrice.div(100)).sub(1);
+                            const expectedPriceCeil = expectedPrice.add(expectedPrice.div(100)).add(1);
 
-                        expect(reportedPrice).to.be.within(expectedPriceFloor, expectedPriceCeil);
+                            expect(reportedPrice).to.be.within(expectedPriceFloor, expectedPriceCeil);
+                        }
                     });
                 });
             });

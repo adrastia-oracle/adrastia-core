@@ -78,6 +78,15 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         }
     }
 
+    /**
+     * @notice Calculates the price of a token across all chosen pools.
+     * @dev Uses harmonic mean, weighted by in-range liquidity.
+     * @dev When the price equals 0, a price of 1 is actually returned.
+     * @param token The token to get the price for.
+     * @return hasLiquidity True if at least one of the chosen pools has [enough] in-range liquidity.
+     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
+     *  places. If hasLiquidity equals false, the returned price will always equal 0.
+     */
     function calculateWeightedPrice(address token) internal view returns (bool hasLiquidity, uint256 price) {
         uint24[] memory _poolFees = poolFees;
 
@@ -98,11 +107,9 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
 
                 (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
-                uint256 poolPrice = calculatePriceFromSqrtPrice(token, quoteToken, sqrtPriceX96, wholeTokenAmount);
-                if (poolPrice == 0) {
-                    // Invalid price, ignore
-                    continue;
-                }
+                // Add 1 to all prices to prevent divide by 0
+                // This should realistically never overflow
+                uint256 poolPrice = calculatePriceFromSqrtPrice(token, quoteToken, sqrtPriceX96, wholeTokenAmount) + 1;
 
                 numerator += liquidity;
 
@@ -112,7 +119,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         }
 
         if (denominator == 0) {
-            // No in-range liquidity in any of the pools
+            // No in-range liquidity (or very little) in all of the pools
             return (false, 0);
         }
 
