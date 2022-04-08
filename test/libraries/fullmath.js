@@ -133,8 +133,8 @@ describe("FullMath", () => {
         return BigNumber.from(new Decimal(MaxUint256.toString()).mul(Math.random().toString()).round().toString());
     }
 
-    // tiny fuzzer. unskip to run
-    it.skip("check a bunch of random inputs against JS implementation", async () => {
+    // tiny fuzzer
+    it("check a bunch of random inputs against JS implementation", async () => {
         // generates random inputs
         const tests = Array(1_000)
             .fill(null)
