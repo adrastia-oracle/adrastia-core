@@ -7,10 +7,12 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
 import "../interfaces/ILiquidityAccumulator.sol";
+import "../interfaces/ILiquidityOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
+import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
+abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiquidityOracle, SimpleQuotationMetadata {
     using AddressLibrary for address;
     using SafeCast for uint256;
 
@@ -29,8 +31,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     uint256 public immutable updateThreshold;
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
-
-    address public immutable override quoteToken;
 
     uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
@@ -54,8 +54,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) {
-        quoteToken = quoteToken_;
+    ) SimpleQuotationMetadata(quoteToken_) {
         updateThreshold = updateThreshold_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
@@ -191,8 +190,39 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         observation.timestamp = block.timestamp.toUint32();
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(ILiquidityAccumulator).interfaceId;
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(IERC165, SimpleQuotationMetadata)
+        returns (bool)
+    {
+        return
+            interfaceId == type(ILiquidityAccumulator).interfaceId ||
+            interfaceId == type(ILiquidityOracle).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc ILiquidityOracle
+    function consultLiquidity(address token)
+        public
+        view
+        virtual
+        override
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        return fetchLiquidity(token);
+    }
+
+    /// @inheritdoc ILiquidityOracle
+    function consultLiquidity(address token, uint256)
+        public
+        view
+        virtual
+        override
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        return fetchLiquidity(token);
     }
 
     function _update(address token) internal virtual returns (bool) {
