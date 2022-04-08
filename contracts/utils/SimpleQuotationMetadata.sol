@@ -6,7 +6,7 @@ import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../interfaces/IQuoteToken.sol";
 
-contract QuotationMetadata is IQuoteToken, IERC165 {
+contract SimpleQuotationMetadata is IQuoteToken, IERC165 {
     address public immutable quoteToken;
 
     constructor(address quoteToken_) {

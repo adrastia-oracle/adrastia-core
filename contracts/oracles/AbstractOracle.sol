@@ -6,12 +6,12 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/IOracle.sol";
 import "../libraries/ObservationLibrary.sol";
-import "../utils/QuotationMetadata.sol";
+import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract AbstractOracle is IERC165, IOracle, QuotationMetadata {
+abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     mapping(address => ObservationLibrary.Observation) public observations;
 
-    constructor(address quoteToken_) QuotationMetadata(quoteToken_) {}
+    constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
     function update(address token) external virtual override returns (bool);
 
@@ -124,7 +124,7 @@ abstract contract AbstractOracle is IERC165, IOracle, QuotationMetadata {
         public
         view
         virtual
-        override(QuotationMetadata, IERC165)
+        override(SimpleQuotationMetadata, IERC165)
         returns (bool)
     {
         return
