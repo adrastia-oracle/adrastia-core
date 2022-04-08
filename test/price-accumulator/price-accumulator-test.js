@@ -976,6 +976,16 @@ describe("PriceAccumulator#supportsInterface(interfaceId)", function () {
         const interfaceId = await interfaceIds.iPriceAccumulator();
         expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
+
+    it("Should support IPriceOracle", async () => {
+        const interfaceId = await interfaceIds.iPriceOracle();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });
 
 describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteTokenLiquidity)", function () {
