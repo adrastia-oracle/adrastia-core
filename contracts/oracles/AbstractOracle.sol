@@ -6,37 +6,18 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/IOracle.sol";
 import "../libraries/ObservationLibrary.sol";
+import "../utils/QuotationMetadata.sol";
 
-abstract contract AbstractOracle is IERC165, IOracle {
-    address public immutable quoteToken;
-
+abstract contract AbstractOracle is IERC165, IOracle, QuotationMetadata {
     mapping(address => ObservationLibrary.Observation) public observations;
 
-    constructor(address quoteToken_) {
-        quoteToken = quoteToken_;
-    }
+    constructor(address quoteToken_) QuotationMetadata(quoteToken_) {}
 
     function update(address token) external virtual override returns (bool);
 
     function needsUpdate(address token) public view virtual override returns (bool);
 
     function canUpdate(address token) public view virtual override returns (bool);
-
-    function quoteTokenName() public view virtual override returns (string memory) {
-        return IERC20Metadata(quoteToken).name();
-    }
-
-    function quoteTokenAddress() public view virtual override returns (address) {
-        return quoteToken;
-    }
-
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
-        return IERC20Metadata(quoteToken).symbol();
-    }
-
-    function quoteTokenDecimals() public view virtual override returns (uint8) {
-        return IERC20Metadata(quoteToken).decimals();
-    }
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
         if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
@@ -139,12 +120,18 @@ abstract contract AbstractOracle is IERC165, IOracle {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(QuotationMetadata, IERC165)
+        returns (bool)
+    {
         return
             interfaceId == type(IOracle).interfaceId ||
             interfaceId == type(IUpdateByToken).interfaceId ||
             interfaceId == type(IPriceOracle).interfaceId ||
             interfaceId == type(ILiquidityOracle).interfaceId ||
-            interfaceId == type(IQuoteToken).interfaceId;
+            super.supportsInterface(interfaceId);
     }
 }
