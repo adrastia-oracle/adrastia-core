@@ -16,6 +16,7 @@ abstract contract IUpdateByToken {
 
     /// @notice Check if an update can be performed by the caller (if needed).
     /// @dev Tries to determine if the caller can call update with a valid observation being stored.
+    /// @dev This is not meant to be called by state-modifying functions.
     /// @param token The token address that the update is for.
     /// @return b True if an update can be performed by the caller; false otherwise.
     function canUpdate(address token) public view virtual returns (bool b);
