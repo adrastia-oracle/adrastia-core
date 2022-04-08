@@ -1261,6 +1261,16 @@ describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
         const interfaceId = await interfaceIds.iLiquidityAccumulator();
         expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
+
+    it("Should support ILiquidityOracle", async () => {
+        const interfaceId = await interfaceIds.iLiquidityOracle();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });
 
 describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteTokenLiquidity)", function () {
