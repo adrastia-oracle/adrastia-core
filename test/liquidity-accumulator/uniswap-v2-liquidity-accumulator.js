@@ -124,8 +124,8 @@ describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
                 // Get pair
                 const ltPair = await fakeUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
                 const gtPair = await fakeUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
-                const ltPairContract = await ethers.getContractAt("FakeUniswapV2Pair", ltPair);
-                const gtPairContract = await ethers.getContractAt("FakeUniswapV2Pair", gtPair);
+                const ltPairContract = await ethers.getContractAt("IUniswapV2Pair", ltPair);
+                const gtPairContract = await ethers.getContractAt("IUniswapV2Pair", gtPair);
 
                 // Approve transfers to pair (ltToken, quoteToken)
                 await ltToken.approve(ltPair, args[0]);

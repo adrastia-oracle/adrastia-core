@@ -88,7 +88,7 @@ describe("UniswapV2PriceAccumulator", function () {
         const [owner] = await ethers.getSigners();
 
         const pair = await uniswapFactory.getPair(token.address, quoteToken.address);
-        const pairContract = await ethers.getContractAt("FakeUniswapV2Pair", pair);
+        const pairContract = await ethers.getContractAt("IUniswapV2Pair", pair);
 
         await addLiquidity(tokenLiquidity, quoteTokenLiquidity);
 
