@@ -6,8 +6,9 @@ import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
 import "../libraries/SafeCastExt.sol";
+import "../utils/ExplicitQuotationMetadata.sol";
 
-contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
+contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotationMetadata {
     using SafeCast for uint256;
     using SafeCastExt for uint256;
 
@@ -32,11 +33,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     OracleConfig[] internal oracles;
     mapping(address => OracleConfig[]) internal tokenSpecificOracles;
 
-    string internal _quoteTokenName;
-    string internal _quoteTokenSymbol;
-    address internal immutable _quoteTokenAddress;
-    uint8 internal immutable _quoteTokenDecimals;
-
     /*
      * Private variables
      */
@@ -56,7 +52,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         address[] memory oracles_,
         TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_
-    ) PeriodicOracle(address(0), period_) {
+    )
+        PeriodicOracle(quoteTokenAddress_, period_)
+        ExplicitQuotationMetadata(quoteTokenName_, quoteTokenAddress_, quoteTokenSymbol_, quoteTokenDecimals_)
+    {
         require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");
 
         // Setup general oracles
@@ -83,13 +82,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                 OracleConfig({oracle: oracle.oracle, quoteTokenDecimals: IOracle(oracle.oracle).quoteTokenDecimals()})
             );
         }
-
-        // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
-        // Note: All underlying quote tokens must be loosly equal (i.e. equal in value).
-        _quoteTokenName = quoteTokenName_;
-        _quoteTokenAddress = quoteTokenAddress_;
-        _quoteTokenSymbol = quoteTokenSymbol_;
-        _quoteTokenDecimals = quoteTokenDecimals_;
     }
 
     /*
@@ -127,24 +119,17 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
      * Public functions
      */
 
-    function quoteTokenName() public view virtual override returns (string memory) {
-        return _quoteTokenName;
-    }
-
-    function quoteTokenAddress() public view virtual override returns (address) {
-        return _quoteTokenAddress;
-    }
-
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
-        return _quoteTokenSymbol;
-    }
-
-    function quoteTokenDecimals() public view virtual override returns (uint8) {
-        return _quoteTokenDecimals;
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IAggregatedOracle).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(PeriodicOracle, ExplicitQuotationMetadata)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IAggregatedOracle).interfaceId ||
+            ExplicitQuotationMetadata.supportsInterface(interfaceId) ||
+            PeriodicOracle.supportsInterface(interfaceId);
     }
 
     function canUpdate(address token) public view virtual override(IUpdateByToken, PeriodicOracle) returns (bool) {
@@ -219,7 +204,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
             observation.quoteTokenLiquidity = uint112(quoteTokenLiquidity); // Will never overflow
             observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, _quoteTokenAddress, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, quoteToken, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
 
             return true;
         } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
