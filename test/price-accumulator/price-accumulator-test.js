@@ -988,6 +988,50 @@ describe("PriceAccumulator#supportsInterface(interfaceId)", function () {
     });
 });
 
+describe("PriceAccumulator#consultPrice(token)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (price) {
+        it(`price = ${price}`, async function () {
+            await accumulator.setPrice(ethers.constants.AddressZero, price);
+
+            expect(await accumulator["consultPrice(address)"](ethers.constants.AddressZero)).to.equal(price);
+        });
+    });
+});
+
+describe("PriceAccumulator#consultPrice(token, maxAge)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (price) {
+        it(`price = ${price}`, async function () {
+            await accumulator.setPrice(ethers.constants.AddressZero, price);
+
+            expect(await accumulator["consultPrice(address,uint256)"](ethers.constants.AddressZero, 0)).to.equal(price);
+        });
+    });
+});
+
 describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteTokenLiquidity)", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
