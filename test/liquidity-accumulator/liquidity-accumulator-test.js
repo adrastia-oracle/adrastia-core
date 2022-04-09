@@ -1273,6 +1273,60 @@ describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
     });
 });
 
+describe("LiquidityAccumulator#consultLiquidity(token)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (tokenLiquidity) {
+        tests.forEach(function (quoteTokenLiquidity) {
+            it(`tokenLiquidity = ${tokenLiquidity} and quoteTokenLiquidity = ${quoteTokenLiquidity}`, async function () {
+                await accumulator.setLiquidity(ethers.constants.AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+                const result = await accumulator["consultLiquidity(address)"](ethers.constants.AddressZero);
+
+                expect(result["tokenLiquidity"], "Token liquidity").to.equal(tokenLiquidity);
+                expect(result["quoteTokenLiquidity"], "Quote token liquidity").to.equal(quoteTokenLiquidity);
+            });
+        });
+    });
+});
+
+describe("LiquidityAccumulator#consultLiquidity(token, maxAge)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (tokenLiquidity) {
+        tests.forEach(function (quoteTokenLiquidity) {
+            it(`tokenLiquidity = ${tokenLiquidity} and quoteTokenLiquidity = ${quoteTokenLiquidity}`, async function () {
+                await accumulator.setLiquidity(ethers.constants.AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+                const result = await accumulator["consultLiquidity(address,uint256)"](ethers.constants.AddressZero, 0);
+
+                expect(result["tokenLiquidity"], "Token liquidity").to.equal(tokenLiquidity);
+                expect(result["quoteTokenLiquidity"], "Quote token liquidity").to.equal(quoteTokenLiquidity);
+            });
+        });
+    });
+});
+
 describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteTokenLiquidity)", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
