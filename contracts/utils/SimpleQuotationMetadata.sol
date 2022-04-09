@@ -30,7 +30,12 @@ contract SimpleQuotationMetadata is IQuoteToken, IERC165 {
 
     /// @inheritdoc IQuoteToken
     function quoteTokenDecimals() public view virtual override returns (uint8) {
-        return IERC20Metadata(quoteToken).decimals();
+        (bool success, bytes memory result) = quoteToken.staticcall(
+            abi.encodeWithSelector(IERC20Metadata.decimals.selector)
+        );
+        if (!success) return 18; // Return 18 by default
+
+        return abi.decode(result, (uint8));
     }
 
     /// @inheritdoc IERC165
