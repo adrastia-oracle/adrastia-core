@@ -957,7 +957,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -994,7 +994,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity);
+            .withArgs(token, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
 
@@ -1027,7 +1027,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity);
+            .withArgs(token, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
 
@@ -1380,7 +1380,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
 
         await expect(oracle.update(token), "Update log")
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, price, totalTokenLiquidity, totalQuoteTokenLiquidity);
+            .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1426,7 +1426,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, price, totalTokenLiquidity, totalQuoteTokenLiquidity);
+            .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1480,7 +1480,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, expectedPrice, totalTokenLiquidity, totalQuoteTokenLiquidity);
+            .withArgs(token, expectedPrice, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1565,7 +1565,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, price, totalTokenLiquidity, totalQuoteTokenLiquidity);
+            .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1610,7 +1610,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
 
         await expect(oracle.update(token))
             .to.emit(oracle, "Updated")
-            .withArgs(token, quoteToken, timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)

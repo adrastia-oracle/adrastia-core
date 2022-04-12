@@ -204,7 +204,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             observation.quoteTokenLiquidity = uint112(quoteTokenLiquidity); // Will never overflow
             observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, quoteToken, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, price, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
             return true;
         } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");

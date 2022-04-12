@@ -957,7 +957,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Verify that the log matches the observation
         expect(updateReceipt)
             .to.emit(oracle, "Updated")
-            .withArgs(token.address, quoteToken.address, timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            .withArgs(token.address, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
     };
 
     const liquidityPermutations = [

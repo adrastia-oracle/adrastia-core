@@ -12,18 +12,16 @@ import "./IPriceOracle.sol";
 abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
     /// @notice Emitted when a stored quotation is updated.
     /// @param token The address of the token that the quotation is for.
-    /// @param quoteToken The address of the token that the quotation is denominated in.
-    /// @param timestamp The epoch timestamp of the quotation (in seconds).
     /// @param price The quote token denominated price for a whole token.
     /// @param tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
     /// @param quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
+    /// @param timestamp The epoch timestamp of the quotation (in seconds).
     event Updated(
         address indexed token,
-        address indexed quoteToken,
-        uint256 indexed timestamp,
         uint256 price,
         uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint256 quoteTokenLiquidity,
+        uint256 timestamp
     );
 
     /**

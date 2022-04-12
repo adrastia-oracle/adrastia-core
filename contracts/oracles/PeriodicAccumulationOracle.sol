@@ -100,11 +100,10 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         emit Updated(
             token,
-            quoteToken,
-            block.timestamp,
             observation.price,
             observation.tokenLiquidity,
-            observation.quoteTokenLiquidity
+            observation.quoteTokenLiquidity,
+            block.timestamp
         );
 
         return true;
