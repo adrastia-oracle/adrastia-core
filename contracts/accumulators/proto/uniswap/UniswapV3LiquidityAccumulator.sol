@@ -42,6 +42,16 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         poolFees = poolFees_;
     }
 
+    /// @inheritdoc LiquidityAccumulator
+    function canUpdate(address token) public view virtual override returns (bool) {
+        if (token == address(0) || token == quoteToken) {
+            // Invalid token
+            return false;
+        }
+
+        return super.canUpdate(token);
+    }
+
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
     /// @param tokenA The first token of a pool, unsorted
     /// @param tokenB The second token of a pool, unsorted

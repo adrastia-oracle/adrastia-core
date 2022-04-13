@@ -57,7 +57,7 @@ const MAX_UPDATE_DELAY = 30000;
 
 const POOL_FEES = [500, 3000, 10000];
 
-describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
+describe("UniswapV3LiquidityAccumulator", function () {
     this.timeout(100000);
 
     var uniswapFactory;
@@ -116,163 +116,187 @@ describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
         expectedPrice = BigNumber.from(0);
     });
 
-    async function createPool(sqrtPrice, fee = 3000) {
-        await uniswapFactory.createPool(token.address, quoteToken.address, fee);
+    describe("UniswapV3LiquidityAccumulator#canUpdate", function () {
+        describe("Can't update when", function () {
+            it("token = address(0)", async function () {
+                expect(await liquidityAccumulator.canUpdate(AddressZero)).to.equal(false);
+            });
 
-        const pool = await uniswapFactory.getPool(token.address, quoteToken.address, fee);
-        const poolContract = await ethers.getContractAt(POOL_ABI, pool);
-
-        poolContract.initialize(sqrtPrice);
-    }
-
-    async function addLiquidity(tokenLiquidity, quoteTokenLiquidity, fee = 3000) {
-        const [owner] = await ethers.getSigners();
-
-        var token0;
-        var token1;
-
-        var amount0;
-        var amount1;
-
-        if (await addressHelper.lessThan(token.address, quoteToken.address)) {
-            token0 = token.address;
-            token1 = quoteToken.address;
-
-            amount0 = tokenLiquidity;
-            amount1 = quoteTokenLiquidity;
-        } else {
-            token1 = token.address;
-            token0 = quoteToken.address;
-
-            amount1 = tokenLiquidity;
-            amount0 = quoteTokenLiquidity;
-        }
-
-        const params = {
-            token0: token0,
-            token1: token1,
-            fee: fee,
-            recipient: owner.address,
-            tickLower: getMinTick(TICK_SPACINGS[fee]),
-            tickUpper: getMaxTick(TICK_SPACINGS[fee]),
-            amount0Desired: amount0,
-            amount1Desired: amount1,
-            amount0Min: 0,
-            amount1Min: 0,
-        };
-
-        await token.approve(helper.address, MaxUint256);
-        await quoteToken.approve(helper.address, MaxUint256);
-
-        const [, rAmount0, rAmount1] = await helper.callStatic.helperAddLiquidity(params);
-
-        await helper.helperAddLiquidity(params);
-
-        if (await addressHelper.lessThan(token.address, quoteToken.address)) {
-            expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount0);
-            expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount1);
-        } else {
-            expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount1);
-            expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount0);
-        }
-
-        const decimalFactor = BigNumber.from(10).pow(await token.decimals());
-        const precisionFactor = BigNumber.from(10).pow(6);
-
-        expectedPrice = expectedQuoteTokenLiquidity
-            .mul(precisionFactor)
-            .mul(decimalFactor)
-            .div(expectedTokenLiquidity)
-            .div(precisionFactor);
-    }
-
-    it("Shouldn't revert when there are no pools", async function () {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(token.address)).to.not.be.reverted;
-    });
-
-    it("Should revert if token == quoteToken", async function () {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
-    });
-
-    it("Should revert if token == address(0)", async function () {
-        await expect(liquidityAccumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
-    });
-
-    it("Pools with zero in-range liquidity should be ignored", async function () {
-        const sqrtPrice = encodePriceSqrt(ethers.utils.parseUnits("1.0", 18), ethers.utils.parseUnits("1.0", 18));
-        await createPool(sqrtPrice, 3000); // Initialize pool
-
-        // Get pool address
-        const pool = await uniswapFactory.getPool(token.address, quoteToken.address, 3000);
-
-        // Transfer tokens to pool (but do not mint)
-        await token.approve(pool, MaxUint256);
-        await quoteToken.approve(pool, MaxUint256);
-        await token.transfer(pool, ethers.utils.parseUnits("10000.0", 18));
-        await quoteToken.transfer(pool, ethers.utils.parseUnits("10000.0", 18));
-
-        const [tokenLiquidity, quoteTokenLiquidity] = await liquidityAccumulator.harnessFetchLiquidity(token.address);
-
-        expect(tokenLiquidity).to.equal(0);
-        expect(quoteTokenLiquidity).to.equal(0);
-    });
-
-    function liquidityTests(poolFees) {
-        tests.forEach(({ args }) => {
-            it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
-                const sqrtPrice = (await addressHelper.lessThan(token.address, quoteToken.address))
-                    ? encodePriceSqrt(args[1], args[0])
-                    : encodePriceSqrt(args[0], args[1]);
-
-                var tokenLiquiditySum = BigNumber.from(0);
-                var quoteTokenLiquiditySum = BigNumber.from(0);
-
-                for (fee of poolFees) {
-                    await createPool(sqrtPrice, fee);
-                    await addLiquidity(args[0], args[1], fee);
-
-                    tokenLiquiditySum = tokenLiquiditySum.add(args[0]);
-                    quoteTokenLiquiditySum = quoteTokenLiquiditySum.add(args[1]);
-                }
-
-                const [tokenLiquidity, quoteTokenLiquidity] = await liquidityAccumulator.harnessFetchLiquidity(
-                    token.address
-                );
-
-                // Verify liquidities based off what our helper reports
-                expect(tokenLiquidity).to.equal(expectedTokenLiquidity);
-                expect(quoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
-
-                // Verify liquidities based off our input
-                {
-                    // Allow 1% difference to account for fees and Uniswap math precision loss
-                    const expectedTokenLiquidityFloor = tokenLiquiditySum.sub(tokenLiquiditySum.div(100));
-                    const expectedTokenLiquidityCeil = tokenLiquiditySum.add(tokenLiquiditySum.div(100));
-
-                    const expectedQuoteTokenLiquidityFloor = quoteTokenLiquiditySum.sub(
-                        quoteTokenLiquiditySum.div(100)
-                    );
-                    const expectedQuoteTokenLiquidityCeil = quoteTokenLiquiditySum.add(quoteTokenLiquiditySum.div(100));
-
-                    expect(tokenLiquidity).to.be.within(expectedTokenLiquidityFloor, expectedTokenLiquidityCeil);
-                    expect(quoteTokenLiquidity).to.be.within(
-                        expectedQuoteTokenLiquidityFloor,
-                        expectedQuoteTokenLiquidityCeil
-                    );
-                }
+            it("token = quoteToken", async function () {
+                expect(await liquidityAccumulator.canUpdate(quoteToken.address)).to.equal(false);
             });
         });
-    }
 
-    describe("Providing liquidity for poolFees = [ 500 ]", function () {
-        liquidityTests([500]);
+        describe("Can update when", function () {
+            it("token != quoteToken", async function () {
+                expect(await liquidityAccumulator.canUpdate(token.address)).to.equal(true);
+            });
+        });
     });
 
-    describe("Providing liquidity for poolFees = [ 500, 3000 ]", function () {
-        liquidityTests([500, 3000]);
-    });
+    describe("UniswapV3LiquidityAccumulator#fetchLiquidity", function () {
+        async function createPool(sqrtPrice, fee = 3000) {
+            await uniswapFactory.createPool(token.address, quoteToken.address, fee);
 
-    describe("Providing liquidity for poolFees = [ 500, 3000, 10000 ]", function () {
-        liquidityTests([500, 3000, 10000]);
+            const pool = await uniswapFactory.getPool(token.address, quoteToken.address, fee);
+            const poolContract = await ethers.getContractAt(POOL_ABI, pool);
+
+            poolContract.initialize(sqrtPrice);
+        }
+
+        async function addLiquidity(tokenLiquidity, quoteTokenLiquidity, fee = 3000) {
+            const [owner] = await ethers.getSigners();
+
+            var token0;
+            var token1;
+
+            var amount0;
+            var amount1;
+
+            if (await addressHelper.lessThan(token.address, quoteToken.address)) {
+                token0 = token.address;
+                token1 = quoteToken.address;
+
+                amount0 = tokenLiquidity;
+                amount1 = quoteTokenLiquidity;
+            } else {
+                token1 = token.address;
+                token0 = quoteToken.address;
+
+                amount1 = tokenLiquidity;
+                amount0 = quoteTokenLiquidity;
+            }
+
+            const params = {
+                token0: token0,
+                token1: token1,
+                fee: fee,
+                recipient: owner.address,
+                tickLower: getMinTick(TICK_SPACINGS[fee]),
+                tickUpper: getMaxTick(TICK_SPACINGS[fee]),
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: 0,
+                amount1Min: 0,
+            };
+
+            await token.approve(helper.address, MaxUint256);
+            await quoteToken.approve(helper.address, MaxUint256);
+
+            const [, rAmount0, rAmount1] = await helper.callStatic.helperAddLiquidity(params);
+
+            await helper.helperAddLiquidity(params);
+
+            if (await addressHelper.lessThan(token.address, quoteToken.address)) {
+                expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount0);
+                expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount1);
+            } else {
+                expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount1);
+                expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount0);
+            }
+
+            const decimalFactor = BigNumber.from(10).pow(await token.decimals());
+            const precisionFactor = BigNumber.from(10).pow(6);
+
+            expectedPrice = expectedQuoteTokenLiquidity
+                .mul(precisionFactor)
+                .mul(decimalFactor)
+                .div(expectedTokenLiquidity)
+                .div(precisionFactor);
+        }
+
+        it("Shouldn't revert when there are no pools", async function () {
+            await expect(liquidityAccumulator.harnessFetchLiquidity(token.address)).to.not.be.reverted;
+        });
+
+        it("Should revert if token == quoteToken", async function () {
+            await expect(liquidityAccumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
+        });
+
+        it("Should revert if token == address(0)", async function () {
+            await expect(liquidityAccumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
+        });
+
+        it("Pools with zero in-range liquidity should be ignored", async function () {
+            const sqrtPrice = encodePriceSqrt(ethers.utils.parseUnits("1.0", 18), ethers.utils.parseUnits("1.0", 18));
+            await createPool(sqrtPrice, 3000); // Initialize pool
+
+            // Get pool address
+            const pool = await uniswapFactory.getPool(token.address, quoteToken.address, 3000);
+
+            // Transfer tokens to pool (but do not mint)
+            await token.approve(pool, MaxUint256);
+            await quoteToken.approve(pool, MaxUint256);
+            await token.transfer(pool, ethers.utils.parseUnits("10000.0", 18));
+            await quoteToken.transfer(pool, ethers.utils.parseUnits("10000.0", 18));
+
+            const [tokenLiquidity, quoteTokenLiquidity] = await liquidityAccumulator.harnessFetchLiquidity(
+                token.address
+            );
+
+            expect(tokenLiquidity).to.equal(0);
+            expect(quoteTokenLiquidity).to.equal(0);
+        });
+
+        function liquidityTests(poolFees) {
+            tests.forEach(({ args }) => {
+                it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
+                    const sqrtPrice = (await addressHelper.lessThan(token.address, quoteToken.address))
+                        ? encodePriceSqrt(args[1], args[0])
+                        : encodePriceSqrt(args[0], args[1]);
+
+                    var tokenLiquiditySum = BigNumber.from(0);
+                    var quoteTokenLiquiditySum = BigNumber.from(0);
+
+                    for (fee of poolFees) {
+                        await createPool(sqrtPrice, fee);
+                        await addLiquidity(args[0], args[1], fee);
+
+                        tokenLiquiditySum = tokenLiquiditySum.add(args[0]);
+                        quoteTokenLiquiditySum = quoteTokenLiquiditySum.add(args[1]);
+                    }
+
+                    const [tokenLiquidity, quoteTokenLiquidity] = await liquidityAccumulator.harnessFetchLiquidity(
+                        token.address
+                    );
+
+                    // Verify liquidities based off what our helper reports
+                    expect(tokenLiquidity).to.equal(expectedTokenLiquidity);
+                    expect(quoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
+
+                    // Verify liquidities based off our input
+                    {
+                        // Allow 1% difference to account for fees and Uniswap math precision loss
+                        const expectedTokenLiquidityFloor = tokenLiquiditySum.sub(tokenLiquiditySum.div(100));
+                        const expectedTokenLiquidityCeil = tokenLiquiditySum.add(tokenLiquiditySum.div(100));
+
+                        const expectedQuoteTokenLiquidityFloor = quoteTokenLiquiditySum.sub(
+                            quoteTokenLiquiditySum.div(100)
+                        );
+                        const expectedQuoteTokenLiquidityCeil = quoteTokenLiquiditySum.add(
+                            quoteTokenLiquiditySum.div(100)
+                        );
+
+                        expect(tokenLiquidity).to.be.within(expectedTokenLiquidityFloor, expectedTokenLiquidityCeil);
+                        expect(quoteTokenLiquidity).to.be.within(
+                            expectedQuoteTokenLiquidityFloor,
+                            expectedQuoteTokenLiquidityCeil
+                        );
+                    }
+                });
+            });
+        }
+
+        describe("Providing liquidity for poolFees = [ 500 ]", function () {
+            liquidityTests([500]);
+        });
+
+        describe("Providing liquidity for poolFees = [ 500, 3000 ]", function () {
+            liquidityTests([500, 3000]);
+        });
+
+        describe("Providing liquidity for poolFees = [ 500, 3000, 10000 ]", function () {
+            liquidityTests([500, 3000, 10000]);
+        });
     });
 });
