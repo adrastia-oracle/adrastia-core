@@ -48,9 +48,16 @@ The current standard in DeFi is to use trusted and centralized price oracle solu
 - Price reporters must not collude to report inaccurate prices
 - Price reporters must maintain the highest level of physical and digital security to protect their code and keys from attacks
 
-Pythia is designed to mitigate these risks by keeping everything on-chain - prices are only ever read from decentralized exchanges that have the highest levels of availability, transparency, and censorship-resistance.
+Pythia is designed to mitigate these risks by keeping everything on-chain - prices are only ever read from decentralized exchanges that have the highest levels of availability, transparency, and censorship-resistance. While Pythia may still be susceptible to bugs and errors, the likeliness of them happening is minimized by:
+- Keeping everything as simple as possible
+- Keeping everything open-source
+- Having the code professionally audited
+- Minimizing (or even eliminating) the need for trust
+- Ensuring high immutability in the contracts
+- Rigorous and thorough testing with 100% test coverage
+- And more
 
-While it's still possible to manipulate on-chain prices, the presence of arbitrageurs, MEV, and regular users makes doing so incredibly costly. The further use of TWAPs (time-weighted average prices) increases the cost exponentially by allowing arbitrageurs time to move funds between exchanges and profit greatly from trading.
+Furthermore, while it's still possible to manipulate on-chain prices, the presence of arbitrageurs, MEV, and regular users makes doing so incredibly costly. The further use of TWAPs (time-weighted average prices) increases the cost exponentially by allowing arbitrageurs time to move funds between exchanges and profit greatly from trading. Please read [this related paper](https://github.com/pythia-oracle/uni-v3-twap-manipulation/blob/master/cost-of-attack.pdf) on the topic.
 
 Assuming the precense of arbitrageurs, MEV, on/off ramps and bridges, and someone (anyone) to call Pythia's simple update functions, Pythia therefore delivers the highest level of secure, accurate, and reliable price feeds.
 
