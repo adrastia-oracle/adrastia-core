@@ -1,6 +1,108 @@
-# Pythia (Oracle of Ethereum)
+# Pythia Core
 
-Pythia is a library of on-chain oracle solutions for the EVM.
+[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+![655 out of 655 tests passing](https://img.shields.io/badge/tests-655/655%20passing-brightgreen.svg?style=flat-square)
+![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%-brightgreen.svg?style=flat-square)
+
+Pythia Core is a set of Solidity smart contracts for building EVM oracle solutions.
+
+## Table of contents
+- [Pythia Core](#pythia-core)
+  - [Table of contents](#table-of-contents)
+  - [Background](#background)
+  - [Install](#install)
+    - [Requirements](#requirements)
+    - [Recommendations](#recommendations)
+    - [Procedure](#procedure)
+  - [Usage](#usage)
+    - [Accumulators](#accumulators)
+    - [Oracles](#oracles)
+    - [Consuming oracle data](#consuming-oracle-data)
+    - [Maintaining an oracle](#maintaining-an-oracle)
+  - [Security](#security)
+  - [Overview](#overview)
+  - [Limitations](#limitations)
+    - [Accumulators](#accumulators-1)
+      - [Cumulative value overflows and underflows](#cumulative-value-overflows-and-underflows)
+  - [Assumptions](#assumptions)
+  - [Contributing](#contributing)
+  - [License](#license)
+    - [Exceptions](#exceptions)
+
+## Background
+
+To build reliaible decentralized financial applications, reliable price feeds are often needed. Since most, if not all, DeFi applications are fully automatic with large amounts of capital at stake, these price feeds must also have the highest degree of security and accuracy.
+
+The current standard in DeFi is to use trusted and centralized price oracle solutions that push off-chain data on-chain, which has its risks. These risks relate to:
+- Centralized exchanges risks
+  - Downtimes
+  - User lockouts
+  - Bugs
+  - Accuracy and integrity of the closed source systems
+- Data source reliability, accuracy, and availability
+- Bug-free code to read from these sources and post on-chain with all intermediate calculations for each and every price reporter (of which may be closed source)
+- Price reporters must not collude to report inaccurate prices
+- Price reporters must maintain the highest level of physical and digital security to protect their code and keys from attacks
+
+Pythia is designed to mitigate these risks by keeping everything on-chain - prices are only ever read from decentralized exchanges that have the highest levels of availability, transparency, and censorship-resistance.
+
+While it's still possible to manipulate on-chain prices, the presence of arbitrageurs, MEV, and regular users makes doing so incredibly costly. The further use of TWAPs (time-weighted average prices) increases the cost exponentially by allowing arbitrageurs time to move funds between exchanges and profit greatly from trading.
+
+Assuming the precense of arbitrageurs, MEV, on/off ramps and bridges, and someone (anyone) to call Pythia's simple update functions, Pythia therefore delivers the highest level of secure, accurate, and reliable price feeds.
+
+## Install
+
+### Requirements
+
+- node: v14 or later
+- yarn
+- git
+
+### Recommendations
+
+- Operating system: Linux (Fedora is used for development and testing)
+
+### Procedure
+
+1. Clone the repository
+
+```console
+git clone git@github.com:pythia-oracle/pythia-core.git
+```
+
+2. Enter the project folder
+
+```console
+cd pythia-core
+```
+
+3. Install using yarn (npm should work too)
+
+```console
+yarn install --lock-file
+```
+
+## Usage
+
+### Accumulators
+
+Accumulators (`contracts/accumulators/`) are designed to track changing values such as prices and liquidities, allowing for time-weighted averages to be calculated from two unique accumulations. They also have a dual function of being spot oracles - that is, oracles that provide current values for whatever is being consulted.
+
+### Oracles
+
+Oracles (`contracts/oracles/`) are designed to record observations to later provide consulations against these observations with a focus on gas efficiency when consulting. They typically update periodically and utilize time-weighted averages derived from accumulators to provide higher levels of manipulation resistance.
+
+### Consuming oracle data
+
+To consume data from deployed oracles, import the one of the interfaces that the oracle contract implements, then call one of the consult functions.
+
+### Maintaining an oracle
+
+Oracles need maintenance - they need someone to call the update functions of the oracle and all underlying components. Please refer to one of the scripts found in `scripts/` for example code.
+
+## Security
+
+If any security vulnerabilities are found, please contact us via Discord (TylerEther#8944) or email (tyler@trilez.com).
 
 ## Overview
 
@@ -30,3 +132,15 @@ Example using a liquidity accumulator for COMP with a fixed total supply of 10,0
   - Maximum time between two accumulations
 - `block.timestamp < 4294967296` (Feb 2106)
   - Timestamps can be stored in 32 bit numbers
+
+## Contributing
+
+Please refer to the [contributing guide](CONTRIBUTING.md).
+
+## License
+
+Pythia Core is licensed under the [MIT License](LICENSE).
+
+### Exceptions
+
+- The file located at [contracts/libraries/uniswap-lib/FullMath.sol](contracts/libraries/uniswap-lib/FullMath.sol) is licensed under a different [MIT License](contracts/libraries/uniswap-lib/LICENSE_MIT).
