@@ -5,7 +5,7 @@ import "./IOracle.sol";
 
 /**
  * @title IAggregatedOracle
- * @notice An interface that defines a price and liquidity oracle that aggregates observations from many underlying
+ * @notice An interface that defines a price and liquidity oracle that aggregates consulations from many underlying
  *  oracles.
  */
 abstract contract IAggregatedOracle is IOracle {
