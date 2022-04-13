@@ -15,12 +15,16 @@ Pythia Core is a set of Solidity smart contracts for building EVM oracle solutio
     - [Recommendations](#recommendations)
     - [Procedure](#procedure)
   - [Usage](#usage)
-    - [Accumulators](#accumulators)
-    - [Oracles](#oracles)
+    - [Using Solidity interfaces](#using-solidity-interfaces)
+      - [Install](#install-1)
+      - [Importing](#importing)
     - [Consuming oracle data](#consuming-oracle-data)
     - [Maintaining an oracle](#maintaining-an-oracle)
   - [Security](#security)
   - [Overview](#overview)
+    - [High level flow chart](#high-level-flow-chart)
+    - [Accumulators](#accumulators)
+    - [Oracles](#oracles)
   - [Limitations](#limitations)
     - [Accumulators](#accumulators-1)
       - [Cumulative value overflows and underflows](#cumulative-value-overflows-and-underflows)
@@ -84,13 +88,33 @@ yarn install --lock-file
 
 ## Usage
 
-### Accumulators
+### Using Solidity interfaces
 
-Accumulators (`contracts/accumulators/`) are designed to track changing values such as prices and liquidities, allowing for time-weighted averages to be calculated from two unique accumulations. They also have a dual function of being spot oracles - that is, oracles that provide current values for whatever is being consulted.
+The Pythia Core interfaces are available for import into Solidity smart contracts via the npm artifact `@pythia-oracle/pythia-core`.
 
-### Oracles
+#### Install
 
-Oracles (`contracts/oracles/`) are designed to record observations to later provide consulations against these observations with a focus on gas efficiency when consulting. They typically update periodically and utilize time-weighted averages derived from accumulators to provide higher levels of manipulation resistance.
+```console
+yarn add @pythia-oracle/pythia-core
+```
+or
+```console
+npm install @pythia-oracle/pythia-core
+```
+
+#### Importing
+
+```solidity
+import '@pythia-oracle/pythia-core/contracts/interfaces/IOracle.sol';
+
+contract PriceConsumer {
+  IOracle oracle = IOracle(...);
+
+  function doSomethingWithPrice() external {
+    uint256 price = oracle.consultPrice(...);
+  }
+}
+```
 
 ### Consuming oracle data
 
@@ -106,7 +130,16 @@ If any security vulnerabilities are found, please contact us via Discord (TylerE
 
 ## Overview
 
+### High level flow chart
 ![High level flow chart](/assets/images/high-level-flow-chart.png)
+
+### Accumulators
+
+Accumulators (`contracts/accumulators/`) are designed to track changing values such as prices and liquidities, allowing for time-weighted averages to be calculated from two unique accumulations. They also have a dual function of being spot oracles - that is, oracles that provide current values for whatever is being consulted.
+
+### Oracles
+
+Oracles (`contracts/oracles/`) are designed to record observations to later provide consulations against these observations with a focus on gas efficiency when consulting. They typically update periodically and utilize time-weighted averages derived from accumulators to provide higher levels of manipulation resistance.
 
 ## Limitations
 
