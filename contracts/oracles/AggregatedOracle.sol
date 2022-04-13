@@ -88,6 +88,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
      * External functions
      */
 
+    /// @inheritdoc IAggregatedOracle
     function getOracles() external view virtual override returns (address[] memory) {
         OracleConfig[] memory _oracles = oracles;
 
@@ -99,6 +100,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         return allOracles;
     }
 
+    /// @inheritdoc IAggregatedOracle
     function getOraclesFor(address token) external view virtual override returns (address[] memory) {
         OracleConfig[] memory _tokenSpecificOracles = tokenSpecificOracles[token];
         OracleConfig[] memory _oracles = oracles;
@@ -119,6 +121,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
      * Public functions
      */
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -132,6 +135,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             PeriodicOracle.supportsInterface(interfaceId);
     }
 
+    /// @inheritdoc PeriodicOracle
     function canUpdate(address token) public view virtual override(IUpdateByToken, PeriodicOracle) returns (bool) {
         // If the parent contract can't update, this contract can't update
         if (!super.canUpdate(token)) return false;

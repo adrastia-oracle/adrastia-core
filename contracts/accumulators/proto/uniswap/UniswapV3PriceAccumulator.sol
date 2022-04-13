@@ -43,6 +43,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         poolFees = poolFees_;
     }
 
+    /// @inheritdoc PriceAccumulator
     function canUpdate(address token) public view virtual override returns (bool) {
         if (token == address(0) || token == quoteToken) {
             // Invalid token

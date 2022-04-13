@@ -13,10 +13,13 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
 
     constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
+    /// @inheritdoc IUpdateByToken
     function update(address token) external virtual override returns (bool);
 
+    /// @inheritdoc IUpdateByToken
     function needsUpdate(address token) public view virtual override returns (bool);
 
+    /// @inheritdoc IUpdateByToken
     function canUpdate(address token) public view virtual override returns (bool);
 
     function consultPrice(address token) public view virtual override returns (uint256 price) {
@@ -29,6 +32,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         return observation.price;
     }
 
+    /// @inheritdoc IPriceOracle
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
         if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
 
@@ -40,6 +44,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         return observation.price;
     }
 
+    /// @inheritdoc ILiquidityOracle
     function consultLiquidity(address token)
         public
         view
@@ -57,6 +62,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc ILiquidityOracle
     function consultLiquidity(address token, uint256 maxAge)
         public
         view
@@ -75,6 +81,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc IOracle
     function consult(address token)
         public
         view
@@ -97,6 +104,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc IOracle
     function consult(address token, uint256 maxAge)
         public
         view
@@ -120,6 +128,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
         view

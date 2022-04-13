@@ -51,6 +51,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    /// @inheritdoc IPriceAccumulator
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
         AccumulationLibrary.PriceAccumulator calldata secondAccumulation
@@ -66,6 +67,9 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         }
     }
 
+    /// Checks if this accumulator needs an update by checking the time since the last update and the change in
+    ///   liquidities.
+    /// @inheritdoc IUpdateByToken
     function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
         uint256 deltaTime = block.timestamp - lastObservation.timestamp;
@@ -88,6 +92,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return changeThresholdSurpassed(price, lastObservation.price, updateThreshold);
     }
 
+    /// @inheritdoc IUpdateByToken
     function canUpdate(address token) public view virtual override returns (bool) {
         // If this accumulator doesn't need an update, it can't (won't) update
         if (!needsUpdate(token)) return false;
@@ -115,6 +120,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return false;
     }
 
+    /// @inheritdoc IPriceAccumulator
     function getLastAccumulation(address token)
         public
         view
@@ -125,6 +131,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return accumulations[token];
     }
 
+    /// @inheritdoc IPriceAccumulator
     function getCurrentAccumulation(address token)
         public
         view
@@ -151,6 +158,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         }
     }
 
+    /// @inheritdoc IPriceAccumulator
     function getLastObservation(address token)
         public
         view
@@ -161,6 +169,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return observations[token];
     }
 
+    /// @inheritdoc IPriceAccumulator
     function getCurrentObservation(address token)
         public
         view
@@ -172,6 +181,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         observation.timestamp = block.timestamp.toUint32();
     }
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
         view

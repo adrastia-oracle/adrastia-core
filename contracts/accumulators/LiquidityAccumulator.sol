@@ -52,6 +52,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
@@ -72,6 +73,9 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         }
     }
 
+    /// Checks if this accumulator needs an update by checking the time since the last update and the change in
+    ///   liquidities.
+    /// @inheritdoc IUpdateByToken
     function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
@@ -97,6 +101,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
             changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
     }
 
+    /// @inheritdoc IUpdateByToken
     function canUpdate(address token) public view virtual override returns (bool) {
         // If this accumulator doesn't need an update, it can't (won't) update
         if (!needsUpdate(token)) return false;
@@ -124,6 +129,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return false;
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getLastAccumulation(address token)
         public
         view
@@ -134,6 +140,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return accumulations[token];
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getCurrentAccumulation(address token)
         public
         view
@@ -161,6 +168,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         }
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getLastObservation(address token)
         public
         view
@@ -171,6 +179,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return observations[token];
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getCurrentObservation(address token)
         public
         view
@@ -182,6 +191,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         observation.timestamp = block.timestamp.toUint32();
     }
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
         view

@@ -31,6 +31,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         priceAccumulator = priceAccumulator_;
     }
 
+    /// @inheritdoc PeriodicOracle
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
             interfaceId == type(IHasLiquidityAccumulator).interfaceId ||

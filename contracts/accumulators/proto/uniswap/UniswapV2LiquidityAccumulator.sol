@@ -26,6 +26,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
         initCodeHash = initCodeHash_;
     }
 
+    /// @inheritdoc LiquidityAccumulator
     function canUpdate(address token) public view virtual override returns (bool) {
         if (token == address(0) || token == quoteToken) {
             // Invalid token

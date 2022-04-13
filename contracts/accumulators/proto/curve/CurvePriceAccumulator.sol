@@ -57,6 +57,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
+    /// @inheritdoc PriceAccumulator
     function canUpdate(address token) public view virtual override returns (bool) {
         if (tokenIndices[token].index == 0) return false;
 

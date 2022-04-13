@@ -46,6 +46,7 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
+    /// @inheritdoc LiquidityAccumulator
     function canUpdate(address token) public view virtual override returns (bool) {
         if (tokenIndices[token] == 0) return false;
 

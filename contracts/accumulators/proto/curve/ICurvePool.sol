@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
+/// @title ICurvePool
+/// @notice A simple interface for accessing various Curve pool functions.
 interface ICurvePool {
     function get_dy(
         int128 i,
