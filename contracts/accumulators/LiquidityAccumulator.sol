@@ -41,14 +41,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     /// @dev address(token) => address(poster) => PendingObservation
     mapping(address => mapping(address => PendingObservation)) public pendingObservations;
 
-    event Updated(
-        address indexed token,
-        address indexed quoteToken,
-        uint256 indexed timestamp,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    );
-
     constructor(
         address quoteToken_,
         uint256 updateThreshold_,
@@ -239,7 +231,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
             observation.quoteTokenLiquidity = quoteTokenLiquidity;
             observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
             return true;
         }
@@ -271,7 +263,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
                 observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
             }
 
-            emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
             return true;
         }

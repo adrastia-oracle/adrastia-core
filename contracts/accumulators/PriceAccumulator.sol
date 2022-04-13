@@ -40,8 +40,6 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
     /// @dev address(token) => address(poster) => PendingObservation
     mapping(address => mapping(address => PendingObservation)) public pendingObservations;
 
-    event Updated(address indexed token, address indexed quoteToken, uint256 indexed timestamp, uint256 price);
-
     constructor(
         address quoteToken_,
         uint256 updateThreshold_,
@@ -210,7 +208,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
             observation.price = price;
             observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, quoteToken, block.timestamp, price);
+            emit Updated(token, price, block.timestamp);
 
             return true;
         }
@@ -240,7 +238,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
                 observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
             }
 
-            emit Updated(token, quoteToken, block.timestamp, price);
+            emit Updated(token, price, block.timestamp);
 
             return true;
         }

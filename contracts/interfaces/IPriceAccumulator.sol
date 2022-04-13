@@ -15,6 +15,13 @@ import "../libraries/ObservationLibrary.sol";
  * @dev Price accumulators are used to calculate time-weighted average prices.
  */
 abstract contract IPriceAccumulator is IUpdateByToken {
+    /// @notice Emitted when the accumulator is updated.
+    /// @dev The accumulator's observation and cumulative values are updated when this is emitted.
+    /// @param token The address of the token that the update is for.
+    /// @param price The quote token denominated price for a whole token.
+    /// @param timestamp The epoch timestamp of the update (in seconds).
+    event Updated(address indexed token, uint256 price, uint256 timestamp);
+
     /// @notice Gets the number of decimal places to be used for calculating changes in price.
     /// @return The number of decimal places to be used for calculating changes in price.
     function changePrecision() external view virtual returns (uint256);

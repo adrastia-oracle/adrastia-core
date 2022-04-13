@@ -945,7 +945,7 @@ describe("LiquidityAccumulator#update", () => {
 
                 await expect(receipt, "2L - Log")
                     .to.emit(liquidityAccumulator, "Updated")
-                    .withArgs(GRT, USDC, updateTime, expectedTokenLiquidity, expectedQuoteTokenLiquidity);
+                    .withArgs(GRT, expectedTokenLiquidity, expectedQuoteTokenLiquidity, updateTime);
             } else {
                 // No update should have occurred => use last values
 
@@ -975,7 +975,7 @@ describe("LiquidityAccumulator#update", () => {
 
                 await expect(receipt, "1L - Log")
                     .to.emit(liquidityAccumulator, "Updated")
-                    .withArgs(GRT, USDC, updateTime, expectedTokenLiquidity, expectedQuoteTokenLiquidity);
+                    .withArgs(GRT, expectedTokenLiquidity, expectedQuoteTokenLiquidity, updateTime);
             } else {
                 // An update should not have occurred
 

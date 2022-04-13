@@ -15,6 +15,14 @@ import "../libraries/ObservationLibrary.sol";
  * @dev Liquidity accumulators are used to calculate time-weighted average liquidity levels.
  */
 abstract contract ILiquidityAccumulator is IUpdateByToken {
+    /// @notice Emitted when the accumulator is updated.
+    /// @dev The accumulator's observation and cumulative values are updated when this is emitted.
+    /// @param token The address of the token that the update is for.
+    /// @param tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
+    /// @param quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
+    /// @param timestamp The epoch timestamp of the update (in seconds).
+    event Updated(address indexed token, uint256 tokenLiquidity, uint256 quoteTokenLiquidity, uint256 timestamp);
+
     /// @notice Gets the number of decimal places to be used for calculating changes in liquidity levels.
     /// @return The number of decimal places to be used for calculating changes in liquidity levels.
     function changePrecision() external view virtual returns (uint256);
