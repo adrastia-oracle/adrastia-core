@@ -10,8 +10,7 @@ abstract contract IPriceOracle is IUpdateByToken, IQuoteToken {
     /**
      * @notice Gets the price of a token in terms of the quote token.
      * @param token The token to get the price of.
-     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
-     *  places.
+     * @return price The quote token denominated price for a whole token.
      */
     function consultPrice(address token) public view virtual returns (uint256 price);
 
@@ -20,8 +19,7 @@ abstract contract IPriceOracle is IUpdateByToken, IQuoteToken {
      *  maximum allowable age.
      * @param token The token to get the price of.
      * @param maxAge The maximum age of the quotation, in seconds.
-     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
-     *  places.
+     * @return price The quote token denominated price for a whole token.
      */
     function consultPrice(address token, uint256 maxAge) public view virtual returns (uint256 price);
 }
