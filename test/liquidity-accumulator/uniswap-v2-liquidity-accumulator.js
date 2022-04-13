@@ -7,7 +7,7 @@ const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-co
 
 const TWO_PERCENT_CHANGE = 2000000;
 
-describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
+describe("UniswapV2LiquidityAccumulator", function () {
     this.timeout(100000);
 
     const minUpdateDelay = 10000;
