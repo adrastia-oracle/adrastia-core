@@ -18,7 +18,7 @@ abstract contract ILiquidityOracle is IUpdateByToken, IQuoteToken {
         public
         view
         virtual
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 
     /**
      * @notice Gets the liquidity levels of the token and the quote token in the underlying pool, reverting if the
@@ -32,5 +32,5 @@ abstract contract ILiquidityOracle is IUpdateByToken, IQuoteToken {
         public
         view
         virtual
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 }

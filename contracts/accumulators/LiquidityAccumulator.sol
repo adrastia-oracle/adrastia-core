@@ -4,18 +4,22 @@ pragma solidity =0.8.11;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
 import "../interfaces/ILiquidityAccumulator.sol";
+import "../interfaces/ILiquidityOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
+import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
+abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiquidityOracle, SimpleQuotationMetadata {
     using AddressLibrary for address;
+    using SafeCast for uint256;
 
     struct PendingObservation {
-        uint256 blockNumber;
-        uint256 tokenLiquidity;
-        uint256 quoteTokenLiquidity;
+        uint32 blockNumber;
+        uint112 tokenLiquidity;
+        uint112 quoteTokenLiquidity;
     }
 
     uint256 public constant OBSERVATION_BLOCK_MIN_PERIOD = 10;
@@ -28,8 +32,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
 
-    address public immutable override quoteToken;
-
     uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
@@ -39,33 +41,25 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
     /// @dev address(token) => address(poster) => PendingObservation
     mapping(address => mapping(address => PendingObservation)) public pendingObservations;
 
-    event Updated(
-        address indexed token,
-        address indexed quoteToken,
-        uint256 indexed timestamp,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    );
-
     constructor(
         address quoteToken_,
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) {
-        quoteToken = quoteToken_;
+    ) SimpleQuotationMetadata(quoteToken_) {
         updateThreshold = updateThreshold_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
-    ) external pure virtual override returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
+    ) external pure virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
-        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
         unchecked {
@@ -79,13 +73,20 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         }
     }
 
+    /// Checks if this accumulator needs an update by checking the time since the last update and the change in
+    ///   liquidities.
+    /// @inheritdoc IUpdateByToken
     function needsUpdate(address token) public view virtual override returns (bool) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
         uint256 deltaTime = block.timestamp - lastObservation.timestamp;
-        if (deltaTime < minUpdateDelay) return false;
-        // Ensures updates occur at most once every minUpdateDelay (seconds)
-        else if (deltaTime >= maxUpdateDelay) return true; // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        if (deltaTime < minUpdateDelay) {
+            // Ensures updates occur at most once every minUpdateDelay (seconds)
+            return false;
+        } else if (deltaTime >= maxUpdateDelay) {
+            // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+            return true;
+        }
 
         /*
          * maxUpdateDelay > deltaTime >= minUpdateDelay
@@ -100,6 +101,24 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
             changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
     }
 
+    /// @inheritdoc IUpdateByToken
+    function canUpdate(address token) public view virtual override returns (bool) {
+        // If this accumulator doesn't need an update, it can't (won't) update
+        if (!needsUpdate(token)) return false;
+
+        PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
+
+        // Check if pending update can be initialized (or if it's the first update)
+        if (pendingObservation.blockNumber == 0) return true;
+
+        // Validating observation (second update call)
+
+        // Check if observation period has passed
+        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_MIN_PERIOD) return false;
+
+        return true;
+    }
+
     /// @notice Updates the accumulator.
     /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
     /// @param token The address of the token to accumulate the liquidities of.
@@ -110,6 +129,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         return false;
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getLastAccumulation(address token)
         public
         view
@@ -120,6 +140,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         return accumulations[token];
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getCurrentAccumulation(address token)
         public
         view
@@ -132,7 +153,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
         accumulation = accumulations[token]; // Load last accumulation
 
-        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
 
         if (deltaTime != 0) {
             // The last observation liquidities have existed for some time, so we add that
@@ -142,11 +163,12 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
                 accumulation.cumulativeTokenLiquidity += lastObservation.tokenLiquidity * deltaTime;
                 accumulation.cumulativeQuoteTokenLiquidity += lastObservation.quoteTokenLiquidity * deltaTime;
 
-                accumulation.timestamp = block.timestamp;
+                accumulation.timestamp = block.timestamp.toUint32();
             }
         }
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getLastObservation(address token)
         public
         view
@@ -157,6 +179,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         return observations[token];
     }
 
+    /// @inheritdoc ILiquidityAccumulator
     function getCurrentObservation(address token)
         public
         view
@@ -165,15 +188,47 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         returns (ObservationLibrary.LiquidityObservation memory observation)
     {
         (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
-        observation.timestamp = block.timestamp;
+        observation.timestamp = block.timestamp.toUint32();
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(ILiquidityAccumulator).interfaceId;
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(IERC165, SimpleQuotationMetadata)
+        returns (bool)
+    {
+        return
+            interfaceId == type(ILiquidityAccumulator).interfaceId ||
+            interfaceId == type(ILiquidityOracle).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc ILiquidityOracle
+    function consultLiquidity(address token)
+        public
+        view
+        virtual
+        override
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
+    {
+        return fetchLiquidity(token);
+    }
+
+    /// @inheritdoc ILiquidityOracle
+    function consultLiquidity(address token, uint256)
+        public
+        view
+        virtual
+        override
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
+    {
+        return fetchLiquidity(token);
     }
 
     function _update(address token) internal virtual returns (bool) {
-        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
+        (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(token);
 
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
         AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
@@ -184,9 +239,9 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
              */
             observation.tokenLiquidity = tokenLiquidity;
             observation.quoteTokenLiquidity = quoteTokenLiquidity;
-            observation.timestamp = block.timestamp;
+            observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
             return true;
         }
@@ -195,7 +250,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
          * Update
          */
 
-        uint256 deltaTime = block.timestamp - observation.timestamp;
+        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
             // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
@@ -215,10 +270,10 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
                 observation.tokenLiquidity = tokenLiquidity;
                 observation.quoteTokenLiquidity = quoteTokenLiquidity;
 
-                observation.timestamp = accumulation.timestamp = block.timestamp;
+                observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
             }
 
-            emit Updated(token, quoteToken, block.timestamp, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
             return true;
         }
@@ -228,20 +283,20 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
 
     function validateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) internal virtual returns (bool) {
         // Require updaters to be EOAs to limit the attack vector that this function addresses
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
         //   is a smart contract.
-        require(!msg.sender.isContract(), "LiquidityAccumulator: MUST_BE_EOA");
+        require(!msg.sender.isContract() && msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 
         if (pendingObservation.blockNumber == 0) {
             // New observation (first update call), store it
-            pendingObservation.blockNumber = block.number;
+            pendingObservation.blockNumber = block.number.toUint32();
             pendingObservation.tokenLiquidity = tokenLiquidity;
             pendingObservation.quoteTokenLiquidity = quoteTokenLiquidity;
 
@@ -308,5 +363,5 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator {
         internal
         view
         virtual
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity);
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 }

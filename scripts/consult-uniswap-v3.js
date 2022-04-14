@@ -28,7 +28,7 @@ async function createContract(name, ...deploymentArgs) {
 }
 
 async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) {
-    const poolFees = [500, 3000, 10000];
+    const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
@@ -45,18 +45,28 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    const oracle = await createContract(
-        "UniswapV3Oracle",
-        liquidityAccumulator.address,
+    const priceAccumulator = await createContract(
+        "UniswapV3PriceAccumulator",
         factory,
         initCodeHash,
         poolFees,
+        quoteToken,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
+
+    const oracle = await createContract(
+        "PeriodicAccumulationOracle",
+        liquidityAccumulator.address,
+        priceAccumulator.address,
         quoteToken,
         period
     );
 
     return {
         liquidityAccumulator: liquidityAccumulator,
+        priceAccumulator: priceAccumulator,
         oracle: oracle,
     };
 }
@@ -86,7 +96,7 @@ async function main() {
 
     while (true) {
         try {
-            if (await uniswapV3.liquidityAccumulator.needsUpdate(token)) {
+            if (await uniswapV3.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await uniswapV3.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -100,7 +110,21 @@ async function main() {
                 );
             }
 
-            if (await uniswapV3.oracle.needsUpdate(token)) {
+            if (await uniswapV3.priceAccumulator.canUpdate(token)) {
+                const updateTx = await uniswapV3.priceAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Price accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await uniswapV3.oracle.canUpdate(token)) {
                 const updateTx = await uniswapV3.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 

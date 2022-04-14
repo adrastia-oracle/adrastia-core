@@ -3,9 +3,9 @@ pragma solidity ^0.8;
 
 pragma experimental ABIEncoderV2;
 
-import "../../accumulators/proto/uniswap/UniswapV2LiquidityAccumulator.sol";
+import "../../accumulators/proto/uniswap/UniswapV2PriceAccumulator.sol";
 
-contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
+contract UniswapV2PriceAccumulatorStub is UniswapV2PriceAccumulator {
     constructor(
         address uniswapFactory_,
         bytes32 initCodeHash_,
@@ -14,7 +14,7 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     )
-        UniswapV2LiquidityAccumulator(
+        UniswapV2PriceAccumulator(
             uniswapFactory_,
             initCodeHash_,
             quoteToken_,
@@ -24,19 +24,15 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
         )
     {}
 
-    function harnessFetchLiquidity(address token)
-        public
-        view
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
-        return super.fetchLiquidity(token);
+    function stubFetchPrice(address token) public view returns (uint256 price) {
+        return super.fetchPrice(token);
     }
 
-    function validateObservation(
-        address,
-        uint112,
-        uint112
-    ) internal virtual override returns (bool) {
+    function stubComputeWholeUnitAmount(address token) public view returns (uint256 amount) {
+        return super.computeWholeUnitAmount(token);
+    }
+
+    function validateObservation(address, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
 }

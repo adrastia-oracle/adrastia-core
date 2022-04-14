@@ -1,10 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.11;
 
+import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+
 import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
+import "../libraries/SafeCastExt.sol";
+import "../utils/ExplicitQuotationMetadata.sol";
 
-contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
+contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotationMetadata {
+    using SafeCast for uint256;
+    using SafeCastExt for uint256;
+
     /*
      * Structs
      */
@@ -26,11 +33,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     OracleConfig[] internal oracles;
     mapping(address => OracleConfig[]) internal tokenSpecificOracles;
 
-    string internal _quoteTokenName;
-    string internal _quoteTokenSymbol;
-    address internal immutable _quoteTokenAddress;
-    uint8 internal immutable _quoteTokenDecimals;
-
     /*
      * Private variables
      */
@@ -50,7 +52,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         address[] memory oracles_,
         TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_
-    ) PeriodicOracle(address(0), period_) {
+    )
+        PeriodicOracle(quoteTokenAddress_, period_)
+        ExplicitQuotationMetadata(quoteTokenName_, quoteTokenAddress_, quoteTokenSymbol_, quoteTokenDecimals_)
+    {
         require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");
 
         // Setup general oracles
@@ -77,19 +82,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                 OracleConfig({oracle: oracle.oracle, quoteTokenDecimals: IOracle(oracle.oracle).quoteTokenDecimals()})
             );
         }
-
-        // We store quote token information like this just-in-case the underlying oracles use different quote tokens.
-        // Note: All underlying quote tokens must be loosly equal (i.e. equal in value).
-        _quoteTokenName = quoteTokenName_;
-        _quoteTokenAddress = quoteTokenAddress_;
-        _quoteTokenSymbol = quoteTokenSymbol_;
-        _quoteTokenDecimals = quoteTokenDecimals_;
     }
 
     /*
      * External functions
      */
 
+    /// @inheritdoc IAggregatedOracle
     function getOracles() external view virtual override returns (address[] memory) {
         OracleConfig[] memory _oracles = oracles;
 
@@ -101,6 +100,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return allOracles;
     }
 
+    /// @inheritdoc IAggregatedOracle
     function getOraclesFor(address token) external view virtual override returns (address[] memory) {
         OracleConfig[] memory _tokenSpecificOracles = tokenSpecificOracles[token];
         OracleConfig[] memory _oracles = oracles;
@@ -121,24 +121,44 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
      * Public functions
      */
 
-    function quoteTokenName() public view virtual override(IQuoteToken, AbstractOracle) returns (string memory) {
-        return _quoteTokenName;
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(PeriodicOracle, ExplicitQuotationMetadata)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IAggregatedOracle).interfaceId ||
+            ExplicitQuotationMetadata.supportsInterface(interfaceId) ||
+            PeriodicOracle.supportsInterface(interfaceId);
     }
 
-    function quoteTokenAddress() public view virtual override(IQuoteToken, AbstractOracle) returns (address) {
-        return _quoteTokenAddress;
-    }
+    /// @inheritdoc PeriodicOracle
+    function canUpdate(address token) public view virtual override(IUpdateByToken, PeriodicOracle) returns (bool) {
+        // If the parent contract can't update, this contract can't update
+        if (!super.canUpdate(token)) return false;
 
-    function quoteTokenSymbol() public view virtual override(IQuoteToken, AbstractOracle) returns (string memory) {
-        return _quoteTokenSymbol;
-    }
+        // Ensure all underlying oracles are up-to-date
+        for (uint256 j = 0; j < 2; ++j) {
+            OracleConfig[] memory _oracles;
 
-    function quoteTokenDecimals() public view virtual override(IQuoteToken, AbstractOracle) returns (uint8) {
-        return _quoteTokenDecimals;
-    }
+            if (j == 0) _oracles = oracles;
+            else _oracles = tokenSpecificOracles[token];
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IAggregatedOracle).interfaceId || super.supportsInterface(interfaceId);
+            for (uint256 i = 0; i < _oracles.length; ++i) {
+                if (IOracle(_oracles[i].oracle).canUpdate(token)) {
+                    // We can update one of the underlying oracles
+                    return true;
+                }
+            }
+        }
+
+        (, , , uint256 validResponses) = aggregateUnderlying(token);
+
+        // Only return true if we have reached the minimum number of valid underlying oracle consultations
+        return validResponses >= 1;
     }
 
     /*
@@ -173,17 +193,22 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         uint256 quoteTokenLiquidity;
         uint256 validResponses;
 
-        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = consultFresh(token);
+        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token);
+
+        // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we set the observation to the max
+        // This allows the price to continue to be updated while tightly packing liquidities for gas efficiency
+        if (tokenLiquidity > type(uint112).max) tokenLiquidity = type(uint112).max;
+        if (quoteTokenLiquidity > type(uint112).max) quoteTokenLiquidity = type(uint112).max;
 
         if (validResponses >= 1) {
             ObservationLibrary.Observation storage observation = observations[token];
 
-            observation.price = price;
-            observation.tokenLiquidity = tokenLiquidity;
-            observation.quoteTokenLiquidity = quoteTokenLiquidity;
-            observation.timestamp = block.timestamp;
+            observation.price = price.toUint112(); // Should never (realistically) overflow
+            observation.tokenLiquidity = uint112(tokenLiquidity); // Will never overflow
+            observation.quoteTokenLiquidity = uint112(quoteTokenLiquidity); // Will never overflow
+            observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, _quoteTokenAddress, block.timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            emit Updated(token, price, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
             return true;
         } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
@@ -191,8 +216,19 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
         return underlyingUpdated;
     }
 
-    function consultFresh(address token)
+    /**
+     * @notice Calculates the maximum age of the underlying oracles' responses when updating this oracle's observation.
+     * @dev We use this to prevent old data from skewing our observations. Underlying oracles must update at least as
+     *   frequently as this oracle does.
+     * @return maxAge The maximum age of underlying oracles' responses, in seconds.
+     */
+    function calculateMaxAge() internal view returns (uint256) {
+        return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
+    }
+
+    function aggregateUnderlying(address token)
         internal
+        view
         returns (
             uint256 price,
             uint256 tokenLiquidity,
@@ -202,9 +238,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
     {
         uint256 qtDecimals = quoteTokenDecimals();
 
-        // We use period * 2 as the max age just in-case the update of the particular underlying oracle failed.
-        // We don't want to use old data.
-        uint256 maxAge = period * 2;
+        uint256 maxAge = calculateMaxAge();
 
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
@@ -218,41 +252,46 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle {
                 // We don't want problematic underlying oracles to prevent us from calculating the aggregated
                 // results from the other working oracles, so we use a try-catch block.
                 try IOracle(_oracles[i].oracle).consult(token, maxAge) returns (
-                    uint256 oraclePrice,
-                    uint256 oracleTokenLiquidity,
-                    uint256 oracleQuoteTokenLiquidity
+                    uint112 oPrice,
+                    uint112 oTokenLiquidity,
+                    uint112 oQuoteTokenLiquidity
                 ) {
-                    uint256 decimals = _oracles[i].quoteTokenDecimals;
+                    // Promote returned data to uint256 to prevent scaling up from overflowing
+                    uint256 oraclePrice = oPrice;
+                    uint256 oracleTokenLiquidity = oTokenLiquidity;
+                    uint256 oracleQuoteTokenLiquidity = oQuoteTokenLiquidity;
 
-                    // Fix differing quote token decimal places
-                    if (decimals < qtDecimals) {
-                        // Scale up
-                        uint256 scalar = 10**(qtDecimals - decimals);
+                    {
+                        uint256 decimals = _oracles[i].quoteTokenDecimals;
 
-                        oraclePrice *= scalar;
-                        oracleQuoteTokenLiquidity *= scalar;
-                    } else if (decimals > qtDecimals) {
-                        // Scale down
-                        uint256 scalar = 10**(decimals - qtDecimals);
+                        // Fix differing quote token decimal places
+                        if (decimals < qtDecimals) {
+                            // Scale up
+                            uint256 scalar = 10**(qtDecimals - decimals);
 
-                        oraclePrice /= scalar;
-                        oracleQuoteTokenLiquidity /= scalar;
+                            oraclePrice *= scalar;
+                            oracleQuoteTokenLiquidity *= scalar;
+                        } else if (decimals > qtDecimals) {
+                            // Scale down
+                            uint256 scalar = 10**(decimals - qtDecimals);
+
+                            oraclePrice /= scalar;
+                            oracleQuoteTokenLiquidity /= scalar;
+                        }
                     }
 
                     if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) {
                         ++validResponses;
 
+                        // Note: (oracleQuoteTokenLiquidity / oraclePrice) will equal 0 if oracleQuoteTokenLiquidity <
+                        //   oraclePrice (i.e. very low liquidity)
                         denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
                         // These should never overflow: supply of an asset cannot be greater than uint256.max
                         tokenLiquidity += oracleTokenLiquidity;
                         quoteTokenLiquidity += oracleQuoteTokenLiquidity;
                     }
-                } catch Error(string memory reason) {
-                    emit ConsultErrorWithReason(oracles[i].oracle, token, reason);
-                } catch (bytes memory err) {
-                    emit ConsultError(oracles[i].oracle, token, err);
-                }
+                } catch Error(string memory) {} catch (bytes memory) {}
             }
         }
 

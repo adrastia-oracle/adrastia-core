@@ -7,6 +7,8 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const TWO_PERCENT_CHANGE = 2000000;
 
+const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(112).sub(1);
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -187,6 +189,60 @@ describe("LiquidityAccumulator#needsUpdate", () => {
     });
 });
 
+describe("LiquidityAccumulator#canUpdate", () => {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const LiquidityAccumulator = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        accumulator = await LiquidityAccumulator.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    describe("Can't update when it", function () {
+        it("Doesn't need an update", async function () {
+            await accumulator.overrideNeedsUpdate(true, false);
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        });
+
+        it("Observation is still pending", async function () {
+            await accumulator.overrideNeedsUpdate(true, true);
+
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+            await accumulator.setPendingObservation(GRT, 0, 0, currentBlockNumber + 1);
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        });
+    });
+
+    describe("Can update when it needs an update and it", function () {
+        beforeEach(async () => {
+            await accumulator.overrideNeedsUpdate(true, true);
+        });
+
+        it("Has no pending observation", async function () {
+            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        });
+
+        it("Has a pending observation which has passed the minimum block duration", async function () {
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            const minPendingPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+
+            await accumulator.setPendingObservation(
+                GRT,
+                0,
+                0,
+                BigNumber.from(currentBlockNumber).sub(minPendingPeriod)
+            );
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        });
+    });
+});
+
 describe("LiquidityAccumulator#changeThresholdSurpassed", () => {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
@@ -330,8 +386,8 @@ describe("LiquidityAccumulator#calculateLiquidity", () => {
             // deltaTime = 1
             args: [
                 {
-                    cumulativeTokenLiquidity: ethers.constants.MaxUint256,
-                    cumulativeQuoteTokenLiquidity: ethers.constants.MaxUint256,
+                    cumulativeTokenLiquidity: MAX_CUMULATIVE_VALUE,
+                    cumulativeQuoteTokenLiquidity: MAX_CUMULATIVE_VALUE,
                     timestamp: 10,
                 },
                 { cumulativeTokenLiquidity: 9, cumulativeQuoteTokenLiquidity: 9, timestamp: 11 },
@@ -489,8 +545,8 @@ describe("LiquidityAccumulator#update", () => {
         {
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
             },
             expectedReturn: true,
@@ -571,8 +627,8 @@ describe("LiquidityAccumulator#update", () => {
         {
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
                 overrideNeedsUpdate: {
                     needsUpdate: false,
@@ -656,8 +712,8 @@ describe("LiquidityAccumulator#update", () => {
         {
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
                 overrideNeedsUpdate: {
                     needsUpdate: true,
@@ -784,8 +840,8 @@ describe("LiquidityAccumulator#update", () => {
             // ** Overflow test **
             args: {
                 initialLiquidity: {
-                    token: ethers.constants.MaxUint256,
-                    quoteToken: ethers.constants.MaxUint256,
+                    token: MAX_CUMULATIVE_VALUE,
+                    quoteToken: MAX_CUMULATIVE_VALUE,
                 },
                 secondLiquidity: {
                     token: ethers.utils.parseEther("100"),
@@ -865,14 +921,14 @@ describe("LiquidityAccumulator#update", () => {
                 );
 
                 // Process overflows
-                while (expectedCumulativeTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+                while (expectedCumulativeTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
                     expectedCumulativeTokenLiquidity = expectedCumulativeTokenLiquidity.sub(
-                        ethers.constants.MaxUint256.add(1) // = 2e256
+                        MAX_CUMULATIVE_VALUE.add(1) // = 2e256
                     );
                 }
-                while (expectedCumulativeQuoteTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+                while (expectedCumulativeQuoteTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
                     expectedCumulativeQuoteTokenLiquidity = expectedCumulativeQuoteTokenLiquidity.sub(
-                        ethers.constants.MaxUint256.add(1) // = 2e256
+                        MAX_CUMULATIVE_VALUE.add(1) // = 2e256
                     );
                 }
 
@@ -889,7 +945,7 @@ describe("LiquidityAccumulator#update", () => {
 
                 await expect(receipt, "2L - Log")
                     .to.emit(liquidityAccumulator, "Updated")
-                    .withArgs(GRT, USDC, updateTime, expectedTokenLiquidity, expectedQuoteTokenLiquidity);
+                    .withArgs(GRT, expectedTokenLiquidity, expectedQuoteTokenLiquidity, updateTime);
             } else {
                 // No update should have occurred => use last values
 
@@ -919,7 +975,7 @@ describe("LiquidityAccumulator#update", () => {
 
                 await expect(receipt, "1L - Log")
                     .to.emit(liquidityAccumulator, "Updated")
-                    .withArgs(GRT, USDC, updateTime, expectedTokenLiquidity, expectedQuoteTokenLiquidity);
+                    .withArgs(GRT, expectedTokenLiquidity, expectedQuoteTokenLiquidity, updateTime);
             } else {
                 // An update should not have occurred
 
@@ -970,14 +1026,14 @@ describe("LiquidityAccumulator#update", () => {
         }
 
         // Process overflows
-        while (expectedCumulativeTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+        while (expectedCumulativeTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
             expectedCumulativeTokenLiquidity = expectedCumulativeTokenLiquidity.sub(
-                ethers.constants.MaxUint256.add(1) // = 2e256
+                MAX_CUMULATIVE_VALUE.add(1) // = 2e256
             );
         }
-        while (expectedCumulativeQuoteTokenLiquidity.gt(ethers.constants.MaxUint256)) {
+        while (expectedCumulativeQuoteTokenLiquidity.gt(MAX_CUMULATIVE_VALUE)) {
             expectedCumulativeQuoteTokenLiquidity = expectedCumulativeQuoteTokenLiquidity.sub(
-                ethers.constants.MaxUint256.add(1) // = 2e256
+                MAX_CUMULATIVE_VALUE.add(1) // = 2e256
             );
         }
 
@@ -1204,6 +1260,70 @@ describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
     it("Should support ILiquidityAccumulator", async () => {
         const interfaceId = await interfaceIds.iLiquidityAccumulator();
         expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support ILiquidityOracle", async () => {
+        const interfaceId = await interfaceIds.iLiquidityOracle();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
+
+describe("LiquidityAccumulator#consultLiquidity(token)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (tokenLiquidity) {
+        tests.forEach(function (quoteTokenLiquidity) {
+            it(`tokenLiquidity = ${tokenLiquidity} and quoteTokenLiquidity = ${quoteTokenLiquidity}`, async function () {
+                await accumulator.setLiquidity(ethers.constants.AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+                const result = await accumulator["consultLiquidity(address)"](ethers.constants.AddressZero);
+
+                expect(result["tokenLiquidity"], "Token liquidity").to.equal(tokenLiquidity);
+                expect(result["quoteTokenLiquidity"], "Quote token liquidity").to.equal(quoteTokenLiquidity);
+            });
+        });
+    });
+});
+
+describe("LiquidityAccumulator#consultLiquidity(token, maxAge)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (tokenLiquidity) {
+        tests.forEach(function (quoteTokenLiquidity) {
+            it(`tokenLiquidity = ${tokenLiquidity} and quoteTokenLiquidity = ${quoteTokenLiquidity}`, async function () {
+                await accumulator.setLiquidity(ethers.constants.AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+                const result = await accumulator["consultLiquidity(address,uint256)"](ethers.constants.AddressZero, 0);
+
+                expect(result["tokenLiquidity"], "Token liquidity").to.equal(tokenLiquidity);
+                expect(result["quoteTokenLiquidity"], "Quote token liquidity").to.equal(quoteTokenLiquidity);
+            });
+        });
     });
 });
 

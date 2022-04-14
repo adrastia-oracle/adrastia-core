@@ -17,10 +17,10 @@ contract MockOracle is AbstractOracle {
 
     function stubSetObservation(
         address token,
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity,
-        uint256 timestamp
+        uint112 price,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 timestamp
     ) public {
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -56,12 +56,12 @@ contract MockOracle is AbstractOracle {
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (_consultError) price = 2 * type(uint256).max;
+        if (_consultError) price = 2 * type(uint112).max;
 
         return super.consult(token);
     }
@@ -72,12 +72,12 @@ contract MockOracle is AbstractOracle {
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (_consultError) price = 2 * type(uint256).max;
+        if (_consultError) price = 2 * type(uint112).max;
 
         return super.consult(token, maxAge);
     }
@@ -98,5 +98,9 @@ contract MockOracle is AbstractOracle {
         address /*token*/
     ) public view virtual override returns (bool) {
         return _needsUpdate;
+    }
+
+    function canUpdate(address token) public view virtual override returns (bool) {
+        return needsUpdate(token);
     }
 }

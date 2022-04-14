@@ -29,15 +29,15 @@ contract UniswapV3LiquidityAccumulatorStub is UniswapV3LiquidityAccumulator {
     function harnessFetchLiquidity(address token)
         public
         view
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         return super.fetchLiquidity(token);
     }
 
     function validateObservation(
         address,
-        uint256,
-        uint256
+        uint112,
+        uint112
     ) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }

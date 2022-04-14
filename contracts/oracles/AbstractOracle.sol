@@ -6,38 +6,24 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "../interfaces/IOracle.sol";
 import "../libraries/ObservationLibrary.sol";
+import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract AbstractOracle is IERC165, IOracle {
-    address public immutable quoteToken;
-
+abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     mapping(address => ObservationLibrary.Observation) public observations;
 
-    constructor(address quoteToken_) {
-        quoteToken = quoteToken_;
-    }
+    constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
+    /// @inheritdoc IUpdateByToken
     function update(address token) external virtual override returns (bool);
 
+    /// @inheritdoc IUpdateByToken
     function needsUpdate(address token) public view virtual override returns (bool);
 
-    function quoteTokenName() public view virtual override returns (string memory) {
-        return IERC20Metadata(quoteToken).name();
-    }
+    /// @inheritdoc IUpdateByToken
+    function canUpdate(address token) public view virtual override returns (bool);
 
-    function quoteTokenAddress() public view virtual override returns (address) {
-        return quoteToken;
-    }
-
-    function quoteTokenSymbol() public view virtual override returns (string memory) {
-        return IERC20Metadata(quoteToken).symbol();
-    }
-
-    function quoteTokenDecimals() public view virtual override returns (uint8) {
-        return IERC20Metadata(quoteToken).decimals();
-    }
-
-    function consultPrice(address token) public view virtual override returns (uint256 price) {
-        if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
+    function consultPrice(address token) public view virtual override returns (uint112 price) {
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -46,8 +32,9 @@ abstract contract AbstractOracle is IERC165, IOracle {
         return observation.price;
     }
 
-    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
-        if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
+    /// @inheritdoc IPriceOracle
+    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -57,12 +44,13 @@ abstract contract AbstractOracle is IERC165, IOracle {
         return observation.price;
     }
 
+    /// @inheritdoc ILiquidityOracle
     function consultLiquidity(address token)
         public
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         if (token == quoteTokenAddress()) return (0, 0);
 
@@ -74,12 +62,13 @@ abstract contract AbstractOracle is IERC165, IOracle {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc ILiquidityOracle
     function consultLiquidity(address token, uint256 maxAge)
         public
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         if (token == quoteTokenAddress()) return (0, 0);
 
@@ -92,18 +81,19 @@ abstract contract AbstractOracle is IERC165, IOracle {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc IOracle
     function consult(address token)
         public
         view
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (token == quoteTokenAddress()) return (10**quoteTokenDecimals(), 0, 0);
+        if (token == quoteTokenAddress()) return (uint112(10**quoteTokenDecimals()), 0, 0);
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -114,18 +104,19 @@ abstract contract AbstractOracle is IERC165, IOracle {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @inheritdoc IOracle
     function consult(address token, uint256 maxAge)
         public
         view
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (token == quoteTokenAddress()) return (10**quoteTokenDecimals(), 0, 0);
+        if (token == quoteTokenAddress()) return (uint112(10**quoteTokenDecimals()), 0, 0);
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -137,12 +128,19 @@ abstract contract AbstractOracle is IERC165, IOracle {
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(SimpleQuotationMetadata, IERC165)
+        returns (bool)
+    {
         return
             interfaceId == type(IOracle).interfaceId ||
             interfaceId == type(IUpdateByToken).interfaceId ||
             interfaceId == type(IPriceOracle).interfaceId ||
             interfaceId == type(ILiquidityOracle).interfaceId ||
-            interfaceId == type(IQuoteToken).interfaceId;
+            super.supportsInterface(interfaceId);
     }
 }

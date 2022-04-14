@@ -5,8 +5,8 @@ import "../../accumulators/LiquidityAccumulator.sol";
 
 contract LiquidityAccumulatorStub is LiquidityAccumulator {
     struct MockLiquidity {
-        uint256 tokenLiquidity;
-        uint256 quoteTokenLiquidity;
+        uint112 tokenLiquidity;
+        uint112 quoteTokenLiquidity;
     }
 
     struct Config {
@@ -33,13 +33,26 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     function setLiquidity(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) public {
         MockLiquidity storage liquidity = mockLiquidity[token];
 
         liquidity.tokenLiquidity = tokenLiquidity;
         liquidity.quoteTokenLiquidity = quoteTokenLiquidity;
+    }
+
+    function setPendingObservation(
+        address token,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 blockNumber
+    ) public {
+        pendingObservations[token][msg.sender] = PendingObservation({
+            blockNumber: blockNumber,
+            tokenLiquidity: tokenLiquidity,
+            quoteTokenLiquidity: quoteTokenLiquidity
+        });
     }
 
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
@@ -59,8 +72,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     function stubValidateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) public returns (bool) {
         return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }
@@ -82,8 +95,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     function validateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
         else return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
@@ -94,7 +107,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         MockLiquidity storage liquidity = mockLiquidity[token];
 
@@ -120,8 +133,8 @@ contract LiquidityAccumulatorStubCaller {
 
     function stubValidateObservation(
         address token,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
     ) public returns (bool) {
         return callee.stubValidateObservation(token, tokenLiquidity, quoteTokenLiquidity);
     }

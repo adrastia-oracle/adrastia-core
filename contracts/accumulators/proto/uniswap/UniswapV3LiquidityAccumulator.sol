@@ -7,10 +7,13 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
 
+import "../../../libraries/SafeCastExt.sol";
+
 import "../../LiquidityAccumulator.sol";
 
 contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
+    using SafeCastExt for uint256;
 
     /// @notice The identifying key of the pool
     struct PoolKey {
@@ -37,6 +40,16 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         poolFees = poolFees_;
+    }
+
+    /// @inheritdoc LiquidityAccumulator
+    function canUpdate(address token) public view virtual override returns (bool) {
+        if (token == address(0) || token == quoteToken) {
+            // Invalid token
+            return false;
+        }
+
+        return super.canUpdate(token);
     }
 
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
@@ -84,9 +97,12 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         require(token != address(0), "UniswapV3LiquidityAccumulator: INVALID_TOKEN");
+
+        uint256 tokenLiquidity_;
+        uint256 quoteTokenLiquidity_;
 
         uint256 fees0;
         uint256 fees1;
@@ -94,14 +110,19 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         address _uniswapFactory = uniswapFactory;
         address _quoteToken = quoteToken;
         uint24[] memory _poolFees = poolFees;
-        bytes32 _initCodeHash = initCodeHash;
 
         for (uint256 i = 0; i < _poolFees.length; ++i) {
-            address pool = computeAddress(_uniswapFactory, _initCodeHash, getPoolKey(token, _quoteToken, _poolFees[i]));
+            address pool = computeAddress(_uniswapFactory, initCodeHash, getPoolKey(token, _quoteToken, _poolFees[i]));
 
             if (pool.isContract()) {
-                tokenLiquidity += IERC20Minimal(token).balanceOf(pool);
-                quoteTokenLiquidity += IERC20Minimal(_quoteToken).balanceOf(pool);
+                uint256 liquidity = IUniswapV3Pool(pool).liquidity();
+                if (liquidity == 0) {
+                    // No in-range liquidity, so ignore
+                    continue;
+                }
+
+                tokenLiquidity_ += IERC20Minimal(token).balanceOf(pool);
+                quoteTokenLiquidity_ += IERC20Minimal(_quoteToken).balanceOf(pool);
 
                 (uint128 token0, uint128 token1) = IUniswapV3Pool(pool).protocolFees();
 
@@ -112,11 +133,14 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
 
         // Subtract protocol fees from the totals
         if (token < _quoteToken) {
-            tokenLiquidity -= fees0;
-            quoteTokenLiquidity -= fees1;
+            tokenLiquidity_ -= fees0;
+            quoteTokenLiquidity_ -= fees1;
         } else {
-            tokenLiquidity -= fees1;
-            quoteTokenLiquidity -= fees0;
+            tokenLiquidity_ -= fees1;
+            quoteTokenLiquidity_ -= fees0;
         }
+
+        tokenLiquidity = tokenLiquidity_.toUint112();
+        quoteTokenLiquidity = quoteTokenLiquidity_.toUint112();
     }
 }

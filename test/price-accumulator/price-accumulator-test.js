@@ -6,6 +6,8 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const TWO_PERCENT_CHANGE = 2000000;
 
+const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(112).sub(1);
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -161,6 +163,55 @@ describe("PriceAccumulator#needsUpdate", () => {
     });
 });
 
+describe("PriceAccumulator#canUpdate", () => {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    describe("Can't update when it", function () {
+        it("Doesn't need an update", async function () {
+            await accumulator.overrideNeedsUpdate(true, false);
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        });
+
+        it("Observation is still pending", async function () {
+            await accumulator.overrideNeedsUpdate(true, true);
+
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+            await accumulator.setPendingObservation(GRT, 0, currentBlockNumber + 1);
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        });
+    });
+
+    describe("Can update when it needs an update and it", function () {
+        beforeEach(async () => {
+            await accumulator.overrideNeedsUpdate(true, true);
+        });
+
+        it("Has no pending observation", async function () {
+            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        });
+
+        it("Has a pending observation which has passed the minimum block duration", async function () {
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            const minPendingPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
+
+            await accumulator.setPendingObservation(GRT, 0, BigNumber.from(currentBlockNumber).sub(minPendingPeriod));
+
+            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        });
+    });
+});
+
 describe("PriceAccumulator#changeThresholdSurpassed", () => {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
@@ -262,7 +313,7 @@ describe("PriceAccumulator#calculatePrice", () => {
             // deltaTime = 1
             args: [
                 {
-                    cumulativePrice: ethers.constants.MaxUint256,
+                    cumulativePrice: MAX_CUMULATIVE_VALUE,
                     timestamp: 10,
                 },
                 { cumulativePrice: 9, timestamp: 11 },
@@ -393,7 +444,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
             },
             expectedReturn: true,
         },
@@ -454,7 +505,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
                 overrideNeedsUpdate: {
                     needsUpdate: false,
                 },
@@ -518,7 +569,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
                 overrideNeedsUpdate: {
                     needsUpdate: true,
                 },
@@ -601,7 +652,7 @@ describe("PriceAccumulator#update", () => {
         {
             // ** Overflow test **
             args: {
-                initialPrice: ethers.constants.MaxUint256,
+                initialPrice: MAX_CUMULATIVE_VALUE,
                 secondPrice: ethers.utils.parseEther("100"),
                 overrideNeedsUpdate: {
                     needsUpdate: true,
@@ -658,9 +709,9 @@ describe("PriceAccumulator#update", () => {
                 expectedCumulativePrice = BigNumber.from(initialPrice).mul(BigNumber.from(deltaTime));
 
                 // Process overflows
-                while (expectedCumulativePrice.gt(ethers.constants.MaxUint256)) {
+                while (expectedCumulativePrice.gt(MAX_CUMULATIVE_VALUE)) {
                     expectedCumulativePrice = expectedCumulativePrice.sub(
-                        ethers.constants.MaxUint256.add(1) // = 2e256
+                        MAX_CUMULATIVE_VALUE.add(1) // = 2e256
                     );
                 }
 
@@ -673,7 +724,7 @@ describe("PriceAccumulator#update", () => {
 
                 await expect(receipt, "2L - Log")
                     .to.emit(accumulator, "Updated")
-                    .withArgs(GRT, USDC, updateTime, expectedPrice);
+                    .withArgs(GRT, expectedPrice, updateTime);
             } else {
                 // No update should have occurred => use last values
 
@@ -699,7 +750,7 @@ describe("PriceAccumulator#update", () => {
 
                 await expect(receipt, "1L - Log")
                     .to.emit(accumulator, "Updated")
-                    .withArgs(GRT, USDC, updateTime, expectedPrice);
+                    .withArgs(GRT, expectedPrice, updateTime);
             } else {
                 // An update should not have occurred
 
@@ -742,9 +793,9 @@ describe("PriceAccumulator#update", () => {
         }
 
         // Process overflows
-        while (expectedCumulativePrice.gt(ethers.constants.MaxUint256)) {
+        while (expectedCumulativePrice.gt(MAX_CUMULATIVE_VALUE)) {
             expectedCumulativePrice = expectedCumulativePrice.sub(
-                ethers.constants.MaxUint256.add(1) // = 2e256
+                MAX_CUMULATIVE_VALUE.add(1) // = 2e256
             );
         }
 
@@ -924,6 +975,60 @@ describe("PriceAccumulator#supportsInterface(interfaceId)", function () {
     it("Should support IPriceAccumulator", async () => {
         const interfaceId = await interfaceIds.iPriceAccumulator();
         expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IPriceOracle", async () => {
+        const interfaceId = await interfaceIds.iPriceOracle();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IQuoteToken", async () => {
+        const interfaceId = await interfaceIds.iQuoteToken();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
+
+describe("PriceAccumulator#consultPrice(token)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (price) {
+        it(`price = ${price}`, async function () {
+            await accumulator.setPrice(ethers.constants.AddressZero, price);
+
+            expect(await accumulator["consultPrice(address)"](ethers.constants.AddressZero)).to.equal(price);
+        });
+    });
+});
+
+describe("PriceAccumulator#consultPrice(token, maxAge)", function () {
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    var accumulator;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+    });
+
+    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+
+    tests.forEach(function (price) {
+        it(`price = ${price}`, async function () {
+            await accumulator.setPrice(ethers.constants.AddressZero, price);
+
+            expect(await accumulator["consultPrice(address,uint256)"](ethers.constants.AddressZero, 0)).to.equal(price);
+        });
     });
 });
 

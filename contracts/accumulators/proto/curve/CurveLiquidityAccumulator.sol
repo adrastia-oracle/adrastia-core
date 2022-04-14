@@ -3,15 +3,14 @@ pragma solidity =0.8.11;
 
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "../../../libraries/SafeCastExt.sol";
 
 import "./ICurvePool.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract CurveLiquidityAccumulator is LiquidityAccumulator {
+    using SafeCastExt for uint256;
+
     address public immutable curvePool;
 
     uint256 public immutable quoteTokenIndex;
@@ -21,11 +20,12 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
     constructor(
         address curvePool_,
         uint8 nCoins_,
-        address quoteToken_,
+        address poolQuoteToken_,
+        address ourQuoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) LiquidityAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         uint256 quoteTokenIndex_ = type(uint256).max;
@@ -34,7 +34,7 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         for (uint256 i = 0; i < nCoins_; ++i) {
             address token = pool.coins(i);
 
-            if (token == quoteToken_)
+            if (token == poolQuoteToken_)
                 quoteTokenIndex_ = i; // Store quote token index
             else {
                 // Add one to reserve 0 for invalid
@@ -47,10 +47,11 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    /// @inheritdoc LiquidityAccumulator
+    function canUpdate(address token) public view virtual override returns (bool) {
         if (tokenIndices[token] == 0) return false;
 
-        return super.needsUpdate(token);
+        return super.canUpdate(token);
     }
 
     function fetchLiquidity(address token)
@@ -58,14 +59,14 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         ICurvePool pool = ICurvePool(curvePool);
 
         uint256 tokenIndex = tokenIndices[token];
         require(tokenIndex != 0, "CurveLiquidityAccumulator: INVALID_TOKEN");
 
-        tokenLiquidity = pool.balances(tokenIndex - 1); // Subtract the added one
-        quoteTokenLiquidity = pool.balances(quoteTokenIndex);
+        tokenLiquidity = pool.balances(tokenIndex - 1).toUint112(); // Subtract the added one
+        quoteTokenLiquidity = pool.balances(quoteTokenIndex).toUint112();
     }
 }

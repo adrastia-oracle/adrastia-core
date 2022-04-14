@@ -5,13 +5,14 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "../../../libraries/SafeCastExt.sol";
 
 import "./ICurvePool.sol";
 import "../../PriceAccumulator.sol";
 
 contract CurvePriceAccumulator is PriceAccumulator {
+    using SafeCastExt for uint256;
+
     struct TokenConfig {
         uint8 decimals;
         int128 index;
@@ -26,11 +27,12 @@ contract CurvePriceAccumulator is PriceAccumulator {
     constructor(
         address curvePool_,
         int8 nCoins_,
-        address quoteToken_,
+        address poolQuoteToken_,
+        address ourQuoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) PriceAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         int128 quoteTokenIndex_ = -1;
@@ -39,7 +41,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
         for (int128 i = 0; i < nCoins_; ++i) {
             address token = pool.coins(uint256(int256(i)));
 
-            if (token == quoteToken_)
+            if (token == poolQuoteToken_)
                 quoteTokenIndex_ = i; // Store quote token index
             else {
                 TokenConfig storage config = tokenIndices[token];
@@ -56,23 +58,35 @@ contract CurvePriceAccumulator is PriceAccumulator {
         quoteTokenIndex = quoteTokenIndex_;
     }
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    /// @inheritdoc PriceAccumulator
+    function canUpdate(address token) public view virtual override returns (bool) {
         if (tokenIndices[token].index == 0) return false;
 
-        return super.needsUpdate(token);
+        return super.canUpdate(token);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint256 price) {
+    /**
+     * @notice Calculates the price of a token.
+     * @dev When the price equals 0, a price of 1 is actually returned.
+     * @param token The token to get the price for.
+     * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
+     *   places.
+     */
+    function fetchPrice(address token) internal view virtual override returns (uint112 price) {
         ICurvePool pool = ICurvePool(curvePool);
 
         TokenConfig memory config = tokenIndices[token];
         require(config.index != 0, "CurvePriceAccumulator: INVALID_TOKEN");
 
         // Note: fees are included in the price
-        price = pool.get_dy(
-            config.index - 1, // Subtract the added one
-            quoteTokenIndex,
-            10**config.decimals // One whole token
-        );
+        price = pool
+            .get_dy(
+                config.index - 1, // Subtract the added one
+                quoteTokenIndex,
+                10**config.decimals // One whole token
+            )
+            .toUint112();
+
+        if (price == 0) return 1;
     }
 }

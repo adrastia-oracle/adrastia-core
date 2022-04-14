@@ -47,17 +47,27 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         maxUpdateDelay
     );
 
-    const oracle = await createContract(
-        "UniswapV2Oracle",
-        liquidityAccumulator.address,
+    const priceAccumulator = await createContract(
+        "UniswapV2PriceAccumulator",
         factory,
         initCodeHash,
+        quoteToken,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
+
+    const oracle = await createContract(
+        "PeriodicAccumulationOracle",
+        liquidityAccumulator.address,
+        priceAccumulator.address,
         quoteToken,
         period
     );
 
     return {
         liquidityAccumulator: liquidityAccumulator,
+        priceAccumulator: priceAccumulator,
         oracle: oracle,
     };
 }
@@ -84,7 +94,7 @@ async function main() {
 
     while (true) {
         try {
-            if (await uniswapV2.liquidityAccumulator.needsUpdate(token)) {
+            if (await uniswapV2.liquidityAccumulator.canUpdate(token)) {
                 const updateTx = await uniswapV2.liquidityAccumulator.update(token);
                 const updateReceipt = await updateTx.wait();
 
@@ -98,7 +108,21 @@ async function main() {
                 );
             }
 
-            if (await uniswapV2.oracle.needsUpdate(token)) {
+            if (await uniswapV2.priceAccumulator.canUpdate(token)) {
+                const updateTx = await uniswapV2.priceAccumulator.update(token);
+                const updateReceipt = await updateTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Price accumulator updated. Gas used = " +
+                        updateReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
+            }
+
+            if (await uniswapV2.oracle.canUpdate(token)) {
                 const updateTx = await uniswapV2.oracle.update(token);
                 const updateReceipt = await updateTx.wait();
 

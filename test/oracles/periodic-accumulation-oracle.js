@@ -137,6 +137,31 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
     });
 });
 
+describe("PeriodicAccumulationOracle#canUpdate", function () {
+    var oracle;
+
+    beforeEach(async () => {
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
+
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+    });
+
+    it("Can update when it needs an update", async function () {
+        await oracle.overrideNeedsUpdate(true, true);
+
+        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+    });
+
+    it("Can't update when it doesn't needs an update", async function () {
+        await oracle.overrideNeedsUpdate(true, false);
+
+        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+    });
+});
+
 describe("PeriodicAccumulationOracle#consultPrice(token)", function () {
     var oracle;
 
@@ -798,6 +823,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             curvePool.address,
             2,
             quoteToken.address,
+            quoteToken.address,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
             MAX_UPDATE_DELAY
@@ -809,6 +835,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         priceAccumulator = await priceAccumulatorFactory.deploy(
             curvePool.address,
             2,
+            quoteToken.address,
             quoteToken.address,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
@@ -932,7 +959,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Verify that the log matches the observation
         expect(updateReceipt)
             .to.emit(oracle, "Updated")
-            .withArgs(token.address, quoteToken.address, timestamp, price, tokenLiquidity, quoteTokenLiquidity);
+            .withArgs(token.address, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
     };
 
     const liquidityPermutations = [

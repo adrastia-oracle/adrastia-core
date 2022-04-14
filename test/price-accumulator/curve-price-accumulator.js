@@ -31,15 +31,53 @@ describe("CurvePriceAccumulator#constructor", function () {
         await curvePool.deployed();
     });
 
-    it("Should revert when given a quote token not in the pool", async function () {
+    it("Should revert when given a [pool] quote token is not in the pool (our quote token is invalid)", async function () {
         const accumulatorFactory = await ethers.getContractFactory("CurvePriceAccumulator");
         await expect(
-            accumulatorFactory.deploy(curvePool.address, 2, invalidToken.address, TWO_PERCENT_CHANGE, 1, 100)
+            accumulatorFactory.deploy(
+                curvePool.address,
+                2,
+                invalidToken.address, // pool quote token
+                invalidToken.address, // our quote token
+                TWO_PERCENT_CHANGE,
+                1,
+                100
+            )
         ).to.be.revertedWith("CurvePriceAccumulator: INVALID_QUOTE_TOKEN");
+    });
+
+    it("Should revert when given a [pool] quote token is not in the pool (our quote token is valid)", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurvePriceAccumulator");
+        await expect(
+            accumulatorFactory.deploy(
+                curvePool.address,
+                2,
+                invalidToken.address, // pool quote token
+                quoteToken.address, // our quote token
+                TWO_PERCENT_CHANGE,
+                1,
+                100
+            )
+        ).to.be.revertedWith("CurvePriceAccumulator: INVALID_QUOTE_TOKEN");
+    });
+
+    it("Should set our quote token properly with a different pool quote token", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurvePriceAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            curvePool.address,
+            2,
+            quoteToken.address, // pool quote token
+            invalidToken.address, // our quote token
+            TWO_PERCENT_CHANGE,
+            1,
+            100
+        );
+
+        expect(await accumulator.quoteToken()).equals(invalidToken.address);
     });
 });
 
-describe("CurvePriceAccumulator#needsUpdate", function () {
+describe("CurvePriceAccumulator#canUpdate", function () {
     this.timeout(100000);
 
     const minUpdateDelay = 10000;
@@ -72,6 +110,7 @@ describe("CurvePriceAccumulator#needsUpdate", function () {
             curvePool.address,
             2,
             quoteToken.address,
+            quoteToken.address,
             TWO_PERCENT_CHANGE,
             minUpdateDelay,
             maxUpdateDelay
@@ -79,11 +118,11 @@ describe("CurvePriceAccumulator#needsUpdate", function () {
     });
 
     it("Should return false when given an invalid token", async function () {
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.canUpdate(GRT)).to.equal(false);
     });
 
     it("Should return true when given a valid token", async function () {
-        expect(await accumulator.needsUpdate(token.address)).to.equal(true);
+        expect(await accumulator.canUpdate(token.address)).to.equal(true);
     });
 });
 
@@ -127,6 +166,7 @@ describe("CurvePriceAccumulator#fetchPrice", function () {
             curvePool.address,
             2,
             quoteToken.address,
+            quoteToken.address,
             TWO_PERCENT_CHANGE,
             minUpdateDelay,
             maxUpdateDelay
@@ -143,7 +183,12 @@ describe("CurvePriceAccumulator#fetchPrice", function () {
 
             const price = await accumulator.harnessFetchPrice(token.address);
 
-            expect(price).to.equal(rate);
+            if (rate == 0) {
+                // 1 is reported rather than 0 because contracts may assume a price of 0 to be invalid
+                expect(price).to.equal(1);
+            } else {
+                expect(price).to.equal(rate);
+            }
         });
     }
 });

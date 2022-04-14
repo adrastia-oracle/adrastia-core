@@ -13,7 +13,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         bool validateObservation;
     }
 
-    mapping(address => uint256) public mockPrices;
+    mapping(address => uint112) public mockPrices;
 
     Config public config;
 
@@ -26,8 +26,16 @@ contract PriceAccumulatorStub is PriceAccumulator {
 
     /* Stub functions */
 
-    function setPrice(address token, uint256 price) public {
+    function setPrice(address token, uint112 price) public {
         mockPrices[token] = price;
+    }
+
+    function setPendingObservation(
+        address token,
+        uint112 price,
+        uint32 blockNumber
+    ) public {
+        pendingObservations[token][msg.sender] = PendingObservation({blockNumber: blockNumber, price: price});
     }
 
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
@@ -53,7 +61,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         return changeThresholdSurpassed(a, b, updateThreshold);
     }
 
-    function stubValidateObservation(address token, uint256 price) public returns (bool) {
+    function stubValidateObservation(address token, uint112 price) public returns (bool) {
         return super.validateObservation(token, price);
     }
 
@@ -64,12 +72,12 @@ contract PriceAccumulatorStub is PriceAccumulator {
         else return super.needsUpdate(token);
     }
 
-    function validateObservation(address token, uint256 price) internal virtual override returns (bool) {
+    function validateObservation(address token, uint112 price) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
         else return super.validateObservation(token, price);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint256) {
+    function fetchPrice(address token) internal view virtual override returns (uint112) {
         return mockPrices[token];
     }
 
@@ -90,7 +98,7 @@ contract PriceAccumulatorStubCaller {
         callee = callee_;
     }
 
-    function stubValidateObservation(address token, uint256 price) public returns (bool) {
+    function stubValidateObservation(address token, uint112 price) public returns (bool) {
         return callee.stubValidateObservation(token, price);
     }
 }
