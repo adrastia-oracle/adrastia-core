@@ -37,9 +37,9 @@ abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
         view
         virtual
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         );
 
     /**
@@ -56,8 +56,8 @@ abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
         view
         virtual
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         );
 }

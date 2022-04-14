@@ -196,12 +196,12 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
     }
 
     /// @inheritdoc IPriceOracle
-    function consultPrice(address token) public view virtual override returns (uint256 price) {
+    function consultPrice(address token) public view virtual override returns (uint112 price) {
         return fetchPrice(token);
     }
 
     /// @inheritdoc IPriceOracle
-    function consultPrice(address token, uint256) public view virtual override returns (uint256 price) {
+    function consultPrice(address token, uint256) public view virtual override returns (uint112 price) {
         return fetchPrice(token);
     }
 

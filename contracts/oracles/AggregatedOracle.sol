@@ -252,25 +252,32 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                 // We don't want problematic underlying oracles to prevent us from calculating the aggregated
                 // results from the other working oracles, so we use a try-catch block.
                 try IOracle(_oracles[i].oracle).consult(token, maxAge) returns (
-                    uint256 oraclePrice,
-                    uint256 oracleTokenLiquidity,
-                    uint256 oracleQuoteTokenLiquidity
+                    uint112 oPrice,
+                    uint112 oTokenLiquidity,
+                    uint112 oQuoteTokenLiquidity
                 ) {
-                    uint256 decimals = _oracles[i].quoteTokenDecimals;
+                    // Promote returned data to uint256 to prevent scaling up from overflowing
+                    uint256 oraclePrice = oPrice;
+                    uint256 oracleTokenLiquidity = oTokenLiquidity;
+                    uint256 oracleQuoteTokenLiquidity = oQuoteTokenLiquidity;
 
-                    // Fix differing quote token decimal places
-                    if (decimals < qtDecimals) {
-                        // Scale up
-                        uint256 scalar = 10**(qtDecimals - decimals);
+                    {
+                        uint256 decimals = _oracles[i].quoteTokenDecimals;
 
-                        oraclePrice *= scalar;
-                        oracleQuoteTokenLiquidity *= scalar;
-                    } else if (decimals > qtDecimals) {
-                        // Scale down
-                        uint256 scalar = 10**(decimals - qtDecimals);
+                        // Fix differing quote token decimal places
+                        if (decimals < qtDecimals) {
+                            // Scale up
+                            uint256 scalar = 10**(qtDecimals - decimals);
 
-                        oraclePrice /= scalar;
-                        oracleQuoteTokenLiquidity /= scalar;
+                            oraclePrice *= scalar;
+                            oracleQuoteTokenLiquidity *= scalar;
+                        } else if (decimals > qtDecimals) {
+                            // Scale down
+                            uint256 scalar = 10**(decimals - qtDecimals);
+
+                            oraclePrice /= scalar;
+                            oracleQuoteTokenLiquidity /= scalar;
+                        }
                     }
 
                     if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) {

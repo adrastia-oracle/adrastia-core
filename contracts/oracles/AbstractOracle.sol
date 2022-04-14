@@ -22,8 +22,8 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     /// @inheritdoc IUpdateByToken
     function canUpdate(address token) public view virtual override returns (bool);
 
-    function consultPrice(address token) public view virtual override returns (uint256 price) {
-        if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
+    function consultPrice(address token) public view virtual override returns (uint112 price) {
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -33,8 +33,8 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     }
 
     /// @inheritdoc IPriceOracle
-    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint256 price) {
-        if (token == quoteTokenAddress()) return 10**quoteTokenDecimals();
+    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -50,7 +50,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         if (token == quoteTokenAddress()) return (0, 0);
 
@@ -68,7 +68,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         view
         virtual
         override
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         if (token == quoteTokenAddress()) return (0, 0);
 
@@ -88,12 +88,12 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (token == quoteTokenAddress()) return (10**quoteTokenDecimals(), 0, 0);
+        if (token == quoteTokenAddress()) return (uint112(10**quoteTokenDecimals()), 0, 0);
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -111,12 +111,12 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (token == quoteTokenAddress()) return (10**quoteTokenDecimals(), 0, 0);
+        if (token == quoteTokenAddress()) return (uint112(10**quoteTokenDecimals()), 0, 0);
 
         ObservationLibrary.Observation storage observation = observations[token];
 

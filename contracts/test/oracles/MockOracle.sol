@@ -56,12 +56,12 @@ contract MockOracle is AbstractOracle {
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (_consultError) price = 2 * type(uint256).max;
+        if (_consultError) price = 2 * type(uint112).max;
 
         return super.consult(token);
     }
@@ -72,12 +72,12 @@ contract MockOracle is AbstractOracle {
         virtual
         override
         returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
         )
     {
-        if (_consultError) price = 2 * type(uint256).max;
+        if (_consultError) price = 2 * type(uint112).max;
 
         return super.consult(token, maxAge);
     }
