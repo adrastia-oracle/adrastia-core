@@ -9,7 +9,8 @@ const ethers = hre.ethers;
 
 const curveStEthPoolAddress = "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022";
 
-const ethAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+const fakeEthAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const stEthAddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 
 function sleep(ms) {
@@ -26,7 +27,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createCurveOracle(pool, quoteToken, period) {
+async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
@@ -35,7 +36,8 @@ async function createCurveOracle(pool, quoteToken, period) {
         "CurveLiquidityAccumulator",
         pool,
         2,
-        quoteToken,
+        poolQuoteToken,
+        ourQuoteToken,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
@@ -45,7 +47,8 @@ async function createCurveOracle(pool, quoteToken, period) {
         "CurvePriceAccumulator",
         pool,
         2,
-        quoteToken,
+        poolQuoteToken,
+        ourQuoteToken,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
@@ -55,7 +58,7 @@ async function createCurveOracle(pool, quoteToken, period) {
         "PeriodicAccumulationOracle",
         liquidityAccumulator.address,
         priceAccumulator.address,
-        quoteToken,
+        ourQuoteToken,
         period
     );
 
@@ -70,19 +73,22 @@ async function main() {
     const poolAddress = curveStEthPoolAddress;
 
     const token = stEthAddress;
-    const quoteToken = ethAddress;
+
+    const poolQuoteToken = fakeEthAddress;
+    const ourQuoteToken = wethAddress;
 
     const period = 10; // 10 seconds
 
-    const curve = await createCurveOracle(poolAddress, quoteToken, period);
+    const curve = await createCurveOracle(poolAddress, poolQuoteToken, ourQuoteToken, period);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
+    const quoteTokenContract = await ethers.getContractAt("ERC20", ourQuoteToken);
 
     const tokenSymbol = await tokenContract.symbol();
-    const quoteTokenSymbol = "ETH";
+    const quoteTokenSymbol = await quoteTokenContract.symbol();
 
     const tokenDecimals = await tokenContract.decimals();
-    const quoteTokenDecimals = 18;
+    const quoteTokenDecimals = await quoteTokenContract.decimals();
 
     while (true) {
         try {

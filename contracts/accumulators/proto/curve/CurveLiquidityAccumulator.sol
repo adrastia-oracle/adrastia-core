@@ -20,11 +20,12 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
     constructor(
         address curvePool_,
         uint8 nCoins_,
-        address quoteToken_,
+        address poolQuoteToken_,
+        address ourQuoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) LiquidityAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         uint256 quoteTokenIndex_ = type(uint256).max;
@@ -33,7 +34,7 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         for (uint256 i = 0; i < nCoins_; ++i) {
             address token = pool.coins(i);
 
-            if (token == quoteToken_)
+            if (token == poolQuoteToken_)
                 quoteTokenIndex_ = i; // Store quote token index
             else {
                 // Add one to reserve 0 for invalid

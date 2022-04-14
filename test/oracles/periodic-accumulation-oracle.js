@@ -823,6 +823,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             curvePool.address,
             2,
             quoteToken.address,
+            quoteToken.address,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
             MAX_UPDATE_DELAY
@@ -834,6 +835,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         priceAccumulator = await priceAccumulatorFactory.deploy(
             curvePool.address,
             2,
+            quoteToken.address,
             quoteToken.address,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,

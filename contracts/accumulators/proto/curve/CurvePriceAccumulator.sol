@@ -27,11 +27,12 @@ contract CurvePriceAccumulator is PriceAccumulator {
     constructor(
         address curvePool_,
         int8 nCoins_,
-        address quoteToken_,
+        address poolQuoteToken_,
+        address ourQuoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) PriceAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         int128 quoteTokenIndex_ = -1;
@@ -40,7 +41,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
         for (int128 i = 0; i < nCoins_; ++i) {
             address token = pool.coins(uint256(int256(i)));
 
-            if (token == quoteToken_)
+            if (token == poolQuoteToken_)
                 quoteTokenIndex_ = i; // Store quote token index
             else {
                 TokenConfig storage config = tokenIndices[token];
