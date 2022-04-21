@@ -75,7 +75,9 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) public returns (bool) {
-        return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+        bytes memory updateData = abi.encode(token);
+
+        return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function harnessChangeThresholdSurpassed(
@@ -94,12 +96,12 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     }
 
     function validateObservation(
-        address token,
+        bytes memory updateData,
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
-        else return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+        else return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function fetchLiquidity(address token)

@@ -245,7 +245,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
                 //   accumulator, then performs a reverse trade all in the same transaction.
                 // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
                 // and stop/limit such an attack.
-                if (!validateObservation(token, price)) return false;
+                if (!validateObservation(data, price)) return false;
 
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
@@ -264,12 +264,14 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return false;
     }
 
-    function validateObservation(address token, uint112 price) internal virtual returns (bool) {
+    function validateObservation(bytes memory updateData, uint112 price) internal virtual returns (bool) {
         // Require updaters to be EOAs to limit the attack vector that this function addresses
         // Note: isContract will return false in the constructor of contracts, but since we require two observations
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
         //   is a smart contract.
         require(!msg.sender.isContract() && msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
+
+        address token = abi.decode(updateData, (address));
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 

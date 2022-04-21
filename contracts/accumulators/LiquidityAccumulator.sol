@@ -267,7 +267,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
             //   accumulator, then removes the liquidity in a single transaction.
             // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
             // and stop/limit such an attack.
-            if (!validateObservation(token, tokenLiquidity, quoteTokenLiquidity)) return false;
+            if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
 
             unchecked {
                 // Overflow is desired and results in correct functionality
@@ -290,7 +290,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     }
 
     function validateObservation(
-        address token,
+        bytes memory updateData,
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) internal virtual returns (bool) {
@@ -299,6 +299,8 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         //   from the same updater spanning across several blocks, the second call will always return true if the caller
         //   is a smart contract.
         require(!msg.sender.isContract() && msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
+
+        address token = abi.decode(updateData, (address));
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 
