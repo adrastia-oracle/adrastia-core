@@ -84,7 +84,7 @@ contract MockOracle is AbstractOracle {
 
     function update(
         address /*token*/
-    ) external virtual override returns (bool) {
+    ) public virtual override returns (bool) {
         callCounts["update(address)"]++;
 
         if (_updateError) return 2 * type(uint256).max == 0;

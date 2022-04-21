@@ -7,7 +7,7 @@ abstract contract IUpdateByToken {
     /// @notice Performs an update per specific token address.
     /// @param token The token address that the update is for.
     /// @return b True if anything was updated; false otherwise.
-    function update(address token) external virtual returns (bool b);
+    function update(address token) public virtual returns (bool b);
 
     /// @notice Checks if an update needs to be performed.
     /// @param token The token address that the update is for.

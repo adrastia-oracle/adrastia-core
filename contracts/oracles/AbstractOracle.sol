@@ -14,7 +14,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
     /// @inheritdoc IUpdateByToken
-    function update(address token) external virtual override returns (bool);
+    function update(address token) public virtual override returns (bool);
 
     /// @inheritdoc IUpdateByToken
     function needsUpdate(address token) public view virtual override returns (bool);

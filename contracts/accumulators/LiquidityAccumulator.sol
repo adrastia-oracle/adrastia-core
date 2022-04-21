@@ -123,7 +123,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
     /// @param token The address of the token to accumulate the liquidities of.
     /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
-    function update(address token) external virtual override returns (bool) {
+    function update(address token) public virtual override returns (bool) {
         if (needsUpdate(token)) return _update(token);
 
         return false;

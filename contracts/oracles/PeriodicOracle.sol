@@ -13,7 +13,7 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
     }
 
     /// @inheritdoc AbstractOracle
-    function update(address token) external virtual override returns (bool) {
+    function update(address token) public virtual override returns (bool) {
         if (needsUpdate(token)) return _update(token);
 
         return false;
