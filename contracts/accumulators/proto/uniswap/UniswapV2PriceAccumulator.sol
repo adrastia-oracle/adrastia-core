@@ -31,7 +31,9 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
     }
 
     /// @inheritdoc PriceAccumulator
-    function canUpdate(address token) public view virtual override returns (bool) {
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         if (token == address(0) || token == quoteToken) {
             // Invalid token
             return false;
@@ -50,7 +52,7 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        return super.canUpdate(token);
+        return super.canUpdate(data);
     }
 
     /**

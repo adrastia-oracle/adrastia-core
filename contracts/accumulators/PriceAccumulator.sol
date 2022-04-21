@@ -67,10 +67,13 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         }
     }
 
-    /// Checks if this accumulator needs an update by checking the time since the last update and the change in
+    /// @notice Checks if this accumulator needs an update by checking the time since the last update and the change in
     ///   liquidities.
-    /// @inheritdoc IUpdateByToken
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    /// @param data The encoded address of the token for which to perform the update.
+    /// @inheritdoc IUpdateable
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
         uint256 deltaTime = block.timestamp - lastObservation.timestamp;
         if (deltaTime < minUpdateDelay) {
@@ -92,10 +95,13 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return changeThresholdSurpassed(price, lastObservation.price, updateThreshold);
     }
 
-    /// @inheritdoc IUpdateByToken
-    function canUpdate(address token) public view virtual override returns (bool) {
+    /// @param data The encoded address of the token for which to perform the update.
+    /// @inheritdoc IUpdateable
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         // If this accumulator doesn't need an update, it can't (won't) update
-        if (!needsUpdate(token)) return false;
+        if (!needsUpdate(data)) return false;
 
         PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
 
@@ -112,10 +118,10 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
 
     /// @notice Updates the accumulator.
     /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
-    /// @param token The address of the token to accumulate the price of.
+    /// @param data The encoded address of the token for which to perform the update.
     /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
-    function update(address token) public virtual override returns (bool) {
-        if (needsUpdate(token)) return _update(token);
+    function update(bytes memory data) public virtual override returns (bool) {
+        if (needsUpdate(data)) return performUpdate(data);
 
         return false;
     }
@@ -205,7 +211,9 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return fetchPrice(token);
     }
 
-    function _update(address token) internal virtual returns (bool) {
+    function performUpdate(bytes memory data) internal virtual returns (bool) {
+        address token = abi.decode(data, (address));
+
         uint112 price = fetchPrice(token);
 
         ObservationLibrary.PriceObservation storage observation = observations[token];

@@ -27,7 +27,9 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     }
 
     /// @inheritdoc LiquidityAccumulator
-    function canUpdate(address token) public view virtual override returns (bool) {
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         if (token == address(0) || token == quoteToken) {
             // Invalid token
             return false;
@@ -40,7 +42,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
             return false;
         }
 
-        return super.canUpdate(token);
+        return super.canUpdate(data);
     }
 
     function fetchLiquidity(address token)

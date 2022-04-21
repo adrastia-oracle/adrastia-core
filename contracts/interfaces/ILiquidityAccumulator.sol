@@ -3,7 +3,7 @@ pragma solidity >=0.5.0 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./IUpdateByToken.sol";
+import "./IUpdateable.sol";
 
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
@@ -14,7 +14,7 @@ import "../libraries/ObservationLibrary.sol";
  *   single quote token and many exchange tokens.
  * @dev Liquidity accumulators are used to calculate time-weighted average liquidity levels.
  */
-abstract contract ILiquidityAccumulator is IUpdateByToken {
+abstract contract ILiquidityAccumulator is IUpdateable {
     /// @notice Emitted when the accumulator is updated.
     /// @dev The accumulator's observation and cumulative values are updated when this is emitted.
     /// @param token The address of the token that the update is for.

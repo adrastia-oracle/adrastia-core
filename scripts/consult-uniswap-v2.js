@@ -92,10 +92,12 @@ async function main() {
     const tokenDecimals = await tokenContract.decimals();
     const quoteTokenDecimals = await quoteTokenContract.decimals();
 
+    const updateData = ethers.utils.hexZeroPad(token, 32);
+
     while (true) {
         try {
-            if (await uniswapV2.liquidityAccumulator.canUpdate(token)) {
-                const updateTx = await uniswapV2.liquidityAccumulator.update(token);
+            if (await uniswapV2.liquidityAccumulator.canUpdate(updateData)) {
+                const updateTx = await uniswapV2.liquidityAccumulator.update(updateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -108,8 +110,8 @@ async function main() {
                 );
             }
 
-            if (await uniswapV2.priceAccumulator.canUpdate(token)) {
-                const updateTx = await uniswapV2.priceAccumulator.update(token);
+            if (await uniswapV2.priceAccumulator.canUpdate(updateData)) {
+                const updateTx = await uniswapV2.priceAccumulator.update(updateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -122,8 +124,8 @@ async function main() {
                 );
             }
 
-            if (await uniswapV2.oracle.canUpdate(token)) {
-                const updateTx = await uniswapV2.oracle.update(token);
+            if (await uniswapV2.oracle.canUpdate(updateData)) {
+                const updateTx = await uniswapV2.oracle.update(updateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(

@@ -13,23 +13,25 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
     }
 
     /// @inheritdoc AbstractOracle
-    function update(address token) public virtual override returns (bool) {
-        if (needsUpdate(token)) return _update(token);
+    function update(bytes memory data) public virtual override returns (bool) {
+        if (needsUpdate(data)) return performUpdate(data);
 
         return false;
     }
 
     /// @inheritdoc AbstractOracle
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         uint256 deltaTime = block.timestamp - observations[token].timestamp;
 
         return deltaTime >= period;
     }
 
     /// @inheritdoc AbstractOracle
-    function canUpdate(address token) public view virtual override returns (bool) {
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
         // If this oracle doesn't need an update, it can't (won't) update
-        return needsUpdate(token);
+        return needsUpdate(data);
     }
 
     /// @inheritdoc AbstractOracle
@@ -37,5 +39,5 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
         return interfaceId == type(IPeriodic).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function _update(address token) internal virtual returns (bool);
+    function performUpdate(bytes memory data) internal virtual returns (bool);
 }

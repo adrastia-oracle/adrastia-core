@@ -136,9 +136,11 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     }
 
     /// @inheritdoc PeriodicOracle
-    function canUpdate(address token) public view virtual override(IUpdateByToken, PeriodicOracle) returns (bool) {
+    function canUpdate(bytes memory data) public view virtual override(IUpdateable, PeriodicOracle) returns (bool) {
+        address token = abi.decode(data, (address));
+
         // If the parent contract can't update, this contract can't update
-        if (!super.canUpdate(token)) return false;
+        if (!super.canUpdate(data)) return false;
 
         // Ensure all underlying oracles are up-to-date
         for (uint256 j = 0; j < 2; ++j) {
@@ -148,7 +150,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             else _oracles = tokenSpecificOracles[token];
 
             for (uint256 i = 0; i < _oracles.length; ++i) {
-                if (IOracle(_oracles[i].oracle).canUpdate(token)) {
+                if (IOracle(_oracles[i].oracle).canUpdate(data)) {
                     // We can update one of the underlying oracles
                     return true;
                 }
@@ -165,8 +167,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
      * Internal functions
      */
 
-    function _update(address token) internal override returns (bool) {
+    function performUpdate(bytes memory data) internal override returns (bool) {
         bool underlyingUpdated;
+        address token = abi.decode(data, (address));
 
         // Ensure all underlying oracles are up-to-date
         for (uint256 j = 0; j < 2; ++j) {
@@ -178,7 +181,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             for (uint256 i = 0; i < _oracles.length; ++i) {
                 // We don't want any problematic underlying oracles to prevent this oracle from updating
                 // so we put update in a try-catch block
-                try IOracle(_oracles[i].oracle).update(token) returns (bool updated) {
+                try IOracle(_oracles[i].oracle).update(data) returns (bool updated) {
                     underlyingUpdated = underlyingUpdated || updated;
                 } catch Error(string memory reason) {
                     emit UpdateErrorWithReason(_oracles[i].oracle, token, reason);

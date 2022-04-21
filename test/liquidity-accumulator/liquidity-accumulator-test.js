@@ -117,7 +117,7 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         await hre.timeAndMine.setTimeIncrease(1);
 
         // Initial update
-        const updateReceipt = await liquidityAccumulator.update(GRT);
+        const updateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         updateTime = (await ethers.provider.getBlock(updateReceipt.blockNumber)).timestamp;
     });
 
@@ -126,20 +126,20 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         await liquidityAccumulator.overrideChangeThresholdPassed(true, true);
 
         // deltaTime = 1
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = minUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Shouldn't need update if delta time is less than the min update delay (update threshold not passed)", async () => {
         // deltaTime = 1
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = minUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should need update if delta time is within min and max update delay (update threshold passed)", async () => {
@@ -148,21 +148,21 @@ describe("LiquidityAccumulator#needsUpdate", () => {
 
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 
     it("Shouldn't need update if delta time is within min and max update delay (update threshold not passed)", async () => {
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = maxUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should need update if delta time is >= max update delay (update threshold passed)", async () => {
@@ -171,21 +171,21 @@ describe("LiquidityAccumulator#needsUpdate", () => {
 
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay + 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay + 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 
     it("Should need update if delta time is >= max update delay (update threshold not passed)", async () => {
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay + 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay + 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 });
 
@@ -204,7 +204,7 @@ describe("LiquidityAccumulator#canUpdate", () => {
         it("Doesn't need an update", async function () {
             await accumulator.overrideNeedsUpdate(true, false);
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
 
         it("Observation is still pending", async function () {
@@ -214,7 +214,7 @@ describe("LiquidityAccumulator#canUpdate", () => {
 
             await accumulator.setPendingObservation(GRT, 0, 0, currentBlockNumber + 1);
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
     });
 
@@ -224,7 +224,7 @@ describe("LiquidityAccumulator#canUpdate", () => {
         });
 
         it("Has no pending observation", async function () {
-            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
 
         it("Has a pending observation which has passed the minimum block duration", async function () {
@@ -238,7 +238,7 @@ describe("LiquidityAccumulator#canUpdate", () => {
                 BigNumber.from(currentBlockNumber).sub(minPendingPeriod)
             );
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
     });
 });
@@ -871,9 +871,9 @@ describe("LiquidityAccumulator#update", () => {
     });
 
     async function verifyUpdate(expectedReturn, initialLiquidity, secondLiquidity = undefined, firstUpdateTime = 0) {
-        expect(await liquidityAccumulator.callStatic.update(GRT)).to.equal(expectedReturn);
+        expect(await liquidityAccumulator.callStatic.update(ethers.utils.hexZeroPad(GRT, 32))).to.equal(expectedReturn);
 
-        const receipt = await liquidityAccumulator.update(GRT);
+        const receipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await receipt.wait();
 
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
@@ -999,7 +999,7 @@ describe("LiquidityAccumulator#update", () => {
         // Ensure enough time passes to warrent an update
         await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
 
-        const receipt2 = await liquidityAccumulator.update(GRT);
+        const receipt2 = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await receipt2.wait();
 
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
@@ -1055,8 +1055,8 @@ describe("LiquidityAccumulator#update", () => {
             // Initialize the first observation and accumulation with zero liquidities
             {
                 await liquidityAccumulator.overrideNeedsUpdate(true, true);
-                await liquidityAccumulator.update(GRT); // Initialize first (0) observation
-                await liquidityAccumulator.update(GRT); // Initialize first (0) accumulation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) observation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) accumulation
                 [, , startingTime] = await liquidityAccumulator.getLastAccumulation(GRT);
                 await liquidityAccumulator.overrideNeedsUpdate(false, false);
                 await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
@@ -1089,8 +1089,8 @@ describe("LiquidityAccumulator#update", () => {
             // Initialize the first observation and accumulation with zero liquidities
             {
                 await liquidityAccumulator.overrideNeedsUpdate(true, true);
-                await liquidityAccumulator.update(GRT); // Initialize first (0) observation
-                await liquidityAccumulator.update(GRT); // Initialize first (0) accumulation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) observation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) accumulation
                 [, , startingTime] = await liquidityAccumulator.getLastAccumulation(GRT);
                 await liquidityAccumulator.overrideNeedsUpdate(false, false);
                 await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
@@ -1106,7 +1106,7 @@ describe("LiquidityAccumulator#update", () => {
             ).wait();
 
             // Initial update
-            const receipt = await liquidityAccumulator.update(GRT);
+            const receipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
             await receipt.wait();
 
             const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
@@ -1141,7 +1141,7 @@ describe("LiquidityAccumulator#update", () => {
         await (await liquidityAccumulator.overrideNeedsUpdate(true, true)).wait();
 
         // Initial update
-        const initialUpdateReceipt = await liquidityAccumulator.update(GRT);
+        const initialUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await initialUpdateReceipt.wait();
         const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
 
@@ -1155,7 +1155,7 @@ describe("LiquidityAccumulator#update", () => {
 
         try {
             // Perform update(1)
-            const firstUpdateReceipt = await liquidityAccumulator.update(GRT);
+            const firstUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
             // Configure liquidity(2)
             const updateLiquidityReceipt = await liquidityAccumulator.setLiquidity(
@@ -1165,7 +1165,7 @@ describe("LiquidityAccumulator#update", () => {
             );
 
             // Perform update(2)
-            const secondUpdateReceipt = await liquidityAccumulator.update(GRT);
+            const secondUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
             // Mine the transactions
             await ethers.provider.send("evm_mine");
@@ -1208,7 +1208,7 @@ describe("LiquidityAccumulator#update", () => {
         await (await liquidityAccumulator.overrideNeedsUpdate(true, true)).wait();
 
         // Initial update
-        const initialUpdateReceipt = await liquidityAccumulator.update(GRT);
+        const initialUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await initialUpdateReceipt.wait();
         const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
 
@@ -1221,7 +1221,7 @@ describe("LiquidityAccumulator#update", () => {
         await liquidityAccumulator.overrideValidateObservation(true, false);
 
         // Perform update(1)
-        const firstUpdateReceipt = await liquidityAccumulator.update(GRT);
+        const firstUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
         await expect(firstUpdateReceipt).to.not.emit(liquidityAccumulator, "Updated");
 

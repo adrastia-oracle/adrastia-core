@@ -119,17 +119,19 @@ describe("UniswapV3LiquidityAccumulator", function () {
     describe("UniswapV3LiquidityAccumulator#canUpdate", function () {
         describe("Can't update when", function () {
             it("token = address(0)", async function () {
-                expect(await liquidityAccumulator.canUpdate(AddressZero)).to.equal(false);
+                expect(await liquidityAccumulator.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
             });
 
             it("token = quoteToken", async function () {
-                expect(await liquidityAccumulator.canUpdate(quoteToken.address)).to.equal(false);
+                expect(await liquidityAccumulator.canUpdate(ethers.utils.hexZeroPad(quoteToken.address, 32))).to.equal(
+                    false
+                );
             });
         });
 
         describe("Can update when", function () {
             it("token != quoteToken", async function () {
-                expect(await liquidityAccumulator.canUpdate(token.address)).to.equal(true);
+                expect(await liquidityAccumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(true);
             });
         });
     });

@@ -347,15 +347,15 @@ describe("UniswapV3PriceAccumulator", function () {
     describe("UniswapV3PriceAccumulator#canUpdate", function () {
         describe("Can't update when", function () {
             it("token = address(0)", async function () {
-                expect(await accumulator.canUpdate(AddressZero)).to.equal(false);
+                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
             });
 
             it("token = quoteToken", async function () {
-                expect(await accumulator.canUpdate(quoteToken.address)).to.equal(false);
+                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(quoteToken.address, 32))).to.equal(false);
             });
 
             it("The pool doesn't exist", async function () {
-                expect(await accumulator.canUpdate(token.address)).to.equal(false);
+                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(false);
             });
 
             it("The pool has no liquidity", async function () {
@@ -366,7 +366,7 @@ describe("UniswapV3PriceAccumulator", function () {
 
                 await createPool(initialPrice);
 
-                expect(await accumulator.canUpdate(token.address)).to.equal(false);
+                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(false);
             });
         });
 
@@ -380,7 +380,7 @@ describe("UniswapV3PriceAccumulator", function () {
                 await createPool(initialPrice);
                 await mint(ethers.utils.parseUnits("1000.0", 18), ethers.utils.parseUnits("1000.0", 18));
 
-                expect(await accumulator.canUpdate(token.address)).to.equal(true);
+                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(true);
             });
         });
     });

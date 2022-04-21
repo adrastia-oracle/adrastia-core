@@ -91,7 +91,7 @@ describe("PriceAccumulator#needsUpdate", () => {
         await hre.timeAndMine.setTimeIncrease(1);
 
         // Initial update
-        const updateReceipt = await accumulator.update(GRT);
+        const updateReceipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         updateTime = (await ethers.provider.getBlock(updateReceipt.blockNumber)).timestamp;
     });
 
@@ -100,20 +100,20 @@ describe("PriceAccumulator#needsUpdate", () => {
         await accumulator.overrideChangeThresholdPassed(true, true);
 
         // deltaTime = 1
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = minUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay - 1);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Shouldn't need update if delta time is less than the min update delay (update threshold not passed)", async () => {
         // deltaTime = 1
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = minUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay - 1);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should need update if delta time is within min and max update delay (update threshold passed)", async () => {
@@ -122,21 +122,21 @@ describe("PriceAccumulator#needsUpdate", () => {
 
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay - 1);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 
     it("Shouldn't need update if delta time is within min and max update delay (update threshold not passed)", async () => {
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = maxUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay - 1);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should need update if delta time is >= max update delay (update threshold passed)", async () => {
@@ -145,21 +145,21 @@ describe("PriceAccumulator#needsUpdate", () => {
 
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay + 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay + 1);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 
     it("Should need update if delta time is >= max update delay (update threshold not passed)", async () => {
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay + 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay + 1);
-        expect(await accumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await accumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 });
 
@@ -178,7 +178,7 @@ describe("PriceAccumulator#canUpdate", () => {
         it("Doesn't need an update", async function () {
             await accumulator.overrideNeedsUpdate(true, false);
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
 
         it("Observation is still pending", async function () {
@@ -188,7 +188,7 @@ describe("PriceAccumulator#canUpdate", () => {
 
             await accumulator.setPendingObservation(GRT, 0, currentBlockNumber + 1);
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
     });
 
@@ -198,7 +198,7 @@ describe("PriceAccumulator#canUpdate", () => {
         });
 
         it("Has no pending observation", async function () {
-            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
 
         it("Has a pending observation which has passed the minimum block duration", async function () {
@@ -207,7 +207,7 @@ describe("PriceAccumulator#canUpdate", () => {
 
             await accumulator.setPendingObservation(GRT, 0, BigNumber.from(currentBlockNumber).sub(minPendingPeriod));
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
     });
 });
@@ -673,9 +673,9 @@ describe("PriceAccumulator#update", () => {
     });
 
     async function verifyUpdate(expectedReturn, initialPrice, secondPrice = undefined, firstUpdateTime = 0) {
-        expect(await accumulator.callStatic.update(GRT)).to.equal(expectedReturn);
+        expect(await accumulator.callStatic.update(ethers.utils.hexZeroPad(GRT, 32))).to.equal(expectedReturn);
 
-        const receipt = await accumulator.update(GRT);
+        const receipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await receipt.wait();
 
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
@@ -772,7 +772,7 @@ describe("PriceAccumulator#update", () => {
         // Ensure enough time passes to warrent an update
         await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
 
-        const receipt2 = await accumulator.update(GRT);
+        const receipt2 = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await receipt2.wait();
 
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
@@ -813,8 +813,8 @@ describe("PriceAccumulator#update", () => {
             // Initialize the first observation and accumulation with zero price
             {
                 await accumulator.overrideNeedsUpdate(true, true);
-                await accumulator.update(GRT); // Initialize first (0) observation
-                await accumulator.update(GRT); // Initialize first (0) accumulation
+                await accumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) observation
+                await accumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) accumulation
                 [, startingTime] = await accumulator.getLastAccumulation(GRT);
                 await accumulator.overrideNeedsUpdate(false, false);
                 await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
@@ -839,8 +839,8 @@ describe("PriceAccumulator#update", () => {
             // Initialize the first observation and accumulation with zero price
             {
                 await accumulator.overrideNeedsUpdate(true, true);
-                await accumulator.update(GRT); // Initialize first (0) observation
-                await accumulator.update(GRT); // Initialize first (0) accumulation
+                await accumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) observation
+                await accumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) accumulation
                 [, startingTime] = await accumulator.getLastAccumulation(GRT);
                 await accumulator.overrideNeedsUpdate(false, false);
                 await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
@@ -850,7 +850,7 @@ describe("PriceAccumulator#update", () => {
             await (await accumulator.setPrice(GRT, args["initialPrice"])).wait();
 
             // Initial update
-            const receipt = await accumulator.update(GRT);
+            const receipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
             await receipt.wait();
 
             const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
@@ -876,7 +876,7 @@ describe("PriceAccumulator#update", () => {
         await (await accumulator.overrideNeedsUpdate(true, true)).wait();
 
         // Initial update
-        const initialUpdateReceipt = await accumulator.update(GRT);
+        const initialUpdateReceipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await initialUpdateReceipt.wait();
         const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
 
@@ -889,13 +889,13 @@ describe("PriceAccumulator#update", () => {
 
         try {
             // Perform update(1)
-            const firstUpdateReceipt = await accumulator.update(GRT);
+            const firstUpdateReceipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
             // Configure price(2)
             const updatePriceReceipt = await accumulator.setPrice(GRT, ethers.utils.parseEther("102"));
 
             // Perform update(2)
-            const secondUpdateReceipt = await accumulator.update(GRT);
+            const secondUpdateReceipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
             // Mine the transactions
             await ethers.provider.send("evm_mine");
@@ -932,7 +932,7 @@ describe("PriceAccumulator#update", () => {
         await (await accumulator.overrideNeedsUpdate(true, true)).wait();
 
         // Initial update
-        const initialUpdateReceipt = await accumulator.update(GRT);
+        const initialUpdateReceipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await initialUpdateReceipt.wait();
         const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
 
@@ -944,7 +944,7 @@ describe("PriceAccumulator#update", () => {
         await accumulator.overrideValidateObservation(true, false);
 
         // Perform update(1)
-        const firstUpdateReceipt = await accumulator.update(GRT);
+        const firstUpdateReceipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
         await expect(firstUpdateReceipt).to.not.emit(accumulator, "Updated");
 

@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import "./IUpdateByToken.sol";
+import "./IUpdateable.sol";
 import "./IQuoteToken.sol";
 
 /**
@@ -9,7 +9,7 @@ import "./IQuoteToken.sol";
  * @notice An interface that defines a liquidity oracle with a single quote token (or currency) and many exchange
  *  tokens.
  */
-abstract contract ILiquidityOracle is IUpdateByToken, IQuoteToken {
+abstract contract ILiquidityOracle is IUpdateable, IQuoteToken {
     /// @notice Gets the liquidity levels of the token and the quote token in the underlying pool.
     /// @param token The token to get liquidity levels of (along with the quote token).
     /// @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
