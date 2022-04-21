@@ -22,8 +22,8 @@ abstract contract IPriceAccumulator is IUpdateByToken {
     /// @param timestamp The epoch timestamp of the update (in seconds).
     event Updated(address indexed token, uint256 price, uint256 timestamp);
 
-    /// @notice Gets the number of decimal places to be used for calculating changes in price.
-    /// @return The number of decimal places to be used for calculating changes in price.
+    /// @notice Gets the scalar (as a power of 10) to be used for calculating changes in price.
+    /// @return The scalar to be used for calculating changes in price.
     function changePrecision() external view virtual returns (uint256);
 
     /**

@@ -23,8 +23,8 @@ abstract contract ILiquidityAccumulator is IUpdateByToken {
     /// @param timestamp The epoch timestamp of the update (in seconds).
     event Updated(address indexed token, uint256 tokenLiquidity, uint256 quoteTokenLiquidity, uint256 timestamp);
 
-    /// @notice Gets the number of decimal places to be used for calculating changes in liquidity levels.
-    /// @return The number of decimal places to be used for calculating changes in liquidity levels.
+    /// @notice Gets the scalar (as a power of 10) to be used for calculating changes in liquidity levels.
+    /// @return The scalar to be used for calculating changes in liquidity levels.
     function changePrecision() external view virtual returns (uint256);
 
     /**
