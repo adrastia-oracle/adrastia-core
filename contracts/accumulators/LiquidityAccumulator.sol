@@ -16,15 +16,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     using AddressLibrary for address;
     using SafeCast for uint256;
 
-    struct PendingObservation {
-        uint32 blockNumber;
-        uint112 tokenLiquidity;
-        uint112 quoteTokenLiquidity;
-    }
-
-    uint256 public constant OBSERVATION_BLOCK_MIN_PERIOD = 10;
-    uint256 public constant OBSERVATION_BLOCK_MAX_PERIOD = 20;
-
     uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
     uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
 
@@ -36,10 +27,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) public observations;
-
-    /// @notice Stores observations held for OBSERVATION_BLOCK_PERIOD before being committed to an update.
-    /// @dev address(token) => address(poster) => PendingObservation
-    mapping(address => mapping(address => PendingObservation)) public pendingObservations;
 
     constructor(
         address quoteToken_,
@@ -107,22 +94,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     /// @param data The encoded address of the token for which to perform the update.
     /// @inheritdoc IUpdateable
     function canUpdate(bytes memory data) public view virtual override returns (bool) {
-        address token = abi.decode(data, (address));
-
-        // If this accumulator doesn't need an update, it can't (won't) update
-        if (!needsUpdate(data)) return false;
-
-        PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
-
-        // Check if pending update can be initialized (or if it's the first update)
-        if (pendingObservation.blockNumber == 0) return true;
-
-        // Validating observation (second update call)
-
-        // Check if observation period has passed
-        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_MIN_PERIOD) return false;
-
-        return true;
+        return needsUpdate(data);
     }
 
     /// @notice Updates the accumulator.
@@ -294,40 +266,14 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) internal virtual returns (bool) {
-        // Require updaters to be EOAs to limit the attack vector that this function addresses
-        // Note: isContract will return false in the constructor of contracts, but since we require two observations
-        //   from the same updater spanning across several blocks, the second call will always return true if the caller
-        //   is a smart contract.
-        require(!msg.sender.isContract() && msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
+        require(msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
 
-        address token = abi.decode(updateData, (address));
+        // Silence un-used variable warnings
+        updateData;
+        tokenLiquidity;
+        quoteTokenLiquidity;
 
-        PendingObservation storage pendingObservation = pendingObservations[token][msg.sender];
-
-        if (pendingObservation.blockNumber == 0) {
-            // New observation (first update call), store it
-            pendingObservation.blockNumber = block.number.toUint32();
-            pendingObservation.tokenLiquidity = tokenLiquidity;
-            pendingObservation.quoteTokenLiquidity = quoteTokenLiquidity;
-
-            return false; // Needs to validate this observation
-        }
-
-        // Validating observation (second update call)
-
-        // Check if observation period has passed
-        if (block.number - pendingObservation.blockNumber < OBSERVATION_BLOCK_MIN_PERIOD) return false;
-
-        // Check if the observations are approximately the same, and that the observation has not spanned too many
-        // blocks
-        bool validated = block.number - pendingObservation.blockNumber <= OBSERVATION_BLOCK_MAX_PERIOD &&
-            !changeThresholdSurpassed(tokenLiquidity, pendingObservation.tokenLiquidity, updateThreshold) &&
-            !changeThresholdSurpassed(quoteTokenLiquidity, pendingObservation.quoteTokenLiquidity, updateThreshold);
-
-        // Validation performed. Delete the pending observation
-        delete pendingObservations[token][msg.sender];
-
-        return validated;
+        return true;
     }
 
     function changeThresholdSurpassed(

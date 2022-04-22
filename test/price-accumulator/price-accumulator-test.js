@@ -180,33 +180,14 @@ describe("PriceAccumulator#canUpdate", () => {
 
             expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
-
-        it("Observation is still pending", async function () {
-            await accumulator.overrideNeedsUpdate(true, true);
-
-            const currentBlockNumber = await ethers.provider.getBlockNumber();
-
-            await accumulator.setPendingObservation(GRT, 0, currentBlockNumber + 1);
-
-            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
-        });
     });
 
-    describe("Can update when it needs an update and it", function () {
+    describe("Can update when it", function () {
         beforeEach(async () => {
             await accumulator.overrideNeedsUpdate(true, true);
         });
 
-        it("Has no pending observation", async function () {
-            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
-        });
-
-        it("Has a pending observation which has passed the minimum block duration", async function () {
-            const currentBlockNumber = await ethers.provider.getBlockNumber();
-            const minPendingPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-
-            await accumulator.setPendingObservation(GRT, 0, BigNumber.from(currentBlockNumber).sub(minPendingPeriod));
-
+        it("Needs an update", async function () {
             expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
     });
@@ -1056,198 +1037,11 @@ describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteToken
 
     it("Should revert when caller is a smart contract", async () => {
         await expect(accumulatorCaller.stubValidateObservation(token.address, 0)).to.be.revertedWith(
-            "LiquidityAccumulator: MUST_BE_EOA"
+            "PriceAccumulator: MUST_BE_EOA"
         );
     });
 
-    it("Should return false for the first observation", async () => {
-        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0)).to.equal(false);
-    });
-
-    const tests = [
-        {
-            price: ethers.utils.parseEther("0"),
-        },
-        {
-            price: ethers.utils.parseEther("100"),
-        },
-    ];
-
-    describe("Should store the observation upon first call", async () => {
-        async function validate(price) {
-            const receipt = await accumulator.stubValidateObservation(token.address, price);
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(receipt.blockNumber);
-            expect(pendingObservation["price"]).to.equal(price);
-        }
-
-        tests.forEach(({ price }) => {
-            it("price = " + price, async () => {
-                await validate(price);
-            });
-        });
-    });
-
-    describe("Second call", async () => {
-        async function validateBeforeMinPeriod(price) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            expect(await accumulator.callStatic.stubValidateObservation(token.address, price)).to.equal(false);
-
-            const secondReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.lessThan(minPeriod.toNumber());
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(firstReceipt.blockNumber);
-            expect(pendingObservation["price"]).to.equal(price);
-        }
-
-        async function validateReturnWithinPeriod(price, useMin) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            await accumulator.stubValidateObservation(token.address, price);
-
-            await hre.timeAndMine.mine(useMin ? minPeriod : maxPeriod);
-
-            expect(await accumulator.callStatic.stubValidateObservation(token.address, price)).to.equal(true);
-        }
-
-        async function validateDeletesWithinPeriod(price, useMin) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            await hre.timeAndMine.mine((useMin ? minPeriod : maxPeriod) - 1);
-
-            const secondReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.within(
-                minPeriod.toNumber(),
-                maxPeriod.toNumber()
-            );
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(0);
-            expect(pendingObservation["price"]).to.equal(0);
-        }
-
-        async function validateAfterMaxPeriod(price) {
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            await hre.timeAndMine.mine(maxPeriod.add(1));
-
-            expect(await accumulator.callStatic.stubValidateObservation(token.address, price)).to.equal(false);
-
-            const secondReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.greaterThan(maxPeriod.toNumber());
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(0);
-            expect(pendingObservation["price"]).to.equal(0);
-        }
-
-        async function validateWithinPeriodButOverChangeThreshold(price) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            await hre.timeAndMine.mine(minPeriod.add(1));
-
-            price = price.add(ethers.utils.parseEther("10000"));
-
-            expect(await accumulator.callStatic.stubValidateObservation(token.address, price)).to.equal(false);
-
-            const secondReceipt = await accumulator.stubValidateObservation(token.address, price);
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.within(
-                minPeriod.toNumber(),
-                maxPeriod.toNumber()
-            );
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(0);
-            expect(pendingObservation["price"]).to.equal(0);
-        }
-
-        describe("Should return false and keep the pending observation when delta blocks < min period", async () => {
-            tests.forEach(({ price }) => {
-                it("price = " + price, async () => {
-                    await validateBeforeMinPeriod(price);
-                });
-            });
-        });
-
-        describe("Should return true when delta blocks = min period", async () => {
-            tests.forEach(({ price }) => {
-                it("price = " + price, async () => {
-                    await validateReturnWithinPeriod(price, true);
-                });
-            });
-        });
-
-        describe("Should return true when delta blocks = max period", async () => {
-            tests.forEach(({ price }) => {
-                it("price = " + price, async () => {
-                    await validateReturnWithinPeriod(price, false);
-                });
-            });
-        });
-
-        describe("Should delete the pending observation when delta blocks = min period", async () => {
-            tests.forEach(({ price }) => {
-                it("price = " + price, async () => {
-                    await validateDeletesWithinPeriod(price, true);
-                });
-            });
-        });
-
-        describe("Should delete the pending observation when delta blocks = max period", async () => {
-            tests.forEach(({ price }) => {
-                it("price = " + price, async () => {
-                    await validateDeletesWithinPeriod(price, false);
-                });
-            });
-        });
-
-        describe("Should return false and delete the pending observation when delta blocks > max period", async () => {
-            tests.forEach(({ price }) => {
-                it("price = " + price, async () => {
-                    await validateAfterMaxPeriod(price);
-                });
-            });
-        });
-
-        describe("Should return false and delete the pending observation when change threshold surpassed", async () => {
-            tests.forEach(({ price }) => {
-                it("initial price = " + price, async () => {
-                    await validateWithinPeriodButOverChangeThreshold(price);
-                });
-            });
-        });
+    it("Should return true when caller is not a smart contract", async () => {
+        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0)).to.equal(true);
     });
 });
