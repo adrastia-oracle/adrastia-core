@@ -30,14 +30,6 @@ contract PriceAccumulatorStub is PriceAccumulator {
         mockPrices[token] = price;
     }
 
-    function setPendingObservation(
-        address token,
-        uint112 price,
-        uint32 blockNumber
-    ) public {
-        pendingObservations[token][msg.sender] = PendingObservation({blockNumber: blockNumber, price: price});
-    }
-
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;
@@ -62,19 +54,21 @@ contract PriceAccumulatorStub is PriceAccumulator {
     }
 
     function stubValidateObservation(address token, uint112 price) public returns (bool) {
-        return super.validateObservation(token, price);
+        bytes memory updateData = abi.encode(token);
+
+        return super.validateObservation(updateData, price);
     }
 
     /* Overridden functions */
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
-        else return super.needsUpdate(token);
+        else return super.needsUpdate(data);
     }
 
-    function validateObservation(address token, uint112 price) internal virtual override returns (bool) {
+    function validateObservation(bytes memory updateData, uint112 price) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
-        else return super.validateObservation(token, price);
+        else return super.validateObservation(updateData, price);
     }
 
     function fetchPrice(address token) internal view virtual override returns (uint112) {

@@ -35,7 +35,7 @@ contract CurveLiquidityAccumulatorStub is CurveLiquidityAccumulator {
     }
 
     function validateObservation(
-        address,
+        bytes memory,
         uint112,
         uint112
     ) internal virtual override returns (bool) {

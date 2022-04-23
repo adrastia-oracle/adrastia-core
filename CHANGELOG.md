@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0-rc.6
+### Interfaces
+- Make IUpdateByToken#update public
+- Rename IUpdateByToken to IUpdateable and replace `address token` with `bytes memory data`
+
+### Accumulators
+- Remove use of pending observations
+
 ## v1.0.0-rc.5
 ### Global
 - Use uint112 for prices and liquidities

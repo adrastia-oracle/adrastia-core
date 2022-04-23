@@ -51,7 +51,7 @@ contract UniswapV3PriceAccumulatorStub is UniswapV3PriceAccumulator {
         return super.computeAddress(factory, _initCodeHash, key);
     }
 
-    function validateObservation(address, uint112) internal virtual override returns (bool) {
+    function validateObservation(bytes memory, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
 }

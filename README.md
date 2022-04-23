@@ -1,7 +1,7 @@
 # Pythia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![662 out of 662 tests passing](https://img.shields.io/badge/tests-662/662%20passing-brightgreen.svg?style=flat-square)
+![602 out of 602 tests passing](https://img.shields.io/badge/tests-602/602%20passing-brightgreen.svg?style=flat-square)
 ![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
 
 Pythia Core is a set of Solidity smart contracts for building EVM oracle solutions.
@@ -49,7 +49,7 @@ The current standard in DeFi is to use trusted and centralized price oracle solu
 - Price reporters must maintain the highest level of physical and digital security to protect their code and keys from attacks
 
 Pythia is designed to mitigate these risks by keeping everything on-chain - prices are only ever read from decentralized exchanges that have the highest levels of availability, transparency, and censorship-resistance. While Pythia may still be susceptible to bugs and errors, the likeliness of them happening is minimized by:
-- Keeping everything as simple as possible
+- Clean code
 - Keeping everything open-source
 - Having the code professionally audited
 - Minimizing (or even eliminating) the need for trust

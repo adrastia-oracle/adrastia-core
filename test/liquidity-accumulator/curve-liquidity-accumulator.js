@@ -118,11 +118,11 @@ describe("CurveLiquidityAccumulator#canUpdate", function () {
     });
 
     it("Should return false when given an invalid token", async function () {
-        expect(await accumulator.canUpdate(GRT)).to.equal(false);
+        expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should return true when given a valid token", async function () {
-        expect(await accumulator.canUpdate(token.address)).to.equal(true);
+        expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(true);
     });
 });
 

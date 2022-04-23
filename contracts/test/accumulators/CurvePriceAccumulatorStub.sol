@@ -30,7 +30,7 @@ contract CurvePriceAccumulatorStub is CurvePriceAccumulator {
         return super.fetchPrice(token);
     }
 
-    function validateObservation(address, uint112) internal virtual override returns (bool) {
+    function validateObservation(bytes memory, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
 }

@@ -40,22 +40,22 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
 
     /* Overridden functions */
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
-        else return super.needsUpdate(token);
+        else return super.needsUpdate(data);
     }
 
-    function _update(address token) internal virtual override returns (bool) {
+    function performUpdate(bytes memory data) internal virtual override returns (bool) {
         // Always keep the liquidity accumulator updated so that we don't have to do so in our tests.
-        try ILiquidityAccumulator(liquidityAccumulator).update(token) returns (bool) {} catch Error(
+        try ILiquidityAccumulator(liquidityAccumulator).update(data) returns (bool) {} catch Error(
             string memory
         ) {} catch (bytes memory) {}
 
         // Always keep the price accumulator updated so that we don't have to do so in our tests.
-        try IPriceAccumulator(priceAccumulator).update(token) returns (bool) {} catch Error(string memory) {} catch (
+        try IPriceAccumulator(priceAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
             bytes memory
         ) {}
 
-        return super._update(token);
+        return super.performUpdate(data);
     }
 }

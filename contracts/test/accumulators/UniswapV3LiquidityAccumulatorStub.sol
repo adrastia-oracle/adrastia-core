@@ -35,7 +35,7 @@ contract UniswapV3LiquidityAccumulatorStub is UniswapV3LiquidityAccumulator {
     }
 
     function validateObservation(
-        address,
+        bytes memory,
         uint112,
         uint112
     ) internal virtual override returns (bool) {

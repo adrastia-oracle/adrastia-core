@@ -13,14 +13,17 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
 
     constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
-    /// @inheritdoc IUpdateByToken
-    function update(address token) external virtual override returns (bool);
+    /// @param data The encoded address of the token for which to perform the update.
+    /// @inheritdoc IUpdateable
+    function update(bytes memory data) public virtual override returns (bool);
 
-    /// @inheritdoc IUpdateByToken
-    function needsUpdate(address token) public view virtual override returns (bool);
+    /// @param data The encoded address of the token for which to perform the update.
+    /// @inheritdoc IUpdateable
+    function needsUpdate(bytes memory data) public view virtual override returns (bool);
 
-    /// @inheritdoc IUpdateByToken
-    function canUpdate(address token) public view virtual override returns (bool);
+    /// @param data The encoded address of the token for which to perform the update.
+    /// @inheritdoc IUpdateable
+    function canUpdate(bytes memory data) public view virtual override returns (bool);
 
     function consultPrice(address token) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
@@ -138,7 +141,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     {
         return
             interfaceId == type(IOracle).interfaceId ||
-            interfaceId == type(IUpdateByToken).interfaceId ||
+            interfaceId == type(IUpdateable).interfaceId ||
             interfaceId == type(IPriceOracle).interfaceId ||
             interfaceId == type(ILiquidityOracle).interfaceId ||
             super.supportsInterface(interfaceId);

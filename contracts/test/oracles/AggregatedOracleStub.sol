@@ -60,9 +60,9 @@ contract AggregatedOracleStub is AggregatedOracle {
 
     /* Overridden functions */
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
-        else return super.needsUpdate(token);
+        else return super.needsUpdate(data);
     }
 
     function quoteTokenDecimals() public view virtual override returns (uint8) {

@@ -39,7 +39,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             super.supportsInterface(interfaceId);
     }
 
-    function _update(address token) internal virtual override returns (bool) {
+    function performUpdate(bytes memory data) internal virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         /*

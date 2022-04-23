@@ -166,7 +166,7 @@ describe("AggregatedOracle#needsUpdate", function () {
     });
 
     it("Should require an update if no observations have been made", async () => {
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Should require an update if deltaTime == period", async () => {
@@ -177,7 +177,7 @@ describe("AggregatedOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime + PERIOD);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime + PERIOD);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Should require an update if deltaTime > period", async () => {
@@ -188,7 +188,7 @@ describe("AggregatedOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime + PERIOD + 1);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime + PERIOD + 1);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Shouldm't require an update if deltaTime < period", async () => {
@@ -199,7 +199,7 @@ describe("AggregatedOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime + PERIOD - 1);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime + PERIOD - 1);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Shouldm't require an update if deltaTime == 0", async () => {
@@ -210,7 +210,7 @@ describe("AggregatedOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 });
 
@@ -240,13 +240,13 @@ describe("AggregatedOracle#canUpdate", function () {
         it("Doesn't need an update", async function () {
             await oracle.overrideNeedsUpdate(true, false);
 
-            expect(await oracle.canUpdate(AddressZero)).to.equal(false);
+            expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
         });
 
         it("Needs an update but there are no valid underlying oracle responses", async function () {
             await oracle.overrideNeedsUpdate(true, true);
 
-            expect(await oracle.canUpdate(AddressZero)).to.equal(false);
+            expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
         });
     });
 
@@ -258,7 +258,7 @@ describe("AggregatedOracle#canUpdate", function () {
         it("An underlying oracle needs an update", async function () {
             await underlyingOracle1.stubSetNeedsUpdate(true);
 
-            expect(await oracle.canUpdate(AddressZero)).to.equal(true);
+            expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
         });
 
         it("An underlying oracle doesn't need an update but it has valid data", async function () {
@@ -268,7 +268,7 @@ describe("AggregatedOracle#canUpdate", function () {
 
             await underlyingOracle1.stubSetObservation(AddressZero, 1, 1, 1, currentTime);
 
-            expect(await oracle.canUpdate(AddressZero)).to.equal(true);
+            expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
         });
     });
 });
@@ -955,7 +955,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
@@ -992,7 +992,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
@@ -1025,7 +1025,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
@@ -1055,10 +1055,10 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await oracle.update(token);
+        await oracle.update(ethers.utils.hexZeroPad(token, 32));
 
         // Consult errors are no longer emitted
-        //await expect(oracle.update(token))
+        //await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
         //    .to.emit(oracle, "ConsultErrorWithReason")
         //    .withArgs(underlyingOracle.address, token, "AbstractOracle: RATE_TOO_OLD");
 
@@ -1094,16 +1094,16 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         // Should only return true if one of the underlying oracles is updated
         await underlyingOracle.stubSetUpdateReturn(true);
-        expect(await oracle.callStatic.update(token)).to.equal(true);
+        expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(token, 32))).to.equal(true);
         await underlyingOracle.stubSetUpdateReturn(false);
-        expect(await oracle.callStatic.update(token)).to.equal(false);
+        expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(token, 32))).to.equal(false);
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await oracle.update(token);
+        await oracle.update(ethers.utils.hexZeroPad(token, 32));
 
         // Consult errors are no longer emitted
-        //await expect(oracle.update(token))
+        //await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
         //    .to.emit(oracle, "ConsultError")
         //    .withArgs(
         //        underlyingOracle.address,
@@ -1141,7 +1141,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateError")
             .withArgs(
                 underlyingOracle.address,
@@ -1175,7 +1175,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(underlyingOracle.address, token, "REASON");
 
@@ -1194,7 +1194,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
@@ -1228,7 +1228,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
@@ -1262,7 +1262,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
@@ -1296,7 +1296,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
@@ -1378,7 +1378,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         // Slight loss of precision from the harmonic mean calculation, but this is okay (it's negligible)
         price = BigNumber.from("1000000000000000121");
 
-        await expect(oracle.update(token), "Update log")
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)), "Update log")
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
@@ -1424,7 +1424,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         const totalTokenLiquidity = tokenLiquidity.mul(2);
         const totalQuoteTokenLiquidity = quoteTokenLiquidity.mul(2);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
@@ -1478,7 +1478,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         // = ~1.99 => looks good
         const expectedPrice = harmonicMean([price1, price2], [quoteTokenLiquidity1, quoteTokenLiquidity2]);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
@@ -1563,7 +1563,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         const totalTokenLiquidity = tokenLiquidity.mul(2);
         const totalQuoteTokenLiquidity = quoteTokenLiquidity.mul(2);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
 
@@ -1608,7 +1608,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(token))
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
@@ -1674,8 +1674,8 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 
-    it("Should support IUpdateByToken", async () => {
-        const interfaceId = await interfaceIds.iUpdateByToken();
+    it("Should support IUpdateable", async () => {
+        const interfaceId = await interfaceIds.iUpdateable();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 });

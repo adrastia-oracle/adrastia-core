@@ -89,7 +89,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
     });
 
     it("Should require an update if no observations have been made", async () => {
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Should require an update if deltaTime == period", async () => {
@@ -100,7 +100,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime + PERIOD);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime + PERIOD);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Should require an update if deltaTime > period", async () => {
@@ -111,7 +111,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime + PERIOD + 1);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime + PERIOD + 1);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Shouldm't require an update if deltaTime < period", async () => {
@@ -122,7 +122,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime + PERIOD - 1);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime + PERIOD - 1);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Shouldm't require an update if deltaTime == 0", async () => {
@@ -133,7 +133,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         await hre.timeAndMine.setTime(observationTime);
 
         expect(await currentBlockTimestamp()).to.equal(observationTime);
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 });
 
@@ -152,13 +152,13 @@ describe("PeriodicAccumulationOracle#canUpdate", function () {
     it("Can update when it needs an update", async function () {
         await oracle.overrideNeedsUpdate(true, true);
 
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(true);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Can't update when it doesn't needs an update", async function () {
         await oracle.overrideNeedsUpdate(true, false);
 
-        expect(await oracle.needsUpdate(AddressZero)).to.equal(false);
+        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 });
 
@@ -878,21 +878,21 @@ describe("PeriodicAccumulationOracle#update", function () {
     }
 
     it("Should revert if token == quoteToken", async function () {
-        await expect(oracle.update(quoteToken.address)).to.be.reverted;
+        await expect(oracle.update(ethers.utils.hexZeroPad(quoteToken.address, 32))).to.be.reverted;
     });
 
     it("Should revert if token == address(0)", async function () {
-        await expect(oracle.update(AddressZero)).to.be.reverted;
+        await expect(oracle.update(ethers.utils.hexZeroPad(AddressZero, 32))).to.be.reverted;
     });
 
     it("Shouldn't update if not needed", async function () {
         await oracle.overrideNeedsUpdate(true, false);
 
-        expect(await oracle.callStatic.update(token.address)).to.equal(false);
+        expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(token.address, 32))).to.equal(false);
 
         const [pPrice, pTokenLiqudity, pQuoteTokenLiquidity, pTimestamp] = await oracle.observations(token.address);
 
-        const updateTxPromise = oracle.update(token.address);
+        const updateTxPromise = oracle.update(ethers.utils.hexZeroPad(token.address, 32));
 
         await expect(updateTxPromise).to.not.emit(oracle, "Updated");
 
@@ -929,16 +929,16 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Perform two initial updates so that the accumulators are properly initialized
         {
             await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
-            await oracle.update(token.address);
+            await oracle.update(ethers.utils.hexZeroPad(token.address, 32));
             await hre.timeAndMine.setTime((await currentBlockTimestamp()) + PERIOD);
-            await oracle.update(token.address);
+            await oracle.update(ethers.utils.hexZeroPad(token.address, 32));
         }
 
         const expectedTimestamp = (await currentBlockTimestamp()) + 100;
 
         await hre.timeAndMine.setTimeNextBlock(expectedTimestamp);
 
-        const updateReceipt = await oracle.update(token.address);
+        const updateReceipt = await oracle.update(ethers.utils.hexZeroPad(token.address, 32));
 
         [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(token.address);
 
@@ -1061,8 +1061,8 @@ describe("PeriodicAccumulationOracle#supportsInterface(interfaceId)", function (
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 
-    it("Should support IUpdateByToken", async () => {
-        const interfaceId = await interfaceIds.iUpdateByToken();
+    it("Should support IUpdateable", async () => {
+        const interfaceId = await interfaceIds.iUpdateable();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 

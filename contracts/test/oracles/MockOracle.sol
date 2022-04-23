@@ -83,8 +83,8 @@ contract MockOracle is AbstractOracle {
     }
 
     function update(
-        address /*token*/
-    ) external virtual override returns (bool) {
+        bytes memory /*data*/
+    ) public virtual override returns (bool) {
         callCounts["update(address)"]++;
 
         if (_updateError) return 2 * type(uint256).max == 0;
@@ -95,12 +95,12 @@ contract MockOracle is AbstractOracle {
     }
 
     function needsUpdate(
-        address /*token*/
+        bytes memory /*data*/
     ) public view virtual override returns (bool) {
         return _needsUpdate;
     }
 
-    function canUpdate(address token) public view virtual override returns (bool) {
-        return needsUpdate(token);
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        return needsUpdate(data);
     }
 }

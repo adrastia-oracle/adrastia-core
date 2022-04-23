@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import "./IUpdateByToken.sol";
+import "./IUpdateable.sol";
 import "./IQuoteToken.sol";
 
 /// @title IPriceOracle
 /// @notice An interface that defines a price oracle with a single quote token (or currency) and many exchange tokens.
-abstract contract IPriceOracle is IUpdateByToken, IQuoteToken {
+abstract contract IPriceOracle is IUpdateable, IQuoteToken {
     /**
      * @notice Gets the price of a token in terms of the quote token.
      * @param token The token to get the price of.

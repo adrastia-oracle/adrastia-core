@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import "./IUpdateByToken.sol";
+import "./IUpdateable.sol";
 import "./ILiquidityOracle.sol";
 import "./IPriceOracle.sol";
 
@@ -9,7 +9,7 @@ import "./IPriceOracle.sol";
  * @title IOracle
  * @notice An interface that defines a price and liquidity oracle.
  */
-abstract contract IOracle is IUpdateByToken, IPriceOracle, ILiquidityOracle {
+abstract contract IOracle is IUpdateable, IPriceOracle, ILiquidityOracle {
     /// @notice Emitted when a stored quotation is updated.
     /// @param token The address of the token that the quotation is for.
     /// @param price The quote token denominated price for a whole token.

@@ -117,7 +117,7 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         await hre.timeAndMine.setTimeIncrease(1);
 
         // Initial update
-        const updateReceipt = await liquidityAccumulator.update(GRT);
+        const updateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         updateTime = (await ethers.provider.getBlock(updateReceipt.blockNumber)).timestamp;
     });
 
@@ -126,20 +126,20 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         await liquidityAccumulator.overrideChangeThresholdPassed(true, true);
 
         // deltaTime = 1
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = minUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Shouldn't need update if delta time is less than the min update delay (update threshold not passed)", async () => {
         // deltaTime = 1
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = minUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should need update if delta time is within min and max update delay (update threshold passed)", async () => {
@@ -148,21 +148,21 @@ describe("LiquidityAccumulator#needsUpdate", () => {
 
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 
     it("Shouldn't need update if delta time is within min and max update delay (update threshold not passed)", async () => {
         // deltaTime = minUpdateDelay
         await hre.timeAndMine.setTime(updateTime + minUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
 
         // deltaTime = maxUpdateDelay - 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay - 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(false);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
     });
 
     it("Should need update if delta time is >= max update delay (update threshold passed)", async () => {
@@ -171,21 +171,21 @@ describe("LiquidityAccumulator#needsUpdate", () => {
 
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay + 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay + 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 
     it("Should need update if delta time is >= max update delay (update threshold not passed)", async () => {
         // deltaTime = maxUpdateDelay
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
 
         // deltaTime = maxUpdateDelay + 1
         await hre.timeAndMine.setTime(updateTime + maxUpdateDelay + 1);
-        expect(await liquidityAccumulator.needsUpdate(GRT)).to.equal(true);
+        expect(await liquidityAccumulator.needsUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
     });
 });
 
@@ -204,41 +204,17 @@ describe("LiquidityAccumulator#canUpdate", () => {
         it("Doesn't need an update", async function () {
             await accumulator.overrideNeedsUpdate(true, false);
 
-            expect(await accumulator.canUpdate(GRT)).to.equal(false);
-        });
-
-        it("Observation is still pending", async function () {
-            await accumulator.overrideNeedsUpdate(true, true);
-
-            const currentBlockNumber = await ethers.provider.getBlockNumber();
-
-            await accumulator.setPendingObservation(GRT, 0, 0, currentBlockNumber + 1);
-
-            expect(await accumulator.canUpdate(GRT)).to.equal(false);
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
     });
 
-    describe("Can update when it needs an update and it", function () {
+    describe("Can update when it", function () {
         beforeEach(async () => {
             await accumulator.overrideNeedsUpdate(true, true);
         });
 
-        it("Has no pending observation", async function () {
-            expect(await accumulator.canUpdate(GRT)).to.equal(true);
-        });
-
-        it("Has a pending observation which has passed the minimum block duration", async function () {
-            const currentBlockNumber = await ethers.provider.getBlockNumber();
-            const minPendingPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-
-            await accumulator.setPendingObservation(
-                GRT,
-                0,
-                0,
-                BigNumber.from(currentBlockNumber).sub(minPendingPeriod)
-            );
-
-            expect(await accumulator.canUpdate(GRT)).to.equal(true);
+        it("Needs an update", async function () {
+            expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
     });
 });
@@ -871,9 +847,9 @@ describe("LiquidityAccumulator#update", () => {
     });
 
     async function verifyUpdate(expectedReturn, initialLiquidity, secondLiquidity = undefined, firstUpdateTime = 0) {
-        expect(await liquidityAccumulator.callStatic.update(GRT)).to.equal(expectedReturn);
+        expect(await liquidityAccumulator.callStatic.update(ethers.utils.hexZeroPad(GRT, 32))).to.equal(expectedReturn);
 
-        const receipt = await liquidityAccumulator.update(GRT);
+        const receipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await receipt.wait();
 
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
@@ -999,7 +975,7 @@ describe("LiquidityAccumulator#update", () => {
         // Ensure enough time passes to warrent an update
         await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
 
-        const receipt2 = await liquidityAccumulator.update(GRT);
+        const receipt2 = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await receipt2.wait();
 
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
@@ -1055,8 +1031,8 @@ describe("LiquidityAccumulator#update", () => {
             // Initialize the first observation and accumulation with zero liquidities
             {
                 await liquidityAccumulator.overrideNeedsUpdate(true, true);
-                await liquidityAccumulator.update(GRT); // Initialize first (0) observation
-                await liquidityAccumulator.update(GRT); // Initialize first (0) accumulation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) observation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) accumulation
                 [, , startingTime] = await liquidityAccumulator.getLastAccumulation(GRT);
                 await liquidityAccumulator.overrideNeedsUpdate(false, false);
                 await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
@@ -1089,8 +1065,8 @@ describe("LiquidityAccumulator#update", () => {
             // Initialize the first observation and accumulation with zero liquidities
             {
                 await liquidityAccumulator.overrideNeedsUpdate(true, true);
-                await liquidityAccumulator.update(GRT); // Initialize first (0) observation
-                await liquidityAccumulator.update(GRT); // Initialize first (0) accumulation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) observation
+                await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32)); // Initialize first (0) accumulation
                 [, , startingTime] = await liquidityAccumulator.getLastAccumulation(GRT);
                 await liquidityAccumulator.overrideNeedsUpdate(false, false);
                 await hre.timeAndMine.setTime((await currentBlockTimestamp()) + maxUpdateDelay);
@@ -1106,7 +1082,7 @@ describe("LiquidityAccumulator#update", () => {
             ).wait();
 
             // Initial update
-            const receipt = await liquidityAccumulator.update(GRT);
+            const receipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
             await receipt.wait();
 
             const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
@@ -1141,7 +1117,7 @@ describe("LiquidityAccumulator#update", () => {
         await (await liquidityAccumulator.overrideNeedsUpdate(true, true)).wait();
 
         // Initial update
-        const initialUpdateReceipt = await liquidityAccumulator.update(GRT);
+        const initialUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await initialUpdateReceipt.wait();
         const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
 
@@ -1155,7 +1131,7 @@ describe("LiquidityAccumulator#update", () => {
 
         try {
             // Perform update(1)
-            const firstUpdateReceipt = await liquidityAccumulator.update(GRT);
+            const firstUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
             // Configure liquidity(2)
             const updateLiquidityReceipt = await liquidityAccumulator.setLiquidity(
@@ -1165,7 +1141,7 @@ describe("LiquidityAccumulator#update", () => {
             );
 
             // Perform update(2)
-            const secondUpdateReceipt = await liquidityAccumulator.update(GRT);
+            const secondUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
             // Mine the transactions
             await ethers.provider.send("evm_mine");
@@ -1208,7 +1184,7 @@ describe("LiquidityAccumulator#update", () => {
         await (await liquidityAccumulator.overrideNeedsUpdate(true, true)).wait();
 
         // Initial update
-        const initialUpdateReceipt = await liquidityAccumulator.update(GRT);
+        const initialUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
         await initialUpdateReceipt.wait();
         const initialUpdateTime = (await ethers.provider.getBlock(initialUpdateReceipt.blockNumber)).timestamp;
 
@@ -1221,7 +1197,7 @@ describe("LiquidityAccumulator#update", () => {
         await liquidityAccumulator.overrideValidateObservation(true, false);
 
         // Perform update(1)
-        const firstUpdateReceipt = await liquidityAccumulator.update(GRT);
+        const firstUpdateReceipt = await liquidityAccumulator.update(ethers.utils.hexZeroPad(GRT, 32));
 
         await expect(firstUpdateReceipt).to.not.emit(liquidityAccumulator, "Updated");
 
@@ -1355,330 +1331,7 @@ describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteT
         );
     });
 
-    it("Should return false for the first observation", async () => {
-        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0, 0)).to.equal(false);
-    });
-
-    const tests = [
-        {
-            tokenLiquidity: ethers.utils.parseEther("0"),
-            quoteTokenLiquidity: ethers.utils.parseEther("0"),
-        },
-        {
-            tokenLiquidity: ethers.utils.parseEther("100"),
-            quoteTokenLiquidity: ethers.utils.parseEther("0"),
-        },
-        {
-            tokenLiquidity: ethers.utils.parseEther("0"),
-            quoteTokenLiquidity: ethers.utils.parseEther("100"),
-        },
-        {
-            tokenLiquidity: ethers.utils.parseEther("100"),
-            quoteTokenLiquidity: ethers.utils.parseEther("100"),
-        },
-    ];
-
-    describe("Should store the observation upon first call", async () => {
-        async function validate(tokenLiquidity, quoteTokenLiquidity) {
-            const receipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(receipt.blockNumber);
-            expect(pendingObservation["tokenLiquidity"]).to.equal(tokenLiquidity);
-            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
-        }
-
-        tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-            it("tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity, async () => {
-                await validate(tokenLiquidity, quoteTokenLiquidity);
-            });
-        });
-    });
-
-    describe("Second call", async () => {
-        async function validateBeforeMinPeriod(tokenLiquidity, quoteTokenLiquidity) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            expect(
-                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
-            ).to.equal(false);
-
-            const secondReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.lessThan(minPeriod.toNumber());
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(firstReceipt.blockNumber);
-            expect(pendingObservation["tokenLiquidity"]).to.equal(tokenLiquidity);
-            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
-        }
-
-        async function validateReturnWithinPeriod(tokenLiquidity, quoteTokenLiquidity, useMin) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            await accumulator.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity);
-
-            await hre.timeAndMine.mine(useMin ? minPeriod : maxPeriod);
-
-            expect(
-                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
-            ).to.equal(true);
-        }
-
-        async function validateDeletesWithinPeriod(tokenLiquidity, quoteTokenLiquidity, useMin) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            await hre.timeAndMine.mine((useMin ? minPeriod : maxPeriod) - 1);
-
-            const secondReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.within(
-                minPeriod.toNumber(),
-                maxPeriod.toNumber()
-            );
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(0);
-            expect(pendingObservation["tokenLiquidity"]).to.equal(0);
-            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(0);
-        }
-
-        async function validateAfterMaxPeriod(tokenLiquidity, quoteTokenLiquidity) {
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            await hre.timeAndMine.mine(maxPeriod.add(1));
-
-            expect(
-                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
-            ).to.equal(false);
-
-            const secondReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.greaterThan(maxPeriod.toNumber());
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(0);
-            expect(pendingObservation["tokenLiquidity"]).to.equal(0);
-            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(0);
-        }
-
-        async function validateWithinPeriodButOverChangeThreshold(
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            changeTokenLiquidity,
-            changeQuoteTokenLiquidity
-        ) {
-            const minPeriod = await accumulator.OBSERVATION_BLOCK_MIN_PERIOD();
-            const maxPeriod = await accumulator.OBSERVATION_BLOCK_MAX_PERIOD();
-
-            const firstReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            await hre.timeAndMine.mine(minPeriod.add(1));
-
-            if (changeTokenLiquidity) tokenLiquidity = tokenLiquidity.add(ethers.utils.parseEther("10000"));
-
-            if (changeQuoteTokenLiquidity)
-                quoteTokenLiquidity = quoteTokenLiquidity.add(ethers.utils.parseEther("10000"));
-
-            expect(
-                await accumulator.callStatic.stubValidateObservation(token.address, tokenLiquidity, quoteTokenLiquidity)
-            ).to.equal(false);
-
-            const secondReceipt = await accumulator.stubValidateObservation(
-                token.address,
-                tokenLiquidity,
-                quoteTokenLiquidity
-            );
-
-            expect(secondReceipt.blockNumber - firstReceipt.blockNumber).to.be.within(
-                minPeriod.toNumber(),
-                maxPeriod.toNumber()
-            );
-
-            const [owner] = await ethers.getSigners();
-
-            const pendingObservation = await accumulator.pendingObservations(token.address, owner.address);
-
-            expect(pendingObservation["blockNumber"]).to.equal(0);
-            expect(pendingObservation["tokenLiquidity"]).to.equal(0);
-            expect(pendingObservation["quoteTokenLiquidity"]).to.equal(0);
-        }
-
-        describe("Should return false and keep the pending observation when delta blocks < min period", async () => {
-            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                it(
-                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
-                    async () => {
-                        await validateBeforeMinPeriod(tokenLiquidity, quoteTokenLiquidity);
-                    }
-                );
-            });
-        });
-
-        describe("Should return true when delta blocks = min period", async () => {
-            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                it(
-                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
-                    async () => {
-                        await validateReturnWithinPeriod(tokenLiquidity, quoteTokenLiquidity, true);
-                    }
-                );
-            });
-        });
-
-        describe("Should return true when delta blocks = max period", async () => {
-            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                it(
-                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
-                    async () => {
-                        await validateReturnWithinPeriod(tokenLiquidity, quoteTokenLiquidity, false);
-                    }
-                );
-            });
-        });
-
-        describe("Should delete the pending observation when delta blocks = min period", async () => {
-            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                it(
-                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
-                    async () => {
-                        await validateDeletesWithinPeriod(tokenLiquidity, quoteTokenLiquidity, true);
-                    }
-                );
-            });
-        });
-
-        describe("Should delete the pending observation when delta blocks = max period", async () => {
-            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                it(
-                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
-                    async () => {
-                        await validateDeletesWithinPeriod(tokenLiquidity, quoteTokenLiquidity, false);
-                    }
-                );
-            });
-        });
-
-        describe("Should return false and delete the pending observation when delta blocks > max period", async () => {
-            tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                it(
-                    "tokenLiquidity = " + tokenLiquidity + ", quoteTokenLiquidity = " + quoteTokenLiquidity,
-                    async () => {
-                        await validateAfterMaxPeriod(tokenLiquidity, quoteTokenLiquidity);
-                    }
-                );
-            });
-        });
-
-        describe("Should return false and delete the pending observation when change threshold surpassed", async () => {
-            describe("tokenLiquidity change threshold surpassed", async () => {
-                tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                    it(
-                        "initial tokenLiquidity = " +
-                            tokenLiquidity +
-                            ", initial quoteTokenLiquidity = " +
-                            quoteTokenLiquidity,
-                        async () => {
-                            await validateWithinPeriodButOverChangeThreshold(
-                                tokenLiquidity,
-                                quoteTokenLiquidity,
-                                true,
-                                false
-                            );
-                        }
-                    );
-                });
-            });
-
-            describe("quoteTokenLiquidity change threshold surpassed", async () => {
-                tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                    it(
-                        "initial tokenLiquidity = " +
-                            tokenLiquidity +
-                            ", initial quoteTokenLiquidity = " +
-                            quoteTokenLiquidity,
-                        async () => {
-                            await validateWithinPeriodButOverChangeThreshold(
-                                tokenLiquidity,
-                                quoteTokenLiquidity,
-                                false,
-                                true
-                            );
-                        }
-                    );
-                });
-            });
-
-            describe("tokenLiquidity and quoteTokenLiquidity change threshold surpassed", async () => {
-                tests.forEach(({ tokenLiquidity, quoteTokenLiquidity }) => {
-                    it(
-                        "initial tokenLiquidity = " +
-                            tokenLiquidity +
-                            ", initial quoteTokenLiquidity = " +
-                            quoteTokenLiquidity,
-                        async () => {
-                            await validateWithinPeriodButOverChangeThreshold(
-                                tokenLiquidity,
-                                quoteTokenLiquidity,
-                                true,
-                                true
-                            );
-                        }
-                    );
-                });
-            });
-        });
+    it("Should return true when caller is not a smart contract", async () => {
+        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0, 0)).to.equal(true);
     });
 });

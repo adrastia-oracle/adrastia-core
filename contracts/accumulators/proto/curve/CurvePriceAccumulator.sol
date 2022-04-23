@@ -59,10 +59,12 @@ contract CurvePriceAccumulator is PriceAccumulator {
     }
 
     /// @inheritdoc PriceAccumulator
-    function canUpdate(address token) public view virtual override returns (bool) {
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
         if (tokenIndices[token].index == 0) return false;
 
-        return super.canUpdate(token);
+        return super.canUpdate(data);
     }
 
     /**

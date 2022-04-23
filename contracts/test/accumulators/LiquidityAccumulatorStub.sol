@@ -42,19 +42,6 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         liquidity.quoteTokenLiquidity = quoteTokenLiquidity;
     }
 
-    function setPendingObservation(
-        address token,
-        uint112 tokenLiquidity,
-        uint112 quoteTokenLiquidity,
-        uint32 blockNumber
-    ) public {
-        pendingObservations[token][msg.sender] = PendingObservation({
-            blockNumber: blockNumber,
-            tokenLiquidity: tokenLiquidity,
-            quoteTokenLiquidity: quoteTokenLiquidity
-        });
-    }
-
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;
@@ -75,7 +62,9 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) public returns (bool) {
-        return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+        bytes memory updateData = abi.encode(token);
+
+        return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function harnessChangeThresholdSurpassed(
@@ -88,18 +77,18 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     /* Overridden functions */
 
-    function needsUpdate(address token) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
-        else return super.needsUpdate(token);
+        else return super.needsUpdate(data);
     }
 
     function validateObservation(
-        address token,
+        bytes memory updateData,
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) internal virtual override returns (bool) {
         if (config.validateObservationOverridden) return config.validateObservation;
-        else return super.validateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+        else return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function fetchLiquidity(address token)
