@@ -176,12 +176,28 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
 
     /// @inheritdoc IPriceOracle
     function consultPrice(address token) public view virtual override returns (uint112 price) {
-        return fetchPrice(token);
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
+
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "PriceAccumulator: MISSING_OBSERVATION");
+
+        return observation.price;
     }
 
+    /// @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time price.
     /// @inheritdoc IPriceOracle
-    function consultPrice(address token, uint256) public view virtual override returns (uint112 price) {
-        return fetchPrice(token);
+    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
+
+        if (maxAge == 0) return fetchPrice(token);
+
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "PriceAccumulator: MISSING_OBSERVATION");
+        require(block.timestamp <= observation.timestamp + maxAge, "PriceAccumulator: RATE_TOO_OLD");
+
+        return observation.price;
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {

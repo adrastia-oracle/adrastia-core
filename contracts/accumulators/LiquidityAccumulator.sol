@@ -191,18 +191,36 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         override
         returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
-        return fetchLiquidity(token);
+        if (token == quoteTokenAddress()) return (0, 0);
+
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "LiquidityAccumulator: MISSING_OBSERVATION");
+
+        tokenLiquidity = observation.tokenLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time liquidity.
     /// @inheritdoc ILiquidityOracle
-    function consultLiquidity(address token, uint256)
+    function consultLiquidity(address token, uint256 maxAge)
         public
         view
         virtual
         override
         returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
-        return fetchLiquidity(token);
+        if (token == quoteTokenAddress()) return (0, 0);
+
+        if (maxAge == 0) return fetchLiquidity(token);
+
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "LiquidityAccumulator: MISSING_OBSERVATION");
+        require(block.timestamp <= observation.timestamp + maxAge, "LiquidityAccumulator: RATE_TOO_OLD");
+
+        tokenLiquidity = observation.tokenLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {

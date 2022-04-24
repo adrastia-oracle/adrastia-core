@@ -100,8 +100,8 @@ async function main() {
         try {
             if (await uniswapV3.liquidityAccumulator.canUpdate(updateData)) {
                 const [tokenLiquidity, quoteTokenLiquidity] = await uniswapV3.liquidityAccumulator[
-                    "consultLiquidity(address)"
-                ](token);
+                    "consultLiquidity(address,uint256)"
+                ](token, 0);
 
                 const laUpdateData = ethers.utils.defaultAbiCoder.encode(
                     ["address", "uint", "uint"],
@@ -122,7 +122,7 @@ async function main() {
             }
 
             if (await uniswapV3.priceAccumulator.canUpdate(updateData)) {
-                const price = await uniswapV3.priceAccumulator["consultPrice(address)"](token);
+                const price = await uniswapV3.priceAccumulator["consultPrice(address,uint256)"](token, 0);
 
                 const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
 
