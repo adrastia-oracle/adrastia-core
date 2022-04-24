@@ -53,9 +53,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         return changeThresholdSurpassed(a, b, updateThreshold);
     }
 
-    function stubValidateObservation(address token, uint112 price) public returns (bool) {
-        bytes memory updateData = abi.encode(token);
-
+    function stubValidateObservation(bytes memory updateData, uint112 price) public returns (bool) {
         return super.validateObservation(updateData, price);
     }
 
@@ -93,6 +91,6 @@ contract PriceAccumulatorStubCaller {
     }
 
     function stubValidateObservation(address token, uint112 price) public returns (bool) {
-        return callee.stubValidateObservation(token, price);
+        return callee.stubValidateObservation(abi.encode(token), price);
     }
 }

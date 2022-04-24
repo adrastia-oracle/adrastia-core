@@ -95,7 +95,16 @@ async function main() {
     while (true) {
         try {
             if (await curve.liquidityAccumulator.canUpdate(updateData)) {
-                const updateTx = await curve.liquidityAccumulator.update(updateData);
+                const [tokenLiquidity, quoteTokenLiquidity] = await curve.liquidityAccumulator[
+                    "consultLiquidity(address)"
+                ](token);
+
+                const laUpdateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token, tokenLiquidity, quoteTokenLiquidity]
+                );
+
+                const updateTx = await curve.liquidityAccumulator.update(laUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -109,7 +118,11 @@ async function main() {
             }
 
             if (await curve.priceAccumulator.canUpdate(updateData)) {
-                const updateTx = await curve.priceAccumulator.update(updateData);
+                const price = await curve.priceAccumulator["consultPrice(address)"](token);
+
+                const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
+
+                const updateTx = await curve.priceAccumulator.update(paUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(

@@ -58,12 +58,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     }
 
     function stubValidateObservation(
-        address token,
+        bytes memory updateData,
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) public returns (bool) {
-        bytes memory updateData = abi.encode(token);
-
         return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
@@ -125,6 +123,6 @@ contract LiquidityAccumulatorStubCaller {
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) public returns (bool) {
-        return callee.stubValidateObservation(token, tokenLiquidity, quoteTokenLiquidity);
+        return callee.stubValidateObservation(abi.encode(token), tokenLiquidity, quoteTokenLiquidity);
     }
 }

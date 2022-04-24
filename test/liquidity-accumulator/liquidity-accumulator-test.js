@@ -1331,7 +1331,81 @@ describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteT
         );
     });
 
-    it("Should return true when caller is not a smart contract", async () => {
-        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0, 0)).to.equal(true);
+    describe("Caller is not a smart contract", function () {
+        it("Should return true when provided liquidity levels match the observed levels", async function () {
+            // "observed"
+            const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+            const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+            // provided externally
+            const pTokenLiquidity = oTokenLiquidity;
+            const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+
+            const updateData = ethers.utils.defaultAbiCoder.encode(
+                ["address", "uint", "uint"],
+                [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+            );
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
+            ).to.equal(true);
+        });
+
+        it("Should return false when the observed token liquidity is too different from the provided value", async function () {
+            // "observed"
+            const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+            const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+            // provided externally
+            const pTokenLiquidity = oTokenLiquidity.mul(2);
+            const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+
+            const updateData = ethers.utils.defaultAbiCoder.encode(
+                ["address", "uint", "uint"],
+                [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+            );
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
+            ).to.equal(false);
+        });
+
+        it("Should return false when the observed quote token liquidity is too different from the provided value", async function () {
+            // "observed"
+            const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+            const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+            // provided externally
+            const pTokenLiquidity = oTokenLiquidity;
+            const pQuoteTokenLiquidity = oQuoteTokenLiquidity.mul(2);
+
+            const updateData = ethers.utils.defaultAbiCoder.encode(
+                ["address", "uint", "uint"],
+                [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+            );
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
+            ).to.equal(false);
+        });
+
+        it("Should return false when the observed liquidity levels are too different from the provided values", async function () {
+            // "observed"
+            const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+            const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+            // provided externally
+            const pTokenLiquidity = oTokenLiquidity.mul(2);
+            const pQuoteTokenLiquidity = oQuoteTokenLiquidity.mul(2);
+
+            const updateData = ethers.utils.defaultAbiCoder.encode(
+                ["address", "uint", "uint"],
+                [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+            );
+
+            expect(
+                await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
+            ).to.equal(false);
+        });
     });
 });

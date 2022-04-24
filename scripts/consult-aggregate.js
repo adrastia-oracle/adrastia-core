@@ -38,7 +38,7 @@ async function createContract(name, ...deploymentArgs) {
 async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
-    const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
+    const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
         "UniswapV2LiquidityAccumulator",
@@ -80,7 +80,7 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
 
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
-    const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
+    const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
         "UniswapV3LiquidityAccumulator",
@@ -197,7 +197,16 @@ async function main() {
     while (true) {
         try {
             if (await uniswapV2.liquidityAccumulator.canUpdate(updateData)) {
-                const updateTx = await uniswapV2.liquidityAccumulator.update(updateData);
+                const [tokenLiquidity, quoteTokenLiquidity] = await uniswapV2.liquidityAccumulator[
+                    "consultLiquidity(address)"
+                ](token);
+
+                const laUpdateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token, tokenLiquidity, quoteTokenLiquidity]
+                );
+
+                const updateTx = await uniswapV2.liquidityAccumulator.update(laUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -211,7 +220,11 @@ async function main() {
             }
 
             if (await uniswapV2.priceAccumulator.canUpdate(updateData)) {
-                const updateTx = await uniswapV2.priceAccumulator.update(updateData);
+                const price = await uniswapV2.priceAccumulator["consultPrice(address)"](token);
+
+                const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
+
+                const updateTx = await uniswapV2.priceAccumulator.update(paUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -225,7 +238,16 @@ async function main() {
             }
 
             if (await uniswapV3.liquidityAccumulator.canUpdate(updateData)) {
-                const updateTx = await uniswapV3.liquidityAccumulator.update(updateData);
+                const [tokenLiquidity, quoteTokenLiquidity] = await uniswapV3.liquidityAccumulator[
+                    "consultLiquidity(address)"
+                ](token);
+
+                const laUpdateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token, tokenLiquidity, quoteTokenLiquidity]
+                );
+
+                const updateTx = await uniswapV3.liquidityAccumulator.update(laUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -239,7 +261,11 @@ async function main() {
             }
 
             if (await uniswapV3.priceAccumulator.canUpdate(updateData)) {
-                const updateTx = await uniswapV3.priceAccumulator.update(updateData);
+                const price = await uniswapV3.priceAccumulator["consultPrice(address)"](token);
+
+                const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
+
+                const updateTx = await uniswapV3.priceAccumulator.update(paUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -253,7 +279,16 @@ async function main() {
             }
 
             if (await sushiswap.liquidityAccumulator.canUpdate(updateData)) {
-                const updateTx = await sushiswap.liquidityAccumulator.update(updateData);
+                const [tokenLiquidity, quoteTokenLiquidity] = await sushiswap.liquidityAccumulator[
+                    "consultLiquidity(address)"
+                ](token);
+
+                const laUpdateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token, tokenLiquidity, quoteTokenLiquidity]
+                );
+
+                const updateTx = await sushiswap.liquidityAccumulator.update(laUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(
@@ -267,7 +302,11 @@ async function main() {
             }
 
             if (await sushiswap.priceAccumulator.canUpdate(updateData)) {
-                const updateTx = await sushiswap.priceAccumulator.update(updateData);
+                const price = await sushiswap.priceAccumulator["consultPrice(address)"](token);
+
+                const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
+
+                const updateTx = await sushiswap.priceAccumulator.update(paUpdateData);
                 const updateReceipt = await updateTx.wait();
 
                 console.log(

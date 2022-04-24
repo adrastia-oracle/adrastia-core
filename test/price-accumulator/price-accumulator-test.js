@@ -1041,7 +1041,29 @@ describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteToken
         );
     });
 
-    it("Should return true when caller is not a smart contract", async () => {
-        expect(await accumulator.callStatic.stubValidateObservation(token.address, 0)).to.equal(true);
+    describe("Caller is not a smart contract", function () {
+        it("Should return true when provided price matches the observed price", async function () {
+            // "observed"
+            const oPrice = ethers.utils.parseUnits("1.0", 18);
+
+            // provided externally
+            const pPrice = oPrice;
+
+            const updateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token.address, pPrice]);
+
+            expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(true);
+        });
+
+        it("Should return false when the observed price is too different from the provided value", async function () {
+            // "observed"
+            const oPrice = ethers.utils.parseUnits("1.0", 18);
+
+            // provided externally
+            const pPrice = oPrice.mul(2);
+
+            const updateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token.address, pPrice]);
+
+            expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(false);
+        });
     });
 });
