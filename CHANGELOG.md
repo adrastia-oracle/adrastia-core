@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0-rc.7
+### Accumulators
+- Add observation validation against externally provided data (MEV and flashbot attack protection)
+
 ## v1.0.0-rc.6
 ### Interfaces
 - Make IUpdateByToken#update public
