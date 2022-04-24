@@ -97,10 +97,10 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return needsUpdate(data);
     }
 
-    /// @notice Updates the accumulator.
+    /// @notice Updates the accumulator for a specific token.
     /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
-    /// @param data The encoded address of the token for which to perform the update.
-    /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
+    /// @param data Encoding of the token address followed by the expected token liquidity and quote token liquidity.
+    /// @return updated True if anything was updated; false otherwise.
     function update(bytes memory data) public virtual override returns (bool) {
         if (needsUpdate(data)) return performUpdate(data);
 
@@ -233,12 +233,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
-            // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
-            // This limits the following manipulation:
-            //   A user adds a lot of liquidity to a [low liquidity] pool with an invalid price, updates this
-            //   accumulator, then removes the liquidity in a single transaction.
-            // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
-            // and stop/limit such an attack.
+            // If the observation fails validation, do not update anything
             if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
 
             unchecked {
@@ -261,19 +256,40 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return false;
     }
 
+    /// @notice Requires the message sender of an update to not be a smart contract.
+    /// @dev Can be overridden to disable this requirement.
+    function validateObservationRequireEoa() internal virtual {
+        // Message sender should never be a smart contract. Smart contracts can use flash attacks to manipulate data.
+        require(msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
+    }
+
+    function validateObservationAllowedChange(address) internal virtual returns (uint256) {
+        // Allow the liquidity levels to change by half of the update threshold
+        return updateThreshold / 2;
+    }
+
     function validateObservation(
         bytes memory updateData,
         uint112 tokenLiquidity,
         uint112 quoteTokenLiquidity
     ) internal virtual returns (bool) {
-        require(msg.sender == tx.origin, "LiquidityAccumulator: MUST_BE_EOA");
+        validateObservationRequireEoa();
 
-        // Silence un-used variable warnings
-        updateData;
-        tokenLiquidity;
-        quoteTokenLiquidity;
+        // Extract provided tokenLiquidity and quoteTokenLiquidity
+        // The message sender should call consultLiquidity immediately before calling the update function, passing
+        //   the returned values into the update data.
+        (address token, uint112 pTokenLiquidity, uint112 pQuoteTokenLiquidity) = abi.decode(
+            updateData,
+            (address, uint112, uint112)
+        );
 
-        return true;
+        uint256 allowedChangeThreshold = validateObservationAllowedChange(token);
+
+        // We require liquidity levels to not change by more than the threshold above
+        // This check limits the ability of MEV and flashbots from manipulating data
+        return
+            !changeThresholdSurpassed(tokenLiquidity, pTokenLiquidity, allowedChangeThreshold) &&
+            !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
     }
 
     function changeThresholdSurpassed(

@@ -89,10 +89,10 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return needsUpdate(data);
     }
 
-    /// @notice Updates the accumulator.
+    /// @notice Updates the accumulator for a specific token.
     /// @dev Must be called by an EOA to limit the attack vector, unless it's the first observation for a token.
-    /// @param data The encoded address of the token for which to perform the update.
-    /// @return updated True if anything (other than a pending observation) was updated; false otherwise.
+    /// @param data Encoding of the token address followed by the expected price.
+    /// @return updated True if anything was updated; false otherwise.
     function update(bytes memory data) public virtual override returns (bool) {
         if (needsUpdate(data)) return performUpdate(data);
 
@@ -212,12 +212,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
 
         if (deltaTime != 0) {
             unchecked {
-                // Validate that the observation stays approximately the same for OBSERVATION_BLOCK_PERIOD blocks.
-                // This limits the following manipulation:
-                //   A user trades a large amount of tokens in this pool to create an invalid price, updates this
-                //   accumulator, then performs a reverse trade all in the same transaction.
-                // By spanning the observation over a number of blocks, arbitrageurs will take the attacker's funds
-                // and stop/limit such an attack.
+                // If the observation fails validation, do not update anything
                 if (!validateObservation(data, price)) return false;
 
                 // Overflow is desired and results in correct functionality
@@ -237,14 +232,32 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         return false;
     }
 
-    function validateObservation(bytes memory updateData, uint112 price) internal virtual returns (bool) {
+    /// @notice Requires the message sender of an update to not be a smart contract.
+    /// @dev Can be overridden to disable this requirement.
+    function validateObservationRequireEoa() internal virtual {
+        // Message sender should never be a smart contract. Smart contracts can use flash attacks to manipulate data.
         require(msg.sender == tx.origin, "PriceAccumulator: MUST_BE_EOA");
+    }
 
-        // Silence un-used variable warnings
-        updateData;
-        price;
+    function validateObservationAllowedChange(address) internal virtual returns (uint256) {
+        // Allow the price to change by half of the update threshold
+        return updateThreshold / 2;
+    }
 
-        return true;
+    function validateObservation(bytes memory updateData, uint112 price) internal virtual returns (bool) {
+        validateObservationRequireEoa();
+
+        // Extract provided price
+        // The message sender should call consultPrice immediately before calling the update function, passing
+        //   the returned value into the update data.
+        // We could also use this to anchor the price to an off-chain price
+        (address token, uint112 pPrice) = abi.decode(updateData, (address, uint112));
+
+        uint256 allowedChangeThreshold = validateObservationAllowedChange(token);
+
+        // We require the price to not change by more than the threshold above
+        // This check limits the ability of MEV and flashbots from manipulating data
+        return !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
     }
 
     function changeThresholdSurpassed(
