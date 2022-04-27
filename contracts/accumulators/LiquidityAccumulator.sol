@@ -60,6 +60,30 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         }
     }
 
+    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
+    /// @dev Calculates the change from the stored observation to the current observation.
+    /// @param token The token to check.
+    /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
+    ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
+    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    function changeThresholdSurpassed(address token, uint256 changeThreshold) public view virtual returns (bool) {
+        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
+
+        ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
+
+        return
+            changeThresholdSurpassed(tokenLiquidity, lastObservation.tokenLiquidity, changeThreshold) ||
+            changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, changeThreshold);
+    }
+
+    /// @notice Determines whether the update threshold has been surpassed for the specified token.
+    /// @dev Calculates the change from the stored observation to the current observation.
+    /// @param token The token to check.
+    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    function updateThresholdSurpassed(address token) public view virtual returns (bool) {
+        return changeThresholdSurpassed(token, updateThreshold);
+    }
+
     /// @notice Checks if this accumulator needs an update by checking the time since the last update and the change in
     ///   liquidities.
     /// @param data The encoded address of the token for which to perform the update.
@@ -81,14 +105,9 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         /*
          * maxUpdateDelay > deltaTime >= minUpdateDelay
          *
-         * Check if the % change in liquidity warrents an update (saves gas vs. always updating on change)
+         * Check if the % change in liquidity warrants an update (saves gas vs. always updating on change)
          */
-
-        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
-
-        return
-            changeThresholdSurpassed(tokenLiquidity, lastObservation.tokenLiquidity, updateThreshold) ||
-            changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
+        return updateThresholdSurpassed(token);
     }
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -310,11 +329,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
             !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
     }
 
-    function changeThresholdSurpassed(
-        uint256 a,
-        uint256 b,
-        uint256 updateTheshold
-    ) internal view virtual returns (bool) {
+    function calculateChange(uint256 a, uint256 b) internal view virtual returns (uint256 change, bool isInfinite) {
         // Ensure a is never smaller than b
         if (a < b) {
             uint256 temp = a;
@@ -326,11 +341,11 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
 
         if (a == 0) {
             // a == b == 0 (since a >= b), therefore no change
-            return false;
+            return (0, false);
         } else if (b == 0) {
             // (a > 0 && b == 0) => change threshold passed
             // Zero to non-zero always returns true
-            return true;
+            return (0, true);
         }
 
         unchecked {
@@ -341,12 +356,21 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
             // the change threshold has been surpassed.
             // If our assumption is incorrect, the accumulator will be extra-up-to-date, which won't
             // really break anything, but will cost more gas in keeping this accumulator updated.
-            if (preciseDelta < delta) return true;
+            if (preciseDelta < delta) return (0, true);
 
-            uint256 change = preciseDelta / b;
-
-            return change >= updateTheshold;
+            change = preciseDelta / b;
+            isInfinite = false;
         }
+    }
+
+    function changeThresholdSurpassed(
+        uint256 a,
+        uint256 b,
+        uint256 changeThreshold
+    ) internal view virtual returns (bool) {
+        (uint256 change, bool isInfinite) = calculateChange(a, b);
+
+        return isInfinite || change > changeThreshold;
     }
 
     function fetchLiquidity(address token)
