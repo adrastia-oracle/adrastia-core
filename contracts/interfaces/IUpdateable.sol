@@ -20,4 +20,9 @@ abstract contract IUpdateable {
     /// @param data Any data relating to the update.
     /// @return b True if an update can be performed by the caller; false otherwise.
     function canUpdate(bytes memory data) public view virtual returns (bool b);
+
+    /// @notice Gets the timestamp of the last update.
+    /// @param data Any data relating to the update.
+    /// @return A unix timestamp.
+    function lastUpdateTime(bytes memory data) public view virtual returns (uint256);
 }

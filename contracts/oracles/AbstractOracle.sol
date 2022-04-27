@@ -25,6 +25,14 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     /// @inheritdoc IUpdateable
     function canUpdate(bytes memory data) public view virtual override returns (bool);
 
+    /// @param data The encoded address of the token for which to perform the update.
+    /// @inheritdoc IUpdateable
+    function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
+        address token = abi.decode(data, (address));
+
+        return observations[token].timestamp;
+    }
+
     function consultPrice(address token) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
 

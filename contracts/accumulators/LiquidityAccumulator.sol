@@ -87,11 +87,7 @@ abstract contract LiquidityAccumulator is
     /// @param data The encoded address of the token for which to perform the update.
     /// @inheritdoc IUpdateable
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
-        address token = abi.decode(data, (address));
-
-        ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
-
-        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+        uint256 deltaTime = block.timestamp - lastUpdateTime(data);
         if (deltaTime < minUpdateDelay) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
@@ -105,6 +101,8 @@ abstract contract LiquidityAccumulator is
          *
          * Check if the % change in liquidity warrants an update (saves gas vs. always updating on change)
          */
+        address token = abi.decode(data, (address));
+
         return updateThresholdSurpassed(token);
     }
 
@@ -122,6 +120,13 @@ abstract contract LiquidityAccumulator is
         if (needsUpdate(data)) return performUpdate(data);
 
         return false;
+    }
+
+    /// @inheritdoc IUpdateable
+    function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
+        address token = abi.decode(data, (address));
+
+        return observations[token].timestamp;
     }
 
     /// @inheritdoc ILiquidityAccumulator

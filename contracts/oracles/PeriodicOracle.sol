@@ -21,9 +21,7 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
 
     /// @inheritdoc AbstractOracle
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
-        address token = abi.decode(data, (address));
-
-        uint256 deltaTime = block.timestamp - observations[token].timestamp;
+        uint256 deltaTime = block.timestamp - lastUpdateTime(data);
 
         return deltaTime >= period;
     }
