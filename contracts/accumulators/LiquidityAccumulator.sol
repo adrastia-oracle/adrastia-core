@@ -165,29 +165,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         }
     }
 
-    /// @inheritdoc ILiquidityAccumulator
-    function getLastObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.LiquidityObservation memory)
-    {
-        return observations[token];
-    }
-
-    /// @inheritdoc ILiquidityAccumulator
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.LiquidityObservation memory observation)
-    {
-        (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
-        observation.timestamp = block.timestamp.toUint32();
-    }
-
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
@@ -370,7 +347,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     ) internal view virtual returns (bool) {
         (uint256 change, bool isInfinite) = calculateChange(a, b);
 
-        return isInfinite || change > changeThreshold;
+        return isInfinite || change >= changeThreshold;
     }
 
     function fetchLiquidity(address token)

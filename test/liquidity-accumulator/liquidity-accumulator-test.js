@@ -20,7 +20,7 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-describe("LiquidityAccumulator#getCurrentObservation", function () {
+describe("LiquidityAccumulator#fetchLiquidity", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -55,13 +55,10 @@ describe("LiquidityAccumulator#getCurrentObservation", function () {
             // Configure liquidity
             await liquidityAccumulator.setLiquidity(GRT, test[0], test[1]);
 
-            const [tokenLiquidity, quoteTokenLiquidity, timestamp] = await liquidityAccumulator.getCurrentObservation(
-                GRT
-            );
+            const { tokenLiquidity, quoteTokenLiquidity } = await liquidityAccumulator.stubFetchLiquidity(GRT);
 
             expect(tokenLiquidity).to.equal(test[0]);
             expect(quoteTokenLiquidity).to.equal(test[1]);
-            expect(timestamp).to.equal(await currentBlockTimestamp());
         });
     }
 });
@@ -856,7 +853,7 @@ describe("LiquidityAccumulator#update", () => {
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
         const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
-        const observation = await liquidityAccumulator.getLastObservation(GRT);
+        const observation = await liquidityAccumulator.observations(GRT);
 
         var expectedCumulativeTokenLiquidity = 0;
         var expectedCumulativeQuoteTokenLiquidity = 0;
@@ -982,7 +979,7 @@ describe("LiquidityAccumulator#update", () => {
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
 
         const accumulation2 = await liquidityAccumulator.getLastAccumulation(GRT);
-        const observation2 = await liquidityAccumulator.getLastObservation(GRT);
+        const observation2 = await liquidityAccumulator.observations(GRT);
 
         const deltaTime2 = updateTime2 - updateTime;
 
@@ -1160,7 +1157,7 @@ describe("LiquidityAccumulator#update", () => {
             const expectedCumulativeQuoteTokenLiquidity = initialQuoteTokenLiquidity.mul(BigNumber.from(deltaTime));
 
             const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
-            const observation = await liquidityAccumulator.getLastObservation(GRT);
+            const observation = await liquidityAccumulator.observations(GRT);
 
             expect(accumulation["cumulativeTokenLiquidity"], "CTL").to.equal(expectedCumulativeTokenLiquidity);
             expect(accumulation["cumulativeQuoteTokenLiquidity"], "CQTL").to.equal(
@@ -1203,7 +1200,7 @@ describe("LiquidityAccumulator#update", () => {
         await expect(firstUpdateReceipt).to.not.emit(liquidityAccumulator, "Updated");
 
         const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
-        const observation = await liquidityAccumulator.getLastObservation(GRT);
+        const observation = await liquidityAccumulator.observations(GRT);
 
         expect(accumulation["cumulativeTokenLiquidity"]).to.equal(0);
         expect(accumulation["cumulativeQuoteTokenLiquidity"]).to.equal(0);

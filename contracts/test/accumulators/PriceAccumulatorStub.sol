@@ -56,6 +56,10 @@ contract PriceAccumulatorStub is PriceAccumulator {
         config.validateObservation = validateObservation_;
     }
 
+    function stubFetchPrice(address token) public view returns (uint256 price) {
+        return fetchPrice(token);
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,

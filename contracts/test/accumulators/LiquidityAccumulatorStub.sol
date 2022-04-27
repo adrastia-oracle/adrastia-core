@@ -78,6 +78,14 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
+    function stubFetchLiquidity(address token)
+        public
+        view
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        return fetchLiquidity(token);
+    }
+
     function harnessChangeThresholdSurpassed(
         uint256 a,
         uint256 b,

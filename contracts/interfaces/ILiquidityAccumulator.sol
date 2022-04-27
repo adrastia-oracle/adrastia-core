@@ -60,22 +60,4 @@ abstract contract ILiquidityAccumulator is IUpdateable {
         view
         virtual
         returns (AccumulationLibrary.LiquidityAccumulator memory);
-
-    /// @notice Gets the last calculated time-weighted average liquidity levels of a token and the quote token.
-    /// @param token The address of the token to get the liquidity levels for (with the quote token).
-    /// @return The last liquidity levels (in wei) along with the timestamp of those levels.
-    function getLastObservation(address token)
-        public
-        view
-        virtual
-        returns (ObservationLibrary.LiquidityObservation memory);
-
-    /// @notice Gets the current calculated time-weighted average liquidity levels of a token and the quote token.
-    /// @param token The address of the token to get the liquidity levels for (with the quote token).
-    /// @return The current liquidity levels (in wei) along with the timestamp of those levels.
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        returns (ObservationLibrary.LiquidityObservation memory);
 }

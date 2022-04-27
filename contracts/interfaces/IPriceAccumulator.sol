@@ -56,18 +56,4 @@ abstract contract IPriceAccumulator is IUpdateable {
         view
         virtual
         returns (AccumulationLibrary.PriceAccumulator memory);
-
-    /// @notice Gets the last calculated time-weighted average price of a token.
-    /// @param token The address of the token to get the price for.
-    /// @return The last price along with the timestamp of that price.
-    function getLastObservation(address token) public view virtual returns (ObservationLibrary.PriceObservation memory);
-
-    /// @notice Gets the current calculated time-weighted average price of a token.
-    /// @param token The address of the token to get the price for.
-    /// @return The current price along with the timestamp of that price.
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        returns (ObservationLibrary.PriceObservation memory);
 }

@@ -19,7 +19,7 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-describe("PriceAccumulator#getCurrentObservation", function () {
+describe("PriceAccumulator#fetchPrice", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -44,10 +44,9 @@ describe("PriceAccumulator#getCurrentObservation", function () {
             // Configure price
             await accumulator.setPrice(GRT, test[0]);
 
-            const [price, timestamp] = await accumulator.getCurrentObservation(GRT);
+            const price = await accumulator.stubFetchPrice(GRT);
 
             expect(price).to.equal(test[0]);
-            expect(timestamp).to.equal(await currentBlockTimestamp());
         });
     }
 });
@@ -663,7 +662,7 @@ describe("PriceAccumulator#update", () => {
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
         const accumulation = await accumulator.getLastAccumulation(GRT);
-        const observation = await accumulator.getLastObservation(GRT);
+        const observation = await accumulator.observations(GRT);
 
         var expectedCumulativePrice = 0;
 
@@ -760,7 +759,7 @@ describe("PriceAccumulator#update", () => {
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
 
         const accumulation2 = await accumulator.getLastAccumulation(GRT);
-        const observation2 = await accumulator.getLastObservation(GRT);
+        const observation2 = await accumulator.observations(GRT);
 
         const deltaTime2 = updateTime2 - updateTime;
 
@@ -894,7 +893,7 @@ describe("PriceAccumulator#update", () => {
             const expectedCumulativePrice = initialPrice.mul(BigNumber.from(deltaTime));
 
             const accumulation = await accumulator.getLastAccumulation(GRT);
-            const observation = await accumulator.getLastObservation(GRT);
+            const observation = await accumulator.observations(GRT);
 
             expect(accumulation["cumulativePrice"], "CTL").to.equal(expectedCumulativePrice);
 
@@ -931,7 +930,7 @@ describe("PriceAccumulator#update", () => {
         await expect(firstUpdateReceipt).to.not.emit(accumulator, "Updated");
 
         const accumulation = await accumulator.getLastAccumulation(GRT);
-        const observation = await accumulator.getLastObservation(GRT);
+        const observation = await accumulator.observations(GRT);
 
         expect(accumulation["cumulativePrice"]).to.equal(0);
         expect(observation["price"]).to.equal(initialPrice);

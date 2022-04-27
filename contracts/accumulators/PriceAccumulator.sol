@@ -156,29 +156,6 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         }
     }
 
-    /// @inheritdoc IPriceAccumulator
-    function getLastObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.PriceObservation memory)
-    {
-        return observations[token];
-    }
-
-    /// @inheritdoc IPriceAccumulator
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.PriceObservation memory observation)
-    {
-        observation.price = fetchPrice(token);
-        observation.timestamp = block.timestamp.toUint32();
-    }
-
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
