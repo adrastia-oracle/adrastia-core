@@ -6,24 +6,25 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
+import "./AbstractAccumulator.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../interfaces/ILiquidityOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiquidityOracle, SimpleQuotationMetadata {
+abstract contract LiquidityAccumulator is
+    IERC165,
+    ILiquidityAccumulator,
+    ILiquidityOracle,
+    AbstractAccumulator,
+    SimpleQuotationMetadata
+{
     using AddressLibrary for address;
     using SafeCast for uint256;
 
-    uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
-    uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
-
-    uint256 public immutable updateThreshold;
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
-
-    uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) public observations;
@@ -33,8 +34,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) SimpleQuotationMetadata(quoteToken_) {
-        updateThreshold = updateThreshold_;
+    ) AbstractAccumulator(updateThreshold_) SimpleQuotationMetadata(quoteToken_) {
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
@@ -66,7 +66,13 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
     /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
     ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
     /// @return surpassed True if the update threshold has been surpassed; false otherwise.
-    function changeThresholdSurpassed(address token, uint256 changeThreshold) public view virtual returns (bool) {
+    function changeThresholdSurpassed(address token, uint256 changeThreshold)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
@@ -74,14 +80,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return
             changeThresholdSurpassed(tokenLiquidity, lastObservation.tokenLiquidity, changeThreshold) ||
             changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, changeThreshold);
-    }
-
-    /// @notice Determines whether the update threshold has been surpassed for the specified token.
-    /// @dev Calculates the change from the stored observation to the current observation.
-    /// @param token The token to check.
-    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
-    function updateThresholdSurpassed(address token) public view virtual returns (bool) {
-        return changeThresholdSurpassed(token, updateThreshold);
     }
 
     /// @notice Checks if this accumulator needs an update by checking the time since the last update and the change in
@@ -170,13 +168,15 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         public
         view
         virtual
-        override(IERC165, SimpleQuotationMetadata)
+        override(IERC165, SimpleQuotationMetadata, AbstractAccumulator)
         returns (bool)
     {
         return
             interfaceId == type(ILiquidityAccumulator).interfaceId ||
             interfaceId == type(ILiquidityOracle).interfaceId ||
-            super.supportsInterface(interfaceId);
+            interfaceId == type(IUpdateable).interfaceId ||
+            SimpleQuotationMetadata.supportsInterface(interfaceId) ||
+            AbstractAccumulator.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc ILiquidityOracle
@@ -304,50 +304,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return
             !changeThresholdSurpassed(tokenLiquidity, pTokenLiquidity, allowedChangeThreshold) &&
             !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
-    }
-
-    function calculateChange(uint256 a, uint256 b) internal view virtual returns (uint256 change, bool isInfinite) {
-        // Ensure a is never smaller than b
-        if (a < b) {
-            uint256 temp = a;
-            a = b;
-            b = temp;
-        }
-
-        // a >= b
-
-        if (a == 0) {
-            // a == b == 0 (since a >= b), therefore no change
-            return (0, false);
-        } else if (b == 0) {
-            // (a > 0 && b == 0) => change threshold passed
-            // Zero to non-zero always returns true
-            return (0, true);
-        }
-
-        unchecked {
-            uint256 delta = a - b; // a >= b, therefore no underflow
-            uint256 preciseDelta = delta * CHANGE_PRECISION;
-
-            // If the delta is so large that multiplying by CHANGE_PRECISION overflows, we assume that
-            // the change threshold has been surpassed.
-            // If our assumption is incorrect, the accumulator will be extra-up-to-date, which won't
-            // really break anything, but will cost more gas in keeping this accumulator updated.
-            if (preciseDelta < delta) return (0, true);
-
-            change = preciseDelta / b;
-            isInfinite = false;
-        }
-    }
-
-    function changeThresholdSurpassed(
-        uint256 a,
-        uint256 b,
-        uint256 changeThreshold
-    ) internal view virtual returns (bool) {
-        (uint256 change, bool isInfinite) = calculateChange(a, b);
-
-        return isInfinite || change >= changeThreshold;
     }
 
     function fetchLiquidity(address token)

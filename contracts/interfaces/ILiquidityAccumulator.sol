@@ -3,7 +3,7 @@ pragma solidity >=0.5.0 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./IUpdateable.sol";
+import "./IAccumulator.sol";
 
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
@@ -14,7 +14,7 @@ import "../libraries/ObservationLibrary.sol";
  *   single quote token and many exchange tokens.
  * @dev Liquidity accumulators are used to calculate time-weighted average liquidity levels.
  */
-abstract contract ILiquidityAccumulator is IUpdateable {
+abstract contract ILiquidityAccumulator is IAccumulator {
     /// @notice Emitted when the accumulator is updated.
     /// @dev The accumulator's observation and cumulative values are updated when this is emitted.
     /// @param token The address of the token that the update is for.
@@ -22,10 +22,6 @@ abstract contract ILiquidityAccumulator is IUpdateable {
     /// @param quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
     /// @param timestamp The epoch timestamp of the update (in seconds).
     event Updated(address indexed token, uint256 tokenLiquidity, uint256 quoteTokenLiquidity, uint256 timestamp);
-
-    /// @notice Gets the scalar (as a power of 10) to be used for calculating changes in liquidity levels.
-    /// @return The scalar to be used for calculating changes in liquidity levels.
-    function changePrecision() external view virtual returns (uint256);
 
     /**
      * @notice Calculates a liquidity levels from two different cumulative liquidity levels.

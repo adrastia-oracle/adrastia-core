@@ -47,12 +47,12 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
         // Always keep the liquidity accumulator updated so that we don't have to do so in our tests.
-        try ILiquidityAccumulator(liquidityAccumulator).update(data) returns (bool) {} catch Error(
-            string memory
-        ) {} catch (bytes memory) {}
+        try IUpdateable(liquidityAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
+            bytes memory
+        ) {}
 
         // Always keep the price accumulator updated so that we don't have to do so in our tests.
-        try IPriceAccumulator(priceAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
+        try IUpdateable(priceAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
             bytes memory
         ) {}
 

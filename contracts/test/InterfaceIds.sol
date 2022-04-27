@@ -12,6 +12,7 @@ import "../interfaces/IPriceAccumulator.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../interfaces/IQuoteToken.sol";
 import "../interfaces/IUpdateable.sol";
+import "../interfaces/IAccumulator.sol";
 
 contract InterfaceIds {
     function iAggregatedOracle() external pure returns (bytes4) {
@@ -56,5 +57,9 @@ contract InterfaceIds {
 
     function iUpdateable() external pure returns (bytes4) {
         return type(IUpdateable).interfaceId;
+    }
+
+    function iAccumulator() external pure returns (bytes4) {
+        return type(IAccumulator).interfaceId;
     }
 }
