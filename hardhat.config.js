@@ -3,6 +3,7 @@ require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-tracer");
 require("@atixlabs/hardhat-time-n-mine");
+require("hardhat-contract-sizer");
 
 const SOLC_8 = {
     version: "0.8.11",
