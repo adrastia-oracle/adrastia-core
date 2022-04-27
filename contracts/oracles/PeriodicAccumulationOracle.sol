@@ -52,6 +52,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             AccumulationLibrary.PriceAccumulator memory freshAccumulation = IPriceAccumulator(priceAccumulator)
                 .getCurrentAccumulation(token);
 
+            AccumulationLibrary.PriceAccumulator storage lastAccumulation = priceAccumulations[token];
+
             uint256 lastAccumulationTime = priceAccumulations[token].timestamp;
 
             if (freshAccumulation.timestamp > lastAccumulationTime) {
@@ -60,12 +62,13 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 if (lastAccumulationTime != 0) {
                     // We have two accumulations -> calculate price from them
                     observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
-                        priceAccumulations[token],
+                        lastAccumulation,
                         freshAccumulation
                     );
                 }
 
-                priceAccumulations[token] = freshAccumulation;
+                lastAccumulation.cumulativePrice = freshAccumulation.cumulativePrice;
+                lastAccumulation.timestamp = freshAccumulation.timestamp;
             }
         }
 
@@ -80,7 +83,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
             AccumulationLibrary.LiquidityAccumulator storage lastAccumulation = liquidityAccumulations[token];
 
-            uint256 lastAccumulationTime = lastAccumulation.timestamp;
+            uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
 
             if (freshAccumulation.timestamp > lastAccumulationTime) {
                 // Accumulator updated, so we update our observation
