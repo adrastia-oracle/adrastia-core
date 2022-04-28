@@ -87,6 +87,9 @@ describe("PriceAccumulator#needsUpdate", () => {
         // Override changeThresholdPassed (false)
         await accumulator.overrideChangeThresholdPassed(true, false);
 
+        // Override validateObservation
+        await accumulator.overrideValidateObservation(true, true);
+
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
@@ -890,7 +893,7 @@ describe("PriceAccumulator#update", () => {
 
             const deltaTime = firstUpdateTime - initialUpdateTime;
 
-            const expectedCumulativePrice = initialPrice.mul(BigNumber.from(deltaTime));
+            const expectedCumulativePrice = initialPrice.add(initialPrice.mul(BigNumber.from(deltaTime)));
 
             const accumulation = await accumulator.getLastAccumulation(GRT);
             const observation = await accumulator.observations(GRT);
@@ -932,7 +935,7 @@ describe("PriceAccumulator#update", () => {
         const accumulation = await accumulator.getLastAccumulation(GRT);
         const observation = await accumulator.observations(GRT);
 
-        expect(accumulation["cumulativePrice"]).to.equal(0);
+        expect(accumulation["cumulativePrice"]).to.equal(initialPrice);
         expect(observation["price"]).to.equal(initialPrice);
         expect(observation["timestamp"]).to.equal(initialUpdateTime);
     });

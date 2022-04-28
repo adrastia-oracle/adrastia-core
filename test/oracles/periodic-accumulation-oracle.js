@@ -881,6 +881,104 @@ describe("PeriodicAccumulationOracle#update", function () {
         expectedPrice = price;
     }
 
+    it("Shouldn't update anything if the current accumulations' timestamps equals the last", async function () {
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+
+        const realTokenLiquidity = BigNumber.from(1000);
+        const realQuoteTokenLiquidity = BigNumber.from(20000);
+
+        // Add liquidity. Price = 20.
+        await addLiquidity(realTokenLiquidity, realQuoteTokenLiquidity);
+
+        const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+        // Update accumulators
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        const fakeAccumulationTimestamp = (await currentBlockTimestamp()) + 100;
+        const fakeObservationTimestamp = BigNumber.from(1);
+        const fakePrice = BigNumber.from(1);
+        const fakeTokenLiquidity = BigNumber.from(1);
+        const fakeQuoteTokenLiquidity = BigNumber.from(1);
+
+        await oracle.stubSetObservation(
+            token.address,
+            fakePrice,
+            fakeTokenLiquidity,
+            fakeQuoteTokenLiquidity,
+            fakeObservationTimestamp
+        );
+
+        await oracle.stubSetAccumulations(
+            token.address,
+            fakePrice,
+            fakeTokenLiquidity,
+            fakeQuoteTokenLiquidity,
+            fakeAccumulationTimestamp
+        );
+
+        // Make sure that we perform an update
+        await oracle.overrideNeedsUpdate(true, true);
+
+        // Next block timestamp will equal fakeAccumulationTimestamp
+        await hre.timeAndMine.setTime(fakeAccumulationTimestamp - 1);
+
+        const updateTx = await oracle.update(updateData);
+
+        expect(updateTx).to.not.emit(oracle, "Updated");
+
+        const [oPrice, oTokenLiqudity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+
+        expect(oPrice, "Observation price").to.equal(fakePrice);
+        expect(oTokenLiqudity, "Observation token liquidity").to.equal(fakeTokenLiquidity);
+        expect(oQuoteTokenLiquidity, "Observation quote token liquidity").to.equal(fakeQuoteTokenLiquidity);
+        expect(oTimestamp, "Observation timestamp").to.equal(fakeObservationTimestamp);
+
+        const [cumulativePrice, cumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [cumulativeTokenLiquidity, cumulativeQuoteTokenLiquidity, cumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        expect(cumulativePrice, "Cumulative price").to.equal(fakePrice);
+        expect(cumulativeTokenLiquidity, "Cumulative token liquidity").to.equal(fakeTokenLiquidity);
+        expect(cumulativeQuoteTokenLiquidity, "Cumulative quote token liquidity").to.equal(fakeQuoteTokenLiquidity);
+        expect(cumulativePriceTimestamp, "Price accumulation timestamp").to.equal(fakeAccumulationTimestamp);
+        expect(cumulativeLiquidityTimestamp, "Liquidity accumulation timestamp").to.equal(fakeAccumulationTimestamp);
+    });
+
+    it("Shouldn't update observation timestamp or emit Updated when there's no price", async function () {
+        // Add liquidity
+        await addLiquidity(BigNumber.from(1000), BigNumber.from(1000));
+
+        const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+        // Update accumulators
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        const updateTx = await oracle.update(updateData);
+
+        // Shouldn't emite Updated since the oracle doesn't have enough info to calculate price
+        expect(updateTx).to.not.emit(oracle, "Updated");
+
+        const [, , , oTimestamp] = await oracle.observations(token.address);
+
+        // Observation timestamp should not update since the oracle doesn't have enough info to calculate price
+        expect(oTimestamp, "Observation timestamp").to.equal(0);
+
+        const [cumulativePrice, cumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [cumulativeTokenLiquidity, cumulativeQuoteTokenLiquidity, cumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Accumulation should update
+        expect(cumulativePrice, "Cumulative price").to.not.equal(0);
+        expect(cumulativeTokenLiquidity, "Cumulative token liquidity").to.not.equal(0);
+        expect(cumulativeQuoteTokenLiquidity, "Cumulative quote token liquidity").to.not.equal(0);
+        expect(cumulativePriceTimestamp, "Price accumulation timestamp").to.not.equal(0);
+        expect(cumulativeLiquidityTimestamp, "Liquidity accumulation timestamp").to.not.equal(0);
+    });
+
     it("Should revert if token == quoteToken", async function () {
         await expect(oracle.update(ethers.utils.hexZeroPad(quoteToken.address, 32))).to.be.reverted;
     });

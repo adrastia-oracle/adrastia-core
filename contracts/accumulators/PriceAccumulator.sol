@@ -207,6 +207,9 @@ abstract contract PriceAccumulator is
 
         uint112 price = fetchPrice(token);
 
+        // If the observation fails validation, do not update anything
+        if (!validateObservation(data, price)) return false;
+
         ObservationLibrary.PriceObservation storage observation = observations[token];
         AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
 
@@ -214,8 +217,8 @@ abstract contract PriceAccumulator is
             /*
              * Initialize
              */
-            observation.price = price;
-            observation.timestamp = block.timestamp.toUint32();
+            observation.price = accumulation.cumulativePrice = price;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, price, block.timestamp);
 
@@ -230,9 +233,6 @@ abstract contract PriceAccumulator is
 
         if (deltaTime != 0) {
             unchecked {
-                // If the observation fails validation, do not update anything
-                if (!validateObservation(data, price)) return false;
-
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += observation.price * deltaTime;

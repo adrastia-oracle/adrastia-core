@@ -111,6 +111,9 @@ describe("LiquidityAccumulator#needsUpdate", () => {
         // Override changeThresholdPassed (false)
         await liquidityAccumulator.overrideChangeThresholdPassed(true, false);
 
+        // Override validateObservation
+        await liquidityAccumulator.overrideValidateObservation(true, true);
+
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
@@ -1153,8 +1156,12 @@ describe("LiquidityAccumulator#update", () => {
 
             const deltaTime = firstUpdateTime - initialUpdateTime;
 
-            const expectedCumulativeTokenLiquidity = initialTokenLiquidity.mul(BigNumber.from(deltaTime));
-            const expectedCumulativeQuoteTokenLiquidity = initialQuoteTokenLiquidity.mul(BigNumber.from(deltaTime));
+            const expectedCumulativeTokenLiquidity = initialTokenLiquidity.add(
+                initialTokenLiquidity.mul(BigNumber.from(deltaTime))
+            );
+            const expectedCumulativeQuoteTokenLiquidity = initialQuoteTokenLiquidity.add(
+                initialQuoteTokenLiquidity.mul(BigNumber.from(deltaTime))
+            );
 
             const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
             const observation = await liquidityAccumulator.observations(GRT);
@@ -1202,8 +1209,8 @@ describe("LiquidityAccumulator#update", () => {
         const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
         const observation = await liquidityAccumulator.observations(GRT);
 
-        expect(accumulation["cumulativeTokenLiquidity"]).to.equal(0);
-        expect(accumulation["cumulativeQuoteTokenLiquidity"]).to.equal(0);
+        expect(accumulation["cumulativeTokenLiquidity"]).to.equal(initialTokenLiquidity);
+        expect(accumulation["cumulativeQuoteTokenLiquidity"]).to.equal(initialQuoteTokenLiquidity);
 
         expect(observation["tokenLiquidity"]).to.equal(initialTokenLiquidity);
         expect(observation["quoteTokenLiquidity"]).to.equal(initialQuoteTokenLiquidity);

@@ -229,6 +229,9 @@ abstract contract LiquidityAccumulator is
 
         (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(token);
 
+        // If the observation fails validation, do not update anything
+        if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
+
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
         AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
 
@@ -236,9 +239,9 @@ abstract contract LiquidityAccumulator is
             /*
              * Initialize
              */
-            observation.tokenLiquidity = tokenLiquidity;
-            observation.quoteTokenLiquidity = quoteTokenLiquidity;
-            observation.timestamp = block.timestamp.toUint32();
+            observation.tokenLiquidity = accumulation.cumulativeTokenLiquidity = tokenLiquidity;
+            observation.quoteTokenLiquidity = accumulation.cumulativeQuoteTokenLiquidity = quoteTokenLiquidity;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
@@ -252,9 +255,6 @@ abstract contract LiquidityAccumulator is
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
-            // If the observation fails validation, do not update anything
-            if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
-
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the liquidites multiplied by the time those liquidities were present

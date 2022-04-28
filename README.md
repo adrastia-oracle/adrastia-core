@@ -1,7 +1,7 @@
 # Pythia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![618 out of 618 tests passing](https://img.shields.io/badge/tests-618/618%20passing-brightgreen.svg?style=flat-square)
+![620 out of 620 tests passing](https://img.shields.io/badge/tests-620/620%20passing-brightgreen.svg?style=flat-square)
 ![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
 
 Pythia Core is a set of Solidity smart contracts for building EVM oracle solutions.
