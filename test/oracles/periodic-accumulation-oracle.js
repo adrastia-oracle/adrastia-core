@@ -88,7 +88,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         await hre.timeAndMine.setTimeIncrease(1);
     });
 
-    it("Should require an update if no observations have been made", async () => {
+    it("Should require an update if no observations or accumulations have been made", async () => {
         expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
@@ -96,6 +96,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         const observationTime = await currentBlockTimestamp();
 
         await oracle.stubSetObservation(AddressZero, 1, 1, 1, observationTime);
+        await oracle.stubSetAccumulations(AddressZero, 1, 1, 1, observationTime);
 
         await hre.timeAndMine.setTime(observationTime + PERIOD);
 
@@ -107,6 +108,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         const observationTime = await currentBlockTimestamp();
 
         await oracle.stubSetObservation(AddressZero, 1, 1, 1, observationTime);
+        await oracle.stubSetAccumulations(AddressZero, 1, 1, 1, observationTime);
 
         await hre.timeAndMine.setTime(observationTime + PERIOD + 1);
 
@@ -114,10 +116,11 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
-    it("Shouldm't require an update if deltaTime < period", async () => {
+    it("Shouldn't require an update if deltaTime < period", async () => {
         const observationTime = await currentBlockTimestamp();
 
         await oracle.stubSetObservation(AddressZero, 1, 1, 1, observationTime);
+        await oracle.stubSetAccumulations(AddressZero, 1, 1, 1, observationTime);
 
         await hre.timeAndMine.setTime(observationTime + PERIOD - 1);
 
@@ -125,10 +128,11 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
         expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
-    it("Shouldm't require an update if deltaTime == 0", async () => {
+    it("Shouldn't require an update if deltaTime == 0", async () => {
         const observationTime = (await currentBlockTimestamp()) + 10;
 
         await oracle.stubSetObservation(AddressZero, 1, 1, 1, observationTime);
+        await oracle.stubSetAccumulations(AddressZero, 1, 1, 1, observationTime);
 
         await hre.timeAndMine.setTime(observationTime);
 

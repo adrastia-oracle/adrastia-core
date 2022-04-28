@@ -33,6 +33,24 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         observation.timestamp = timestamp;
     }
 
+    function stubSetAccumulations(
+        address token,
+        uint112 cumulativePrice,
+        uint112 cumulativeTokenLiquidity,
+        uint112 cumulativeQuoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
+        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+
+        priceAccumulation.cumulativePrice = cumulativePrice;
+        priceAccumulation.timestamp = timestamp;
+
+        liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
+        liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
+        liquidityAccumulation.timestamp = timestamp;
+    }
+
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {
         config.needsUpdateOverridden = overridden;
         config.needsUpdate = needsUpdate_;
