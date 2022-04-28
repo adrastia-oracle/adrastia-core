@@ -52,25 +52,4 @@ library AccumulationLibrary {
          */
         uint32 timestamp;
     }
-
-    /**
-     * @notice A struct for storing a snapshot of price Uniswap V2 accumulations.
-     * @dev The difference of a newer snapshot against an older snapshot can be used to derive a time-weighted average
-     *   price by dividing the difference in value by the difference in time.
-     *
-     * Uniswap V2 prices are stored in a unique format requiring 256 bits.
-     */
-    struct UniswapV2PriceAccumulator {
-        /*
-         * @notice Accumulates time-weighted average prices in the form of a sumation of (price * time), with time
-         *   measured in seconds.
-         * @dev Overflow is desired and results in correct behavior as long as the difference between two snapshots
-         *   is less than or equal to 2^256.
-         */
-        uint256 cumulativePrice;
-        /*
-         * @notice The unix timestamp (in seconds) of the last update of (addition to) the cumulative price.
-         */
-        uint32 timestamp;
-    }
 }
