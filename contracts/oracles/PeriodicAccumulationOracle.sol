@@ -58,6 +58,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         ObservationLibrary.Observation storage observation = observations[token];
 
         bool updatedObservation;
+        bool missingPrice;
 
         /*
          * 1. Update price
@@ -82,6 +83,11 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                     );
 
                     updatedObservation = true;
+                } else {
+                    // This is our first update (or rather, we have our first accumulation)
+                    // Record that we're missing the price to later prevent the observation timestamp and event
+                    // from being emitted (no timestamp = missing observation and consult reverts).
+                    missingPrice = true;
                 }
 
                 lastAccumulation.cumulativePrice = freshAccumulation.cumulativePrice;
@@ -120,7 +126,10 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             }
         }
 
-        if (updatedObservation) {
+        // We only want to update the timestamp and emit an event when both the observation has been updated and we
+        // have a price (even if the accumulator calculates a price of 0).
+        // Note: We rely on consult reverting when the observation timestamp is 0.
+        if (updatedObservation && !missingPrice) {
             observation.timestamp = block.timestamp.toUint32();
 
             emit Updated(
