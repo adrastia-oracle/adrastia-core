@@ -87,7 +87,7 @@ abstract contract LiquidityAccumulator is
     /// @param data The encoded address of the token for which to perform the update.
     /// @inheritdoc IUpdateable
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
-        uint256 deltaTime = block.timestamp - lastUpdateTime(data);
+        uint256 deltaTime = timeSinceLastUpdate(data);
         if (deltaTime < minUpdateDelay) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
@@ -122,11 +122,18 @@ abstract contract LiquidityAccumulator is
         return false;
     }
 
+    /// @param data The encoded address of the token for which the update relates to.
     /// @inheritdoc IUpdateable
     function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
         address token = abi.decode(data, (address));
 
         return observations[token].timestamp;
+    }
+
+    /// @param data The encoded address of the token for which the update relates to.
+    /// @inheritdoc IUpdateable
+    function timeSinceLastUpdate(bytes memory data) public view virtual override returns (uint256) {
+        return block.timestamp - lastUpdateTime(data);
     }
 
     /// @inheritdoc ILiquidityAccumulator

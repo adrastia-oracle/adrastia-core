@@ -25,4 +25,9 @@ abstract contract IUpdateable {
     /// @param data Any data relating to the update.
     /// @return A unix timestamp.
     function lastUpdateTime(bytes memory data) public view virtual returns (uint256);
+
+    /// @notice Gets the amount of time (in seconds) since the last update.
+    /// @param data Any data relating to the update.
+    /// @return Time in seconds.
+    function timeSinceLastUpdate(bytes memory data) public view virtual returns (uint256);
 }
