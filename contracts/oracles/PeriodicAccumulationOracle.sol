@@ -2,6 +2,7 @@
 pragma solidity =0.8.11;
 
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin-v4/contracts/utils/math/Math.sol";
 
 import "./PeriodicOracle.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
@@ -31,6 +32,18 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         priceAccumulator = priceAccumulator_;
     }
 
+    /// @inheritdoc AbstractOracle
+    function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
+        address token = abi.decode(data, (address));
+
+        // Note: We ignore the last observation timestamp because it always updates when the accumulation timestamps
+        // update.
+        uint256 lastPriceAccumulationTimestamp = priceAccumulations[token].timestamp;
+        uint256 lastLiquidityAccumulationTimestamp = liquidityAccumulations[token].timestamp;
+
+        return Math.max(lastPriceAccumulationTimestamp, lastLiquidityAccumulationTimestamp);
+    }
+
     /// @inheritdoc PeriodicOracle
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
@@ -44,6 +57,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         ObservationLibrary.Observation storage observation = observations[token];
 
+        bool updatedObservation;
+        bool missingPrice;
+
         /*
          * 1. Update price
          */
@@ -51,6 +67,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             // Note: We assume the accumulator is up-to-date (gas savings)
             AccumulationLibrary.PriceAccumulator memory freshAccumulation = IPriceAccumulator(priceAccumulator)
                 .getCurrentAccumulation(token);
+
+            AccumulationLibrary.PriceAccumulator storage lastAccumulation = priceAccumulations[token];
 
             uint256 lastAccumulationTime = priceAccumulations[token].timestamp;
 
@@ -60,12 +78,20 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 if (lastAccumulationTime != 0) {
                     // We have two accumulations -> calculate price from them
                     observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
-                        priceAccumulations[token],
+                        lastAccumulation,
                         freshAccumulation
                     );
+
+                    updatedObservation = true;
+                } else {
+                    // This is our first update (or rather, we have our first accumulation)
+                    // Record that we're missing the price to later prevent the observation timestamp and event
+                    // from being emitted (no timestamp = missing observation and consult reverts).
+                    missingPrice = true;
                 }
 
-                priceAccumulations[token] = freshAccumulation;
+                lastAccumulation.cumulativePrice = freshAccumulation.cumulativePrice;
+                lastAccumulation.timestamp = freshAccumulation.timestamp;
             }
         }
 
@@ -80,7 +106,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
             AccumulationLibrary.LiquidityAccumulator storage lastAccumulation = liquidityAccumulations[token];
 
-            uint256 lastAccumulationTime = lastAccumulation.timestamp;
+            uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
 
             if (freshAccumulation.timestamp > lastAccumulationTime) {
                 // Accumulator updated, so we update our observation
@@ -90,6 +116,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                     (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
                         liquidityAccumulator
                     ).calculateLiquidity(lastAccumulation, freshAccumulation);
+
+                    updatedObservation = true;
                 }
 
                 lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
@@ -98,16 +126,20 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             }
         }
 
-        // Update observation timestamp so that the oracle doesn't update again until the next period
-        observation.timestamp = block.timestamp.toUint32();
+        // We only want to update the timestamp and emit an event when both the observation has been updated and we
+        // have a price (even if the accumulator calculates a price of 0).
+        // Note: We rely on consult reverting when the observation timestamp is 0.
+        if (updatedObservation && !missingPrice) {
+            observation.timestamp = block.timestamp.toUint32();
 
-        emit Updated(
-            token,
-            observation.price,
-            observation.tokenLiquidity,
-            observation.quoteTokenLiquidity,
-            block.timestamp
-        );
+            emit Updated(
+                token,
+                observation.price,
+                observation.tokenLiquidity,
+                observation.quoteTokenLiquidity,
+                block.timestamp
+            );
+        }
 
         return true;
     }

@@ -42,6 +42,19 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         liquidity.quoteTokenLiquidity = quoteTokenLiquidity;
     }
 
+    function stubSetObservation(
+        address token,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+
+        observation.tokenLiquidity = tokenLiquidity;
+        observation.quoteTokenLiquidity = quoteTokenLiquidity;
+        observation.timestamp = timestamp;
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;
@@ -63,6 +76,14 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         uint112 quoteTokenLiquidity
     ) public returns (bool) {
         return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
+    }
+
+    function stubFetchLiquidity(address token)
+        public
+        view
+        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
+    {
+        return fetchLiquidity(token);
     }
 
     function harnessChangeThresholdSurpassed(

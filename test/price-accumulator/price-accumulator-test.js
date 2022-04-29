@@ -1,5 +1,6 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
+const AddressZero = ethers.constants.AddressZero;
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
@@ -18,7 +19,7 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-describe("PriceAccumulator#getCurrentObservation", function () {
+describe("PriceAccumulator#fetchPrice", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -43,10 +44,9 @@ describe("PriceAccumulator#getCurrentObservation", function () {
             // Configure price
             await accumulator.setPrice(GRT, test[0]);
 
-            const [price, timestamp] = await accumulator.getCurrentObservation(GRT);
+            const price = await accumulator.stubFetchPrice(GRT);
 
             expect(price).to.equal(test[0]);
-            expect(timestamp).to.equal(await currentBlockTimestamp());
         });
     }
 });
@@ -86,6 +86,9 @@ describe("PriceAccumulator#needsUpdate", () => {
 
         // Override changeThresholdPassed (false)
         await accumulator.overrideChangeThresholdPassed(true, false);
+
+        // Override validateObservation
+        await accumulator.overrideValidateObservation(true, true);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -662,7 +665,7 @@ describe("PriceAccumulator#update", () => {
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
         const accumulation = await accumulator.getLastAccumulation(GRT);
-        const observation = await accumulator.getLastObservation(GRT);
+        const observation = await accumulator.observations(GRT);
 
         var expectedCumulativePrice = 0;
 
@@ -759,7 +762,7 @@ describe("PriceAccumulator#update", () => {
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
 
         const accumulation2 = await accumulator.getLastAccumulation(GRT);
-        const observation2 = await accumulator.getLastObservation(GRT);
+        const observation2 = await accumulator.observations(GRT);
 
         const deltaTime2 = updateTime2 - updateTime;
 
@@ -890,10 +893,10 @@ describe("PriceAccumulator#update", () => {
 
             const deltaTime = firstUpdateTime - initialUpdateTime;
 
-            const expectedCumulativePrice = initialPrice.mul(BigNumber.from(deltaTime));
+            const expectedCumulativePrice = initialPrice.add(initialPrice.mul(BigNumber.from(deltaTime)));
 
             const accumulation = await accumulator.getLastAccumulation(GRT);
-            const observation = await accumulator.getLastObservation(GRT);
+            const observation = await accumulator.observations(GRT);
 
             expect(accumulation["cumulativePrice"], "CTL").to.equal(expectedCumulativePrice);
 
@@ -930,9 +933,9 @@ describe("PriceAccumulator#update", () => {
         await expect(firstUpdateReceipt).to.not.emit(accumulator, "Updated");
 
         const accumulation = await accumulator.getLastAccumulation(GRT);
-        const observation = await accumulator.getLastObservation(GRT);
+        const observation = await accumulator.observations(GRT);
 
-        expect(accumulation["cumulativePrice"]).to.equal(0);
+        expect(accumulation["cumulativePrice"]).to.equal(initialPrice);
         expect(observation["price"]).to.equal(initialPrice);
         expect(observation["timestamp"]).to.equal(initialUpdateTime);
     });
@@ -967,31 +970,64 @@ describe("PriceAccumulator#supportsInterface(interfaceId)", function () {
         const interfaceId = await interfaceIds.iQuoteToken();
         expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
+
+    it("Should support IUpdateable", async () => {
+        const interfaceId = await interfaceIds.iUpdateable();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IAccumulator", async () => {
+        const interfaceId = await interfaceIds.iAccumulator();
+        expect(await accumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });
 
 describe("PriceAccumulator#consultPrice(token)", function () {
+    var oracle;
+
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
-    var accumulator;
-
     beforeEach(async () => {
         const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
-        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+        oracle = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
     });
 
-    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+    it("Should revert when there's no observation", async () => {
+        await expect(oracle["consultPrice(address)"](AddressZero)).to.be.revertedWith(
+            "PriceAccumulator: MISSING_OBSERVATION"
+        );
+    });
 
-    tests.forEach(function (price) {
-        it(`price = ${price}`, async function () {
-            await accumulator.setPrice(ethers.constants.AddressZero, price);
+    it("Should get the set price (=1)", async () => {
+        const price = BigNumber.from(1);
 
-            expect(await accumulator["consultPrice(address)"](ethers.constants.AddressZero)).to.equal(price);
-        });
+        await oracle.stubSetObservation(AddressZero, price, 1);
+
+        expect(await oracle["consultPrice(address)"](AddressZero)).to.equal(price);
+    });
+
+    it("Should get the set price (=1e18)", async () => {
+        const price = BigNumber.from(10).pow(18);
+
+        await oracle.stubSetObservation(AddressZero, price, 1);
+
+        expect(await oracle["consultPrice(address)"](AddressZero)).to.equal(price);
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const price = await oracle["consultPrice(address)"](await oracle.quoteTokenAddress());
+
+        const expectedPrice = ethers.utils.parseUnits("1.0", await oracle.quoteTokenDecimals());
+
+        expect(price).to.equal(expectedPrice);
     });
 });
 
-describe("PriceAccumulator#consultPrice(token, maxAge)", function () {
+describe("PriceAccumulator#consultPrice(token, maxAge = 0)", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -1010,6 +1046,109 @@ describe("PriceAccumulator#consultPrice(token, maxAge)", function () {
 
             expect(await accumulator["consultPrice(address,uint256)"](ethers.constants.AddressZero, 0)).to.equal(price);
         });
+    });
+});
+
+describe("PriceAccumulator#consultPrice(token, maxAge = 60)", function () {
+    const MAX_AGE = 60;
+
+    var oracle;
+
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        oracle = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+    });
+
+    it("Should revert when there's no observation", async () => {
+        await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
+            "PriceAccumulator: MISSING_OBSERVATION"
+        );
+    });
+
+    it("Should revert when the rate is expired (deltaTime > maxAge)", async () => {
+        const observationTime = await currentBlockTimestamp();
+
+        await oracle.stubSetObservation(AddressZero, 1, observationTime);
+
+        const time = observationTime + MAX_AGE + 1;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
+            "PriceAccumulator: RATE_TOO_OLD"
+        );
+    });
+
+    it("Shouldn't revert when the rate is not expired (deltaTime == maxAge)", async () => {
+        const observationTime = await currentBlockTimestamp();
+
+        await oracle.stubSetObservation(AddressZero, 1, observationTime);
+
+        const time = observationTime + MAX_AGE;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Shouldn't revert when the rate is not expired (deltaTime < maxAge)", async () => {
+        const observationTime = await currentBlockTimestamp();
+
+        await oracle.stubSetObservation(AddressZero, 1, observationTime);
+
+        const time = observationTime + MAX_AGE - 1;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Shouldn't revert when the rate is not expired (deltaTime == 0)", async () => {
+        const observationTime = (await currentBlockTimestamp()) + 10;
+
+        await oracle.stubSetObservation(AddressZero, 1, observationTime);
+
+        const time = observationTime;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Should get the set price (=1)", async () => {
+        const observationTime = await currentBlockTimestamp();
+        const price = BigNumber.from(1);
+
+        await oracle.stubSetObservation(AddressZero, price, observationTime);
+
+        expect(await oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.equal(price);
+    });
+
+    it("Should get the set price (=1e18)", async () => {
+        const observationTime = await currentBlockTimestamp();
+        const price = BigNumber.from(10).pow(18);
+
+        await oracle.stubSetObservation(AddressZero, price, observationTime);
+
+        expect(await oracle["consultPrice(address,uint256)"](AddressZero, MAX_AGE)).to.equal(price);
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const price = await oracle["consultPrice(address,uint256)"](await oracle.quoteTokenAddress(), MAX_AGE);
+
+        const expectedPrice = ethers.utils.parseUnits("1.0", await oracle.quoteTokenDecimals());
+
+        expect(price).to.equal(expectedPrice);
     });
 });
 

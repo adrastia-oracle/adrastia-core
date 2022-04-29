@@ -1,6 +1,7 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const AddressZero = ethers.constants.AddressZero;
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
@@ -19,7 +20,7 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-describe("LiquidityAccumulator#getCurrentObservation", function () {
+describe("LiquidityAccumulator#fetchLiquidity", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -54,13 +55,10 @@ describe("LiquidityAccumulator#getCurrentObservation", function () {
             // Configure liquidity
             await liquidityAccumulator.setLiquidity(GRT, test[0], test[1]);
 
-            const [tokenLiquidity, quoteTokenLiquidity, timestamp] = await liquidityAccumulator.getCurrentObservation(
-                GRT
-            );
+            const { tokenLiquidity, quoteTokenLiquidity } = await liquidityAccumulator.stubFetchLiquidity(GRT);
 
             expect(tokenLiquidity).to.equal(test[0]);
             expect(quoteTokenLiquidity).to.equal(test[1]);
-            expect(timestamp).to.equal(await currentBlockTimestamp());
         });
     }
 });
@@ -112,6 +110,9 @@ describe("LiquidityAccumulator#needsUpdate", () => {
 
         // Override changeThresholdPassed (false)
         await liquidityAccumulator.overrideChangeThresholdPassed(true, false);
+
+        // Override validateObservation
+        await liquidityAccumulator.overrideValidateObservation(true, true);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -855,7 +856,7 @@ describe("LiquidityAccumulator#update", () => {
         const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
         const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
-        const observation = await liquidityAccumulator.getLastObservation(GRT);
+        const observation = await liquidityAccumulator.observations(GRT);
 
         var expectedCumulativeTokenLiquidity = 0;
         var expectedCumulativeQuoteTokenLiquidity = 0;
@@ -981,7 +982,7 @@ describe("LiquidityAccumulator#update", () => {
         const updateTime2 = (await ethers.provider.getBlock(receipt2.blockNumber)).timestamp;
 
         const accumulation2 = await liquidityAccumulator.getLastAccumulation(GRT);
-        const observation2 = await liquidityAccumulator.getLastObservation(GRT);
+        const observation2 = await liquidityAccumulator.observations(GRT);
 
         const deltaTime2 = updateTime2 - updateTime;
 
@@ -1155,11 +1156,15 @@ describe("LiquidityAccumulator#update", () => {
 
             const deltaTime = firstUpdateTime - initialUpdateTime;
 
-            const expectedCumulativeTokenLiquidity = initialTokenLiquidity.mul(BigNumber.from(deltaTime));
-            const expectedCumulativeQuoteTokenLiquidity = initialQuoteTokenLiquidity.mul(BigNumber.from(deltaTime));
+            const expectedCumulativeTokenLiquidity = initialTokenLiquidity.add(
+                initialTokenLiquidity.mul(BigNumber.from(deltaTime))
+            );
+            const expectedCumulativeQuoteTokenLiquidity = initialQuoteTokenLiquidity.add(
+                initialQuoteTokenLiquidity.mul(BigNumber.from(deltaTime))
+            );
 
             const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
-            const observation = await liquidityAccumulator.getLastObservation(GRT);
+            const observation = await liquidityAccumulator.observations(GRT);
 
             expect(accumulation["cumulativeTokenLiquidity"], "CTL").to.equal(expectedCumulativeTokenLiquidity);
             expect(accumulation["cumulativeQuoteTokenLiquidity"], "CQTL").to.equal(
@@ -1202,10 +1207,10 @@ describe("LiquidityAccumulator#update", () => {
         await expect(firstUpdateReceipt).to.not.emit(liquidityAccumulator, "Updated");
 
         const accumulation = await liquidityAccumulator.getLastAccumulation(GRT);
-        const observation = await liquidityAccumulator.getLastObservation(GRT);
+        const observation = await liquidityAccumulator.observations(GRT);
 
-        expect(accumulation["cumulativeTokenLiquidity"]).to.equal(0);
-        expect(accumulation["cumulativeQuoteTokenLiquidity"]).to.equal(0);
+        expect(accumulation["cumulativeTokenLiquidity"]).to.equal(initialTokenLiquidity);
+        expect(accumulation["cumulativeQuoteTokenLiquidity"]).to.equal(initialQuoteTokenLiquidity);
 
         expect(observation["tokenLiquidity"]).to.equal(initialTokenLiquidity);
         expect(observation["quoteTokenLiquidity"]).to.equal(initialQuoteTokenLiquidity);
@@ -1247,36 +1252,92 @@ describe("LiquidityAccumulator#supportsInterface(interfaceId)", function () {
         const interfaceId = await interfaceIds.iQuoteToken();
         expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
+
+    it("Should support IUpdateable", async () => {
+        const interfaceId = await interfaceIds.iUpdateable();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IAccumulator", async () => {
+        const interfaceId = await interfaceIds.iAccumulator();
+        expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });
 
 describe("LiquidityAccumulator#consultLiquidity(token)", function () {
+    var oracle;
+
+    const tests = [
+        {
+            args: {
+                tokenLiquidity: BigNumber.from(1),
+                quoteTokenLiquidity: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                tokenLiquidity: BigNumber.from(1),
+                quoteTokenLiquidity: BigNumber.from("1000000000000000000"),
+            },
+        },
+        {
+            args: {
+                tokenLiquidity: BigNumber.from("1000000000000000000"),
+                quoteTokenLiquidity: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                tokenLiquidity: BigNumber.from("1000000000000000000"),
+                quoteTokenLiquidity: BigNumber.from("1000000000000000000"),
+            },
+        },
+    ];
+
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
-    var accumulator;
-
     beforeEach(async () => {
         const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
-        accumulator = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+        oracle = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
     });
 
-    tests = [0, 1, ethers.utils.parseUnits("1.0", 18), BigNumber.from(2).pow(112).sub(1)];
+    it("Should revert when there's no observation", async () => {
+        await expect(oracle["consultLiquidity(address)"](AddressZero)).to.be.revertedWith(
+            "LiquidityAccumulator: MISSING_OBSERVATION"
+        );
+    });
 
-    tests.forEach(function (tokenLiquidity) {
-        tests.forEach(function (quoteTokenLiquidity) {
-            it(`tokenLiquidity = ${tokenLiquidity} and quoteTokenLiquidity = ${quoteTokenLiquidity}`, async function () {
-                await accumulator.setLiquidity(ethers.constants.AddressZero, tokenLiquidity, quoteTokenLiquidity);
+    it("Should return fixed values when token == quoteToken", async function () {
+        const [tokenLiqudity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](
+            await oracle.quoteTokenAddress()
+        );
 
-                const result = await accumulator["consultLiquidity(address)"](ethers.constants.AddressZero);
+        expect(tokenLiqudity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
+    });
 
-                expect(result["tokenLiquidity"], "Token liquidity").to.equal(tokenLiquidity);
-                expect(result["quoteTokenLiquidity"], "Quote token liquidity").to.equal(quoteTokenLiquidity);
-            });
+    tests.forEach(({ args }) => {
+        it(`Should get the set token liquidity (=${args["tokenLiquidity"]}) and quote token liquidity (=${args["quoteTokenLiquidity"]})`, async () => {
+            const _tokenLiqudity = args["tokenLiquidity"];
+            const _quoteTokenLiquidity = args["quoteTokenLiquidity"];
+
+            const observationTime = await currentBlockTimestamp();
+
+            await oracle.stubSetObservation(AddressZero, _tokenLiqudity, _quoteTokenLiquidity, observationTime);
+
+            const [tokenLiqudity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](AddressZero);
+
+            expect(tokenLiqudity).to.equal(_tokenLiqudity);
+            expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
     });
 });
 
-describe("LiquidityAccumulator#consultLiquidity(token, maxAge)", function () {
+describe("LiquidityAccumulator#consultLiquidity(token, maxAge = 0)", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -1299,6 +1360,139 @@ describe("LiquidityAccumulator#consultLiquidity(token, maxAge)", function () {
                 expect(result["tokenLiquidity"], "Token liquidity").to.equal(tokenLiquidity);
                 expect(result["quoteTokenLiquidity"], "Quote token liquidity").to.equal(quoteTokenLiquidity);
             });
+        });
+    });
+});
+
+describe("LiquidityAccumulator#consultLiquidity(token, maxAge = 60)", function () {
+    const MAX_AGE = 60;
+
+    var oracle;
+
+    const tests = [
+        {
+            args: {
+                tokenLiquidity: BigNumber.from(1),
+                quoteTokenLiquidity: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                tokenLiquidity: BigNumber.from(1),
+                quoteTokenLiquidity: BigNumber.from("1000000000000000000"),
+            },
+        },
+        {
+            args: {
+                tokenLiquidity: BigNumber.from("1000000000000000000"),
+                quoteTokenLiquidity: BigNumber.from(1),
+            },
+        },
+        {
+            args: {
+                tokenLiquidity: BigNumber.from("1000000000000000000"),
+                quoteTokenLiquidity: BigNumber.from("1000000000000000000"),
+            },
+        },
+    ];
+
+    const minUpdateDelay = 10000;
+    const maxUpdateDelay = 30000;
+
+    beforeEach(async () => {
+        const accumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        oracle = await accumulatorFactory.deploy(USDC, TWO_PERCENT_CHANGE, minUpdateDelay, maxUpdateDelay);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+    });
+
+    it("Should revert when there's no observation", async () => {
+        await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
+            "LiquidityAccumulator: MISSING_OBSERVATION"
+        );
+    });
+
+    it("Should revert when the rate is expired (deltaTime > maxAge)", async () => {
+        const observationTime = await currentBlockTimestamp();
+
+        await oracle.stubSetObservation(AddressZero, 1, 1, observationTime);
+
+        const time = observationTime + MAX_AGE + 1;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.be.revertedWith(
+            "LiquidityAccumulator: RATE_TOO_OLD"
+        );
+    });
+
+    it("Shouldn't revert when the rate is not expired (deltaTime == maxAge)", async () => {
+        const observationTime = await currentBlockTimestamp();
+
+        await oracle.stubSetObservation(AddressZero, 1, 1, observationTime);
+
+        const time = observationTime + MAX_AGE;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Shouldn't revert when the rate is not expired (deltaTime < maxAge)", async () => {
+        const observationTime = await currentBlockTimestamp();
+
+        await oracle.stubSetObservation(AddressZero, 1, 1, observationTime);
+
+        const time = observationTime + MAX_AGE - 1;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Shouldn't revert when the rate is not expired (deltaTime == 0)", async () => {
+        const observationTime = (await currentBlockTimestamp()) + 10;
+
+        await oracle.stubSetObservation(AddressZero, 1, 1, observationTime);
+
+        const time = observationTime;
+
+        await hre.timeAndMine.setTime(time);
+
+        expect(await currentBlockTimestamp()).to.equal(time);
+        await expect(oracle["consultLiquidity(address,uint256)"](AddressZero, MAX_AGE)).to.not.be.reverted;
+    });
+
+    it("Should return fixed values when token == quoteToken", async function () {
+        const [tokenLiqudity, quoteTokenLiquidity] = await oracle["consultLiquidity(address,uint256)"](
+            await oracle.quoteTokenAddress(),
+            MAX_AGE
+        );
+
+        expect(tokenLiqudity).to.equal(0);
+        expect(quoteTokenLiquidity).to.equal(0);
+    });
+
+    tests.forEach(({ args }) => {
+        it(`Should get the set token liquidity (=${args["tokenLiquidity"]}) and quote token liquidity (=${args["quoteTokenLiquidity"]})`, async () => {
+            const _tokenLiqudity = args["tokenLiquidity"];
+            const _quoteTokenLiquidity = args["quoteTokenLiquidity"];
+
+            const observationTime = await currentBlockTimestamp();
+
+            await oracle.stubSetObservation(AddressZero, _tokenLiqudity, _quoteTokenLiquidity, observationTime);
+
+            const [tokenLiqudity, quoteTokenLiquidity] = await oracle["consultLiquidity(address,uint256)"](
+                AddressZero,
+                MAX_AGE
+            );
+
+            expect(tokenLiqudity).to.equal(_tokenLiqudity);
+            expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
     });
 });

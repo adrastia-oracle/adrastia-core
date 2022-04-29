@@ -6,24 +6,25 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
+import "./AbstractAccumulator.sol";
 import "../interfaces/IPriceAccumulator.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, SimpleQuotationMetadata {
+abstract contract PriceAccumulator is
+    IERC165,
+    IPriceAccumulator,
+    IPriceOracle,
+    AbstractAccumulator,
+    SimpleQuotationMetadata
+{
     using AddressLibrary for address;
     using SafeCast for uint256;
 
-    uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
-    uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
-
-    uint256 public immutable updateThreshold;
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
-
-    uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
     mapping(address => AccumulationLibrary.PriceAccumulator) public accumulations;
     mapping(address => ObservationLibrary.PriceObservation) public observations;
@@ -33,8 +34,7 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) SimpleQuotationMetadata(quoteToken_) {
-        updateThreshold = updateThreshold_;
+    ) AbstractAccumulator(updateThreshold_) SimpleQuotationMetadata(quoteToken_) {
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
@@ -55,15 +55,32 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         }
     }
 
+    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
+    /// @dev Calculates the change from the stored observation to the current observation.
+    /// @param token The token to check.
+    /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
+    ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
+    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    function changeThresholdSurpassed(address token, uint256 changeThreshold)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        uint256 price = fetchPrice(token);
+
+        ObservationLibrary.PriceObservation storage lastObservation = observations[token];
+
+        return changeThresholdSurpassed(price, lastObservation.price, changeThreshold);
+    }
+
     /// @notice Checks if this accumulator needs an update by checking the time since the last update and the change in
     ///   liquidities.
     /// @param data The encoded address of the token for which to perform the update.
     /// @inheritdoc IUpdateable
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
-        address token = abi.decode(data, (address));
-
-        ObservationLibrary.PriceObservation storage lastObservation = observations[token];
-        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+        uint256 deltaTime = timeSinceLastUpdate(data);
         if (deltaTime < minUpdateDelay) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
@@ -77,10 +94,9 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
          *
          * Check if the % change in price warrants an update (saves gas vs. always updating on change)
          */
+        address token = abi.decode(data, (address));
 
-        uint256 price = fetchPrice(token);
-
-        return changeThresholdSurpassed(price, lastObservation.price, updateThreshold);
+        return updateThresholdSurpassed(token);
     }
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -97,6 +113,20 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         if (needsUpdate(data)) return performUpdate(data);
 
         return false;
+    }
+
+    /// @param data The encoded address of the token for which the update relates to.
+    /// @inheritdoc IUpdateable
+    function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
+        address token = abi.decode(data, (address));
+
+        return observations[token].timestamp;
+    }
+
+    /// @param data The encoded address of the token for which the update relates to.
+    /// @inheritdoc IUpdateable
+    function timeSinceLastUpdate(bytes memory data) public view virtual override returns (uint256) {
+        return block.timestamp - lastUpdateTime(data);
     }
 
     /// @inheritdoc IPriceAccumulator
@@ -137,57 +167,55 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         }
     }
 
-    /// @inheritdoc IPriceAccumulator
-    function getLastObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.PriceObservation memory)
-    {
-        return observations[token];
-    }
-
-    /// @inheritdoc IPriceAccumulator
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.PriceObservation memory observation)
-    {
-        observation.price = fetchPrice(token);
-        observation.timestamp = block.timestamp.toUint32();
-    }
-
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
         view
         virtual
-        override(IERC165, SimpleQuotationMetadata)
+        override(IERC165, SimpleQuotationMetadata, AbstractAccumulator)
         returns (bool)
     {
         return
             interfaceId == type(IPriceAccumulator).interfaceId ||
             interfaceId == type(IPriceOracle).interfaceId ||
-            super.supportsInterface(interfaceId);
+            interfaceId == type(IUpdateable).interfaceId ||
+            SimpleQuotationMetadata.supportsInterface(interfaceId) ||
+            AbstractAccumulator.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc IPriceOracle
     function consultPrice(address token) public view virtual override returns (uint112 price) {
-        return fetchPrice(token);
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
+
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "PriceAccumulator: MISSING_OBSERVATION");
+
+        return observation.price;
     }
 
+    /// @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time price.
     /// @inheritdoc IPriceOracle
-    function consultPrice(address token, uint256) public view virtual override returns (uint112 price) {
-        return fetchPrice(token);
+    function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
+        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
+
+        if (maxAge == 0) return fetchPrice(token);
+
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "PriceAccumulator: MISSING_OBSERVATION");
+        require(block.timestamp <= observation.timestamp + maxAge, "PriceAccumulator: RATE_TOO_OLD");
+
+        return observation.price;
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {
         address token = abi.decode(data, (address));
 
         uint112 price = fetchPrice(token);
+
+        // If the observation fails validation, do not update anything
+        if (!validateObservation(data, price)) return false;
 
         ObservationLibrary.PriceObservation storage observation = observations[token];
         AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
@@ -196,8 +224,8 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
             /*
              * Initialize
              */
-            observation.price = price;
-            observation.timestamp = block.timestamp.toUint32();
+            observation.price = accumulation.cumulativePrice = price;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, price, block.timestamp);
 
@@ -212,9 +240,6 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
 
         if (deltaTime != 0) {
             unchecked {
-                // If the observation fails validation, do not update anything
-                if (!validateObservation(data, price)) return false;
-
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += observation.price * deltaTime;
@@ -258,45 +283,6 @@ abstract contract PriceAccumulator is IERC165, IPriceAccumulator, IPriceOracle, 
         // We require the price to not change by more than the threshold above
         // This check limits the ability of MEV and flashbots from manipulating data
         return !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
-    }
-
-    function changeThresholdSurpassed(
-        uint256 a,
-        uint256 b,
-        uint256 updateTheshold
-    ) internal view virtual returns (bool) {
-        // Ensure a is never smaller than b
-        if (a < b) {
-            uint256 temp = a;
-            a = b;
-            b = temp;
-        }
-
-        // a >= b
-
-        if (a == 0) {
-            // a == b == 0 (since a >= b), therefore no change
-            return false;
-        } else if (b == 0) {
-            // (a > 0 && b == 0) => change threshold passed
-            // Zero to non-zero always returns true
-            return true;
-        }
-
-        unchecked {
-            uint256 delta = a - b; // a >= b, therefore no underflow
-            uint256 preciseDelta = delta * CHANGE_PRECISION;
-
-            // If the delta is so large that multiplying by CHANGE_PRECISION overflows, we assume that
-            // the change threshold has been surpassed.
-            // If our assumption is incorrect, the accumulator will be extra-up-to-date, which won't
-            // really break anything, but will cost more gas in keeping this accumulator updated.
-            if (preciseDelta < delta) return true;
-
-            uint256 change = preciseDelta / b;
-
-            return change >= updateTheshold;
-        }
     }
 
     function fetchPrice(address token) internal view virtual returns (uint112 price);

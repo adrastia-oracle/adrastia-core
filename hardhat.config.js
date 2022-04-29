@@ -3,13 +3,14 @@ require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-tracer");
 require("@atixlabs/hardhat-time-n-mine");
+require("hardhat-contract-sizer");
 
 const SOLC_8 = {
     version: "0.8.11",
     settings: {
         optimizer: {
             enabled: true,
-            runs: 20000,
+            runs: 2000,
         },
     },
 };
@@ -19,7 +20,7 @@ const SOLC_7 = {
     settings: {
         optimizer: {
             enabled: true,
-            runs: 20000,
+            runs: 2000,
         },
     },
 };

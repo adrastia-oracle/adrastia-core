@@ -30,6 +30,17 @@ contract PriceAccumulatorStub is PriceAccumulator {
         mockPrices[token] = price;
     }
 
+    function stubSetObservation(
+        address token,
+        uint112 price,
+        uint32 timestamp
+    ) public {
+        ObservationLibrary.PriceObservation storage observation = observations[token];
+
+        observation.price = price;
+        observation.timestamp = timestamp;
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;
@@ -43,6 +54,10 @@ contract PriceAccumulatorStub is PriceAccumulator {
     function overrideValidateObservation(bool overridden, bool validateObservation_) public {
         config.validateObservationOverridden = overridden;
         config.validateObservation = validateObservation_;
+    }
+
+    function stubFetchPrice(address token) public view returns (uint256 price) {
+        return fetchPrice(token);
     }
 
     function harnessChangeThresholdSurpassed(

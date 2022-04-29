@@ -3,7 +3,7 @@ pragma solidity >=0.5.0 <0.9.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./IUpdateable.sol";
+import "./IAccumulator.sol";
 
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
@@ -14,17 +14,13 @@ import "../libraries/ObservationLibrary.sol";
  *   and many exchange tokens.
  * @dev Price accumulators are used to calculate time-weighted average prices.
  */
-abstract contract IPriceAccumulator is IUpdateable {
+abstract contract IPriceAccumulator is IAccumulator {
     /// @notice Emitted when the accumulator is updated.
     /// @dev The accumulator's observation and cumulative values are updated when this is emitted.
     /// @param token The address of the token that the update is for.
     /// @param price The quote token denominated price for a whole token.
     /// @param timestamp The epoch timestamp of the update (in seconds).
     event Updated(address indexed token, uint256 price, uint256 timestamp);
-
-    /// @notice Gets the scalar (as a power of 10) to be used for calculating changes in price.
-    /// @return The scalar to be used for calculating changes in price.
-    function changePrecision() external view virtual returns (uint256);
 
     /**
      * @notice Calculates a price from two different cumulative prices.
@@ -56,18 +52,4 @@ abstract contract IPriceAccumulator is IUpdateable {
         view
         virtual
         returns (AccumulationLibrary.PriceAccumulator memory);
-
-    /// @notice Gets the last calculated time-weighted average price of a token.
-    /// @param token The address of the token to get the price for.
-    /// @return The last price along with the timestamp of that price.
-    function getLastObservation(address token) public view virtual returns (ObservationLibrary.PriceObservation memory);
-
-    /// @notice Gets the current calculated time-weighted average price of a token.
-    /// @param token The address of the token to get the price for.
-    /// @return The current price along with the timestamp of that price.
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        returns (ObservationLibrary.PriceObservation memory);
 }

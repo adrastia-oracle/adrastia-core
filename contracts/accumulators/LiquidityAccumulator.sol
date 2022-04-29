@@ -6,24 +6,25 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
+import "./AbstractAccumulator.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
 import "../interfaces/ILiquidityOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
-abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiquidityOracle, SimpleQuotationMetadata {
+abstract contract LiquidityAccumulator is
+    IERC165,
+    ILiquidityAccumulator,
+    ILiquidityOracle,
+    AbstractAccumulator,
+    SimpleQuotationMetadata
+{
     using AddressLibrary for address;
     using SafeCast for uint256;
 
-    uint256 internal constant CHANGE_PRECISION_DECIMALS = 8;
-    uint256 internal constant CHANGE_PRECISION = 10**CHANGE_PRECISION_DECIMALS;
-
-    uint256 public immutable updateThreshold;
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
-
-    uint256 public immutable override changePrecision = CHANGE_PRECISION;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) public observations;
@@ -33,8 +34,7 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) SimpleQuotationMetadata(quoteToken_) {
-        updateThreshold = updateThreshold_;
+    ) AbstractAccumulator(updateThreshold_) SimpleQuotationMetadata(quoteToken_) {
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
@@ -60,16 +60,34 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         }
     }
 
+    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
+    /// @dev Calculates the change from the stored observation to the current observation.
+    /// @param token The token to check.
+    /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
+    ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
+    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    function changeThresholdSurpassed(address token, uint256 changeThreshold)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
+
+        ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
+
+        return
+            changeThresholdSurpassed(tokenLiquidity, lastObservation.tokenLiquidity, changeThreshold) ||
+            changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, changeThreshold);
+    }
+
     /// @notice Checks if this accumulator needs an update by checking the time since the last update and the change in
     ///   liquidities.
     /// @param data The encoded address of the token for which to perform the update.
     /// @inheritdoc IUpdateable
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
-        address token = abi.decode(data, (address));
-
-        ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
-
-        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
+        uint256 deltaTime = timeSinceLastUpdate(data);
         if (deltaTime < minUpdateDelay) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
@@ -81,14 +99,11 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         /*
          * maxUpdateDelay > deltaTime >= minUpdateDelay
          *
-         * Check if the % change in liquidity warrents an update (saves gas vs. always updating on change)
+         * Check if the % change in liquidity warrants an update (saves gas vs. always updating on change)
          */
+        address token = abi.decode(data, (address));
 
-        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
-
-        return
-            changeThresholdSurpassed(tokenLiquidity, lastObservation.tokenLiquidity, updateThreshold) ||
-            changeThresholdSurpassed(quoteTokenLiquidity, lastObservation.quoteTokenLiquidity, updateThreshold);
+        return updateThresholdSurpassed(token);
     }
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -105,6 +120,20 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         if (needsUpdate(data)) return performUpdate(data);
 
         return false;
+    }
+
+    /// @param data The encoded address of the token for which the update relates to.
+    /// @inheritdoc IUpdateable
+    function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
+        address token = abi.decode(data, (address));
+
+        return observations[token].timestamp;
+    }
+
+    /// @param data The encoded address of the token for which the update relates to.
+    /// @inheritdoc IUpdateable
+    function timeSinceLastUpdate(bytes memory data) public view virtual override returns (uint256) {
+        return block.timestamp - lastUpdateTime(data);
     }
 
     /// @inheritdoc ILiquidityAccumulator
@@ -146,41 +175,20 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         }
     }
 
-    /// @inheritdoc ILiquidityAccumulator
-    function getLastObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.LiquidityObservation memory)
-    {
-        return observations[token];
-    }
-
-    /// @inheritdoc ILiquidityAccumulator
-    function getCurrentObservation(address token)
-        public
-        view
-        virtual
-        override
-        returns (ObservationLibrary.LiquidityObservation memory observation)
-    {
-        (observation.tokenLiquidity, observation.quoteTokenLiquidity) = fetchLiquidity(token);
-        observation.timestamp = block.timestamp.toUint32();
-    }
-
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
         view
         virtual
-        override(IERC165, SimpleQuotationMetadata)
+        override(IERC165, SimpleQuotationMetadata, AbstractAccumulator)
         returns (bool)
     {
         return
             interfaceId == type(ILiquidityAccumulator).interfaceId ||
             interfaceId == type(ILiquidityOracle).interfaceId ||
-            super.supportsInterface(interfaceId);
+            interfaceId == type(IUpdateable).interfaceId ||
+            SimpleQuotationMetadata.supportsInterface(interfaceId) ||
+            AbstractAccumulator.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc ILiquidityOracle
@@ -191,24 +199,45 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         override
         returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
-        return fetchLiquidity(token);
+        if (token == quoteTokenAddress()) return (0, 0);
+
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "LiquidityAccumulator: MISSING_OBSERVATION");
+
+        tokenLiquidity = observation.tokenLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time liquidity.
     /// @inheritdoc ILiquidityOracle
-    function consultLiquidity(address token, uint256)
+    function consultLiquidity(address token, uint256 maxAge)
         public
         view
         virtual
         override
         returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
-        return fetchLiquidity(token);
+        if (token == quoteTokenAddress()) return (0, 0);
+
+        if (maxAge == 0) return fetchLiquidity(token);
+
+        ObservationLibrary.LiquidityObservation storage observation = observations[token];
+
+        require(observation.timestamp != 0, "LiquidityAccumulator: MISSING_OBSERVATION");
+        require(block.timestamp <= observation.timestamp + maxAge, "LiquidityAccumulator: RATE_TOO_OLD");
+
+        tokenLiquidity = observation.tokenLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {
         address token = abi.decode(data, (address));
 
         (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(token);
+
+        // If the observation fails validation, do not update anything
+        if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
 
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
         AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
@@ -217,9 +246,9 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
             /*
              * Initialize
              */
-            observation.tokenLiquidity = tokenLiquidity;
-            observation.quoteTokenLiquidity = quoteTokenLiquidity;
-            observation.timestamp = block.timestamp.toUint32();
+            observation.tokenLiquidity = accumulation.cumulativeTokenLiquidity = tokenLiquidity;
+            observation.quoteTokenLiquidity = accumulation.cumulativeQuoteTokenLiquidity = quoteTokenLiquidity;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
@@ -233,9 +262,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
-            // If the observation fails validation, do not update anything
-            if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
-
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the liquidites multiplied by the time those liquidities were present
@@ -290,45 +316,6 @@ abstract contract LiquidityAccumulator is IERC165, ILiquidityAccumulator, ILiqui
         return
             !changeThresholdSurpassed(tokenLiquidity, pTokenLiquidity, allowedChangeThreshold) &&
             !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
-    }
-
-    function changeThresholdSurpassed(
-        uint256 a,
-        uint256 b,
-        uint256 updateTheshold
-    ) internal view virtual returns (bool) {
-        // Ensure a is never smaller than b
-        if (a < b) {
-            uint256 temp = a;
-            a = b;
-            b = temp;
-        }
-
-        // a >= b
-
-        if (a == 0) {
-            // a == b == 0 (since a >= b), therefore no change
-            return false;
-        } else if (b == 0) {
-            // (a > 0 && b == 0) => change threshold passed
-            // Zero to non-zero always returns true
-            return true;
-        }
-
-        unchecked {
-            uint256 delta = a - b; // a >= b, therefore no underflow
-            uint256 preciseDelta = delta * CHANGE_PRECISION;
-
-            // If the delta is so large that multiplying by CHANGE_PRECISION overflows, we assume that
-            // the change threshold has been surpassed.
-            // If our assumption is incorrect, the accumulator will be extra-up-to-date, which won't
-            // really break anything, but will cost more gas in keeping this accumulator updated.
-            if (preciseDelta < delta) return true;
-
-            uint256 change = preciseDelta / b;
-
-            return change >= updateTheshold;
-        }
     }
 
     function fetchLiquidity(address token)

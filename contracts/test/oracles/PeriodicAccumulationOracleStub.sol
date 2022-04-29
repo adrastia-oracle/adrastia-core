@@ -33,6 +33,24 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         observation.timestamp = timestamp;
     }
 
+    function stubSetAccumulations(
+        address token,
+        uint112 cumulativePrice,
+        uint112 cumulativeTokenLiquidity,
+        uint112 cumulativeQuoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
+        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+
+        priceAccumulation.cumulativePrice = cumulativePrice;
+        priceAccumulation.timestamp = timestamp;
+
+        liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
+        liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
+        liquidityAccumulation.timestamp = timestamp;
+    }
+
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {
         config.needsUpdateOverridden = overridden;
         config.needsUpdate = needsUpdate_;
@@ -47,12 +65,12 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
         // Always keep the liquidity accumulator updated so that we don't have to do so in our tests.
-        try ILiquidityAccumulator(liquidityAccumulator).update(data) returns (bool) {} catch Error(
-            string memory
-        ) {} catch (bytes memory) {}
+        try IUpdateable(liquidityAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
+            bytes memory
+        ) {}
 
         // Always keep the price accumulator updated so that we don't have to do so in our tests.
-        try IPriceAccumulator(priceAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
+        try IUpdateable(priceAccumulator).update(data) returns (bool) {} catch Error(string memory) {} catch (
             bytes memory
         ) {}
 
