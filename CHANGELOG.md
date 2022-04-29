@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0.0-rc.8
+### Interfaces
+- Add IUpdateable#lastUpdateTime and IUpdateable#timeSinceLastUpdate
+- Add IAccumulator to define common functions
+- Remove `getLastObservation` and `getCurrentObservation` from accumulators
+
+### Accumulators
+- Initialize accumulators when initializing instead of just the observation
+- Validate all observations instead of only the ones after the first update
+- Add AbstractAccumulator to define common logic and reduce redundancy
+- Add convenience functions: `changeThresholdSurpassed(address token, uint256 changeThreshold)` and `updateThresholdSurpassed(address token)`
+- Make consultations use stored observations by default, rather than returning data directly from the source
+  - A `maxAge` of 0 allows for the consultation to return data directly from the source
+
+### Oracles
+- Make PeriodicAccumulationOracle only update observation timestamp and emit Updated when it has enough information to calculate a price
+
+### Libraries
+ - Remove unused UniswapV2PriceAccumulator data structure
+
 ## v1.0.0-rc.7
 ### Accumulators
 - Add observation validation against externally provided data (MEV and flashbot attack protection)
