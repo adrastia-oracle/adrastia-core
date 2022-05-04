@@ -157,7 +157,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             }
         }
 
-        (, , , uint256 validResponses) = aggregateUnderlying(token);
+        (, , , uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
         return validResponses >= 1;
@@ -196,7 +196,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         uint256 quoteTokenLiquidity;
         uint256 validResponses;
 
-        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token);
+        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
         // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we set the observation to the max
         // This allows the price to continue to be updated while tightly packing liquidities for gas efficiency
@@ -229,7 +229,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
     }
 
-    function aggregateUnderlying(address token)
+    function aggregateUnderlying(address token, uint256 maxAge)
         internal
         view
         returns (
@@ -240,8 +240,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         )
     {
         uint256 qtDecimals = quoteTokenDecimals();
-
-        uint256 maxAge = calculateMaxAge();
 
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
