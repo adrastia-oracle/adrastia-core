@@ -1375,9 +1375,6 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         const totalTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
         const totalQuoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
 
-        // Slight loss of precision from the harmonic mean calculation, but this is okay (it's negligible)
-        price = BigNumber.from("1000000000000000121");
-
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)), "Update log")
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
