@@ -265,6 +265,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                     uint256 oracleQuoteTokenLiquidity = oQuoteTokenLiquidity;
 
                     {
+                        // Shift liquidity for more precise calculations as we divide this by the price
+                        // This is safe as liquidity < 2^112
+                        oracleQuoteTokenLiquidity = oracleQuoteTokenLiquidity << 120;
+
                         uint256 decimals = _oracles[i].quoteTokenDecimals;
 
                         // Fix differing quote token decimal places
@@ -287,10 +291,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                         ++validResponses;
 
                         // Note: (oracleQuoteTokenLiquidity / oraclePrice) will equal 0 if oracleQuoteTokenLiquidity <
-                        //   oraclePrice (i.e. very low liquidity)
+                        //   oraclePrice, but for this to happen, price would have to be insanely high
                         denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
-                        // These should never overflow: supply of an asset cannot be greater than uint256.max
+                        // Should never realistically overflow
                         tokenLiquidity += oracleTokenLiquidity;
                         quoteTokenLiquidity += oracleQuoteTokenLiquidity;
                     }
@@ -299,5 +303,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         }
 
         price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
+
+        // Right shift liquidity to undo the left shift and get the real value
+        quoteTokenLiquidity = quoteTokenLiquidity >> 120;
     }
 }
