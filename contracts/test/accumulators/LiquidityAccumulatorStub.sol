@@ -55,6 +55,19 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         observation.timestamp = timestamp;
     }
 
+    function stubSetAccumulation(
+        address token,
+        uint112 cumulativeTokenLiquidity,
+        uint112 cumulativeQuoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
+
+        accumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
+        accumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
+        accumulation.timestamp = timestamp;
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;

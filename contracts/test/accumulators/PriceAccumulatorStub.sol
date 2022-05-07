@@ -41,6 +41,17 @@ contract PriceAccumulatorStub is PriceAccumulator {
         observation.timestamp = timestamp;
     }
 
+    function stubSetAccumulation(
+        address token,
+        uint112 cumulativePrice,
+        uint32 timestamp
+    ) public {
+        AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
+
+        accumulation.cumulativePrice = cumulativePrice;
+        accumulation.timestamp = timestamp;
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;

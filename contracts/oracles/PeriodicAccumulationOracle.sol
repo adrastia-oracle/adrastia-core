@@ -32,6 +32,21 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         priceAccumulator = priceAccumulator_;
     }
 
+    /// @inheritdoc PeriodicOracle
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
+        if (
+            ILiquidityAccumulator(liquidityAccumulator).getLastAccumulation(token).timestamp == 0 ||
+            IPriceAccumulator(priceAccumulator).getLastAccumulation(token).timestamp == 0
+        ) {
+            // Can't update if the accumulators haven't been initialized
+            return false;
+        }
+
+        return super.canUpdate(data);
+    }
+
     /// @inheritdoc AbstractOracle
     function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
         address token = abi.decode(data, (address));

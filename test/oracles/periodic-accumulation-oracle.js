@@ -142,27 +142,88 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
 });
 
 describe("PeriodicAccumulationOracle#canUpdate", function () {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 2;
+    const TWO_PERCENT_CHANGE = 2000000;
+
+    var priceAccumulator;
+    var liquidityAccumulator;
     var oracle;
 
     beforeEach(async () => {
+        const paFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
 
-        // Time increases by 1 second with each block mined
-        await hre.timeAndMine.setTimeIncrease(1);
+        await priceAccumulator.deployed();
+        await liquidityAccumulator.deployed();
+
+        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
     });
 
-    it("Can update when it needs an update", async function () {
+    it("Can update when it needs an update and both of the accumulators have been initialized", async function () {
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+
         await oracle.overrideNeedsUpdate(true, true);
 
-        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
-    it("Can't update when it doesn't needs an update", async function () {
+    it("Can't update when it needs an update but both of the accumulators haven't been initialized", async function () {
+        await oracle.overrideNeedsUpdate(true, true);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+    });
+
+    it("Can't update when it needs an update but the price accumulator hasn't been initialized", async function () {
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+
+        await oracle.overrideNeedsUpdate(true, true);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+    });
+
+    it("Can't update when it needs an update but the liquidity accumulator hasn't been initialized", async function () {
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
+
+        await oracle.overrideNeedsUpdate(true, true);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+    });
+
+    it("Can't update when it doesn't needs an update and both of the accumulators have been initialized", async function () {
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+
         await oracle.overrideNeedsUpdate(true, false);
 
-        expect(await oracle.needsUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+    });
+
+    it("Can't update when it doesn't need an update and both of the accumulators haven't been initialized", async function () {
+        await oracle.overrideNeedsUpdate(true, false);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+    });
+
+    it("Can't update when it doesn't need an update and the price accumulator hasn't been initialized", async function () {
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+
+        await oracle.overrideNeedsUpdate(true, false);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+    });
+
+    it("Can't update when it doesn't need an update and the liquidity accumulator hasn't been initialized", async function () {
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
+
+        await oracle.overrideNeedsUpdate(true, false);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 });
 
