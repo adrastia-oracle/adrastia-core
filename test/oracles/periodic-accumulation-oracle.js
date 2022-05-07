@@ -927,7 +927,7 @@ describe("PeriodicAccumulationOracle#update", function () {
 
         const updateTx = await oracle.update(updateData);
 
-        expect(updateTx).to.not.emit(oracle, "Updated");
+        await expect(updateTx).to.not.emit(oracle, "Updated");
 
         const [oPrice, oTokenLiqudity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
 
@@ -960,7 +960,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         const updateTx = await oracle.update(updateData);
 
         // Shouldn't emite Updated since the oracle doesn't have enough info to calculate price
-        expect(updateTx).to.not.emit(oracle, "Updated");
+        await expect(updateTx).to.not.emit(oracle, "Updated");
 
         const [, , , oTimestamp] = await oracle.observations(token.address);
 
@@ -1059,7 +1059,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         }
 
         // Verify that the log matches the observation
-        expect(updateReceipt)
+        await expect(updateReceipt)
             .to.emit(oracle, "Updated")
             .withArgs(token.address, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
     };
