@@ -74,6 +74,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         bool updatedObservation;
         bool missingPrice;
+        bool anythingUpdated;
 
         /*
          * 1. Update price
@@ -107,6 +108,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
                 lastAccumulation.cumulativePrice = freshAccumulation.cumulativePrice;
                 lastAccumulation.timestamp = freshAccumulation.timestamp;
+
+                anythingUpdated = true;
             }
         }
 
@@ -138,6 +141,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
                 lastAccumulation.cumulativeQuoteTokenLiquidity = freshAccumulation.cumulativeQuoteTokenLiquidity;
                 lastAccumulation.timestamp = freshAccumulation.timestamp;
+
+                anythingUpdated = true;
             }
         }
 
@@ -156,7 +161,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             );
         }
 
-        return true;
+        return anythingUpdated;
     }
 
     /// @inheritdoc AbstractOracle

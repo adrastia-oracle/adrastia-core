@@ -11,6 +11,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         bool needsUpdate;
         bool validateObservationOverridden;
         bool validateObservation;
+        bool useLastAccumulationAsCurrent;
     }
 
     mapping(address => uint112) public mockPrices;
@@ -67,6 +68,10 @@ contract PriceAccumulatorStub is PriceAccumulator {
         config.validateObservation = validateObservation_;
     }
 
+    function overrideCurrentAccumulation(bool useLastAccumulationAsCurrent) public {
+        config.useLastAccumulationAsCurrent = useLastAccumulationAsCurrent;
+    }
+
     function stubFetchPrice(address token) public view returns (uint256 price) {
         return fetchPrice(token);
     }
@@ -106,6 +111,17 @@ contract PriceAccumulatorStub is PriceAccumulator {
     ) internal view virtual override returns (bool) {
         if (config.changeThresholdOverridden) return config.changeThresholdPassed;
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
+    }
+
+    function getCurrentAccumulation(address token)
+        public
+        view
+        virtual
+        override
+        returns (AccumulationLibrary.PriceAccumulator memory accumulation)
+    {
+        if (config.useLastAccumulationAsCurrent) return getLastAccumulation(token);
+        else return super.getCurrentAccumulation(token);
     }
 }
 

@@ -1054,6 +1054,121 @@ describe("PeriodicAccumulationOracle#update", function () {
         expectedPrice = price;
     }
 
+    describe("Return value differences with different accumulations", function () {
+        beforeEach(async () => {
+            // We need PriceAccumulatorStub and LiquidityAccumulatorStub rather than the curve accumulator stubs
+
+            // Deploy liquidity accumulator
+            const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+            liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+                quoteToken.address,
+                TWO_PERCENT_CHANGE,
+                MIN_UPDATE_DELAY,
+                MAX_UPDATE_DELAY
+            );
+            await liquidityAccumulator.deployed();
+
+            // Deploy price accumulator
+            const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+            priceAccumulator = await priceAccumulatorFactory.deploy(
+                quoteToken.address,
+                TWO_PERCENT_CHANGE,
+                MIN_UPDATE_DELAY,
+                MAX_UPDATE_DELAY
+            );
+            await priceAccumulator.deployed();
+
+            // Deploy oracle
+            const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
+            oracle = await oracleFactory.deploy(
+                liquidityAccumulator.address,
+                priceAccumulator.address,
+                quoteToken.address,
+                1
+            );
+        });
+
+        it("Should return false when both of the accumulations haven't changed", async function () {
+            // Set the "last accumulation"
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+
+            // Make the accumulators use the last accumulations as the current
+            await priceAccumulator.overrideCurrentAccumulation(true);
+            await liquidityAccumulator.overrideCurrentAccumulation(true);
+
+            // Set the "current accumulations"
+            await priceAccumulator.stubSetAccumulation(token.address, 1, 1);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 1);
+
+            // Ensures the oracle will try and perform the update
+            await oracle.overrideNeedsUpdate(true, true);
+
+            const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+            expect(await oracle.callStatic.update(updateData)).to.equal(false);
+        });
+
+        it("Should return true when the liquidity accumulation has been updated, but the price accumulation has not", async function () {
+            // Set the "last accumulation"
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+
+            // Make the accumulators use the last accumulations as the current
+            await priceAccumulator.overrideCurrentAccumulation(true);
+            await liquidityAccumulator.overrideCurrentAccumulation(true);
+
+            // Set the "current accumulations"
+            await priceAccumulator.stubSetAccumulation(token.address, 1, 1);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 2);
+
+            // Ensures the oracle will try and perform the update
+            await oracle.overrideNeedsUpdate(true, true);
+
+            const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+            expect(await oracle.callStatic.update(updateData)).to.equal(true);
+        });
+
+        it("Should return true when the price accumulation has been updated, but the liquidity accumulation has not", async function () {
+            // Set the "last accumulation"
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+
+            // Make the accumulators use the last accumulations as the current
+            await priceAccumulator.overrideCurrentAccumulation(true);
+            await liquidityAccumulator.overrideCurrentAccumulation(true);
+
+            // Set the "current accumulations"
+            await priceAccumulator.stubSetAccumulation(token.address, 1, 2);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 1);
+
+            // Ensures the oracle will try and perform the update
+            await oracle.overrideNeedsUpdate(true, true);
+
+            const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+            expect(await oracle.callStatic.update(updateData)).to.equal(true);
+        });
+
+        it("Should return true when the both the price and the liquidity accumulations have been updated", async function () {
+            // Set the "last accumulation"
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+
+            // Make the accumulators use the last accumulations as the current
+            await priceAccumulator.overrideCurrentAccumulation(true);
+            await liquidityAccumulator.overrideCurrentAccumulation(true);
+
+            // Set the "current accumulations"
+            await priceAccumulator.stubSetAccumulation(token.address, 1, 2);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 2);
+
+            // Ensures the oracle will try and perform the update
+            await oracle.overrideNeedsUpdate(true, true);
+
+            const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+            expect(await oracle.callStatic.update(updateData)).to.equal(true);
+        });
+    });
+
     it("Shouldn't update anything if the current accumulations' timestamps equals the last", async function () {
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);

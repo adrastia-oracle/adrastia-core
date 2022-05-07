@@ -16,6 +16,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         bool needsUpdate;
         bool validateObservationOverridden;
         bool validateObservation;
+        bool useLastAccumulationAsCurrent;
     }
 
     mapping(address => MockLiquidity) public mockLiquidity;
@@ -83,6 +84,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         config.validateObservation = validateObservation_;
     }
 
+    function overrideCurrentAccumulation(bool useLastAccumulationAsCurrent) public {
+        config.useLastAccumulationAsCurrent = useLastAccumulationAsCurrent;
+    }
+
     function stubValidateObservation(
         bytes memory updateData,
         uint112 tokenLiquidity,
@@ -142,6 +147,17 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     ) internal view virtual override returns (bool) {
         if (config.changeThresholdOverridden) return config.changeThresholdPassed;
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
+    }
+
+    function getCurrentAccumulation(address token)
+        public
+        view
+        virtual
+        override
+        returns (AccumulationLibrary.LiquidityAccumulator memory accumulation)
+    {
+        if (config.useLastAccumulationAsCurrent) return getLastAccumulation(token);
+        else return super.getCurrentAccumulation(token);
     }
 }
 
