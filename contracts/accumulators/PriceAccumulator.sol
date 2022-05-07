@@ -29,6 +29,22 @@ abstract contract PriceAccumulator is
     mapping(address => AccumulationLibrary.PriceAccumulator) public accumulations;
     mapping(address => ObservationLibrary.PriceObservation) public observations;
 
+    /**
+     * @notice Emitted when the observed price is validated against a user (updater) provided price.
+     * @param token The token that the price validation is for.
+     * @param observedPrice The observed price from the on-chain data source.
+     * @param providedPrice The price provided externally by the user (updater).
+     * @param timestamp The timestamp of the block that the validation was performed in.
+     * @param succeeded True if the observed price closely matches the provided price; false otherwise.
+     */
+    event ValidationPerformed(
+        address indexed token,
+        uint256 observedPrice,
+        uint256 providedPrice,
+        uint256 timestamp,
+        bool succeeded
+    );
+
     constructor(
         address quoteToken_,
         uint256 updateThreshold_,
@@ -282,7 +298,11 @@ abstract contract PriceAccumulator is
 
         // We require the price to not change by more than the threshold above
         // This check limits the ability of MEV and flashbots from manipulating data
-        return !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
+        bool validated = !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
+
+        emit ValidationPerformed(token, price, pPrice, block.timestamp, validated);
+
+        return validated;
     }
 
     function fetchPrice(address token) internal view virtual returns (uint112 price);

@@ -29,6 +29,26 @@ abstract contract LiquidityAccumulator is
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) public observations;
 
+    /**
+     * @notice Emitted when the observed liquidities are validated against user (updater) provided liquidities.
+     * @param token The token that the liquidity validation is for.
+     * @param observedTokenLiquidity The observed token liquidity from the on-chain data source.
+     * @param observedQuoteTokenLiquidity The observed quote token liquidity from the on-chain data source.
+     * @param providedTokenLiquidity The token liquidity provided externally by the user (updater).
+     * @param providedQuoteTokenLiquidity The quote token liquidity provided externally by the user (updater).
+     * @param timestamp The timestamp of the block that the validation was performed in.
+     * @param succeeded True if the observed liquidities closely matches the provided liquidities; false otherwise.
+     */
+    event ValidationPerformed(
+        address indexed token,
+        uint256 observedTokenLiquidity,
+        uint256 observedQuoteTokenLiquidity,
+        uint256 providedTokenLiquidity,
+        uint256 providedQuoteTokenLiquidity,
+        uint256 timestamp,
+        bool succeeded
+    );
+
     constructor(
         address quoteToken_,
         uint256 updateThreshold_,
@@ -313,9 +333,20 @@ abstract contract LiquidityAccumulator is
 
         // We require liquidity levels to not change by more than the threshold above
         // This check limits the ability of MEV and flashbots from manipulating data
-        return
-            !changeThresholdSurpassed(tokenLiquidity, pTokenLiquidity, allowedChangeThreshold) &&
+        bool validated = !changeThresholdSurpassed(tokenLiquidity, pTokenLiquidity, allowedChangeThreshold) &&
             !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
+
+        emit ValidationPerformed(
+            token,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            pTokenLiquidity,
+            pQuoteTokenLiquidity,
+            block.timestamp,
+            validated
+        );
+
+        return validated;
     }
 
     function fetchLiquidity(address token)
