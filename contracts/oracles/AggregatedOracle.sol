@@ -305,4 +305,46 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         // Right shift liquidity to undo the left shift and get the real value
         quoteTokenLiquidity = quoteTokenLiquidity >> 120;
     }
+
+    /// @inheritdoc AbstractOracle
+    function instantFetch(address token)
+        internal
+        view
+        virtual
+        override
+        returns (
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
+        )
+    {
+        (
+            uint256 bigPrice,
+            uint256 bigTokenLiquidity,
+            uint256 bigQuoteTokenLiquidity,
+            uint256 validResponses
+        ) = aggregateUnderlying(token, 0);
+
+        // Reverts if none of the underlying oracles report anything
+        require(validResponses > 0, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+
+        // This revert should realistically never occur, but we use it to prevent an invalid price from being returned
+        require(bigPrice <= type(uint112).max, "AggregatedOracle: PRICE_TOO_HIGH");
+
+        price = uint112(bigPrice);
+
+        // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we use the max value
+        // This matches how observations are stored
+        if (bigTokenLiquidity > type(uint112).max) {
+            tokenLiquidity = type(uint112).max;
+        } else {
+            tokenLiquidity = uint112(bigTokenLiquidity);
+        }
+
+        if (bigQuoteTokenLiquidity > type(uint112).max) {
+            quoteTokenLiquidity = type(uint112).max;
+        } else {
+            quoteTokenLiquidity = uint112(bigQuoteTokenLiquidity);
+        }
+    }
 }

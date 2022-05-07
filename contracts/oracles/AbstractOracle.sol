@@ -53,6 +53,12 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
 
+        if (maxAge == 0) {
+            (price, , ) = instantFetch(token);
+
+            return price;
+        }
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -88,6 +94,12 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
         returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
     {
         if (token == quoteTokenAddress()) return (0, 0);
+
+        if (maxAge == 0) {
+            (, tokenLiquidity, quoteTokenLiquidity) = instantFetch(token);
+
+            return (tokenLiquidity, quoteTokenLiquidity);
+        }
 
         ObservationLibrary.Observation storage observation = observations[token];
 
@@ -135,6 +147,8 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     {
         if (token == quoteTokenAddress()) return (uint112(10**quoteTokenDecimals()), 0, 0);
 
+        if (maxAge == 0) return instantFetch(token);
+
         ObservationLibrary.Observation storage observation = observations[token];
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
@@ -160,4 +174,22 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
             interfaceId == type(ILiquidityOracle).interfaceId ||
             super.supportsInterface(interfaceId);
     }
+
+    /**
+     * @notice Fetches the instant rates as of the latest block, straight from the source.
+     * @dev This is costly in gas and the rates are easier to manipulate.
+     * @param token The token to get the rates for.
+     * @return price The quote token denominated price for a whole token.
+     * @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
+     * @return quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
+     */
+    function instantFetch(address token)
+        internal
+        view
+        virtual
+        returns (
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
+        );
 }

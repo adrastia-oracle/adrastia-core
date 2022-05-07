@@ -143,4 +143,21 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         return true;
     }
+
+    /// @inheritdoc AbstractOracle
+    function instantFetch(address token)
+        internal
+        view
+        virtual
+        override
+        returns (
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
+        )
+    {
+        // We assume the accumulators are also oracles... the interfaces need to be refactored
+        price = IPriceOracle(priceAccumulator).consultPrice(token, 0);
+        (tokenLiquidity, quoteTokenLiquidity) = ILiquidityOracle(liquidityAccumulator).consultLiquidity(token, 0);
+    }
 }

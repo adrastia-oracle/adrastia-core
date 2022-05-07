@@ -206,6 +206,41 @@ describe("PeriodicAccumulationOracle#consultPrice(token)", function () {
     });
 });
 
+describe("PeriodicAccumulationOracle#consultPrice(token, maxAge = 0)", function () {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 2;
+    const TWO_PERCENT_CHANGE = 2000000;
+
+    var priceAccumulator;
+    var liquidityAccumulator;
+    var oracle;
+
+    beforeEach(async () => {
+        const paFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
+
+        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+
+        await priceAccumulator.deployed();
+        await liquidityAccumulator.deployed();
+
+        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+    });
+
+    it("Should get the set price (=1)", async () => {
+        const price = BigNumber.from(1);
+        const tokenLiquidity = BigNumber.from(1);
+        const quoteTokenLiquidity = BigNumber.from(1);
+
+        await priceAccumulator.setPrice(AddressZero, price);
+        await liquidityAccumulator.setLiquidity(AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+        expect(await oracle["consultPrice(address,uint256)"](AddressZero, 0)).to.equal(price);
+    });
+});
+
 describe("PeriodicAccumulationOracle#consultPrice(token, maxAge)", function () {
     const MAX_AGE = 60;
 
@@ -377,6 +412,44 @@ describe("PeriodicAccumulationOracle#consultLiquidity(token)", function () {
             expect(tokenLiqudity).to.equal(_tokenLiqudity);
             expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
+    });
+});
+
+describe("PeriodicAccumulationOracle#consultLiquidity(token, maxAge = 0)", function () {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 2;
+    const TWO_PERCENT_CHANGE = 2000000;
+
+    var priceAccumulator;
+    var liquidityAccumulator;
+    var oracle;
+
+    beforeEach(async () => {
+        const paFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
+
+        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+
+        await priceAccumulator.deployed();
+        await liquidityAccumulator.deployed();
+
+        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+    });
+
+    it("Should get the set liquidities (2,3)", async () => {
+        const price = BigNumber.from(1);
+        const tokenLiquidity = BigNumber.from(2);
+        const quoteTokenLiquidity = BigNumber.from(3);
+
+        await priceAccumulator.setPrice(AddressZero, price);
+        await liquidityAccumulator.setLiquidity(AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+        const liquidity = await oracle["consultLiquidity(address,uint256)"](AddressZero, 0);
+
+        expect(liquidity["tokenLiquidity"]).to.equal(tokenLiquidity);
+        expect(liquidity["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
     });
 });
 
@@ -616,6 +689,45 @@ describe("PeriodicAccumulationOracle#consult(token)", function () {
             expect(tokenLiqudity).to.equal(_tokenLiqudity);
             expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
+    });
+});
+
+describe("PeriodicAccumulationOracle#consult(token, maxAge = 0)", function () {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 2;
+    const TWO_PERCENT_CHANGE = 2000000;
+
+    var priceAccumulator;
+    var liquidityAccumulator;
+    var oracle;
+
+    beforeEach(async () => {
+        const paFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
+
+        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+
+        await priceAccumulator.deployed();
+        await liquidityAccumulator.deployed();
+
+        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+    });
+
+    it("Should get the set price (1) and liquidities (2,3)", async () => {
+        const price = BigNumber.from(1);
+        const tokenLiquidity = BigNumber.from(2);
+        const quoteTokenLiquidity = BigNumber.from(3);
+
+        await priceAccumulator.setPrice(AddressZero, price);
+        await liquidityAccumulator.setLiquidity(AddressZero, tokenLiquidity, quoteTokenLiquidity);
+
+        const consultation = await oracle["consult(address,uint256)"](AddressZero, 0);
+
+        expect(consultation["price"]).to.equal(price);
+        expect(consultation["tokenLiquidity"]).to.equal(tokenLiquidity);
+        expect(consultation["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
     });
 });
 
