@@ -317,6 +317,31 @@ describe("AggregatedOracle#consultPrice(token)", function () {
     });
 });
 
+describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
+    var underlyingOracle;
+    var oracle;
+
+    beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("AggregatedOracle");
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 6, [underlyingOracle.address], [], PERIOD);
+    });
+
+    it("Should get the set price (=1)", async () => {
+        const price = BigNumber.from(1);
+        const tokenLiqudity = BigNumber.from(2);
+        const quoteTokenLiquidity = BigNumber.from(3);
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        expect(await oracle["consultPrice(address,uint256)"](AddressZero, 0)).to.equal(price);
+    });
+});
+
 describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
     const MAX_AGE = 60;
 
@@ -496,6 +521,34 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
             expect(tokenLiqudity).to.equal(_tokenLiqudity);
             expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
+    });
+});
+
+describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
+    var underlyingOracle;
+    var oracle;
+
+    beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("AggregatedOracle");
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 6, [underlyingOracle.address], [], PERIOD);
+    });
+
+    it("Should get the set price (=1)", async () => {
+        const price = BigNumber.from(1);
+        const tokenLiqudity = BigNumber.from(2);
+        const quoteTokenLiquidity = BigNumber.from(3);
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        const liquitity = await oracle["consultLiquidity(address,uint256)"](AddressZero, 0);
+
+        expect(liquitity["tokenLiquidity"]).to.equal(tokenLiqudity);
+        expect(liquitity["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
     });
 });
 
@@ -743,6 +796,156 @@ describe("AggregatedOracle#consult(token)", function () {
             expect(tokenLiqudity).to.equal(_tokenLiqudity);
             expect(quoteTokenLiquidity).to.equal(_quoteTokenLiquidity);
         });
+    });
+});
+
+describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
+    var oracleFactory;
+    var mockOracleFactory;
+    var underlyingOracle;
+    var oracle;
+
+    beforeEach(async () => {
+        mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        oracleFactory = await ethers.getContractFactory("AggregatedOracle");
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 6, [underlyingOracle.address], [], PERIOD);
+    });
+
+    it("Should get the set price (=1)", async () => {
+        const price = BigNumber.from(1);
+        const tokenLiqudity = BigNumber.from(2);
+        const quoteTokenLiquidity = BigNumber.from(3);
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        const consultation = await oracle["consult(address,uint256)"](AddressZero, 0);
+
+        expect(consultation["price"]).to.equal(price);
+        expect(consultation["tokenLiquidity"]).to.equal(tokenLiqudity);
+        expect(consultation["quoteTokenLiquidity"]).to.equal(quoteTokenLiquidity);
+    });
+
+    it("Should revert when there are no valid responses", async function () {
+        await underlyingOracle.stubSetConsultError(true);
+
+        await expect(oracle["consult(address,uint256)"](AddressZero, 0)).to.be.revertedWith(
+            "AggregatedOracle: INVALID_NUM_CONSULTATIONS"
+        );
+    });
+
+    it("Should revert when the price exceeds uint112.max", async function () {
+        // Redeploy with more quote token decimal places
+        oracle = await oracleFactory.deploy("NAME", USDC, "NIL", 18, [underlyingOracle.address], [], PERIOD);
+
+        const price = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+        const tokenLiqudity = BigNumber.from(2);
+        const quoteTokenLiquidity = BigNumber.from(3);
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        await expect(oracle["consult(address,uint256)"](AddressZero, 0)).to.be.revertedWith(
+            "AggregatedOracle: PRICE_TOO_HIGH"
+        );
+    });
+
+    it("Should report token liquidity of uint112.max when it exceeds that", async function () {
+        const underlyingOracle2 = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle2.deployed();
+
+        // Redeploy with additional underlying oracle
+        oracle = await oracleFactory.deploy(
+            "NAME",
+            USDC,
+            "NIL",
+            6,
+            [underlyingOracle.address, underlyingOracle2.address],
+            [],
+            PERIOD
+        );
+
+        const price = BigNumber.from(1);
+        const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+        const quoteTokenLiquidity = BigNumber.from(1);
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+        await underlyingOracle2.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        const totalTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+        const totalQuoteTokenLiquidity = quoteTokenLiquidity.mul(2);
+
+        const consultation = await oracle["consult(address,uint256)"](AddressZero, 0);
+
+        expect(consultation["price"]).to.equal(price);
+        expect(consultation["tokenLiquidity"]).to.equal(totalTokenLiquidity);
+        expect(consultation["quoteTokenLiquidity"]).to.equal(totalQuoteTokenLiquidity);
+    });
+
+    it("Should report quote token liquidity of uint112.max when it exceeds that", async function () {
+        const underlyingOracle2 = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle2.deployed();
+
+        // Redeploy with additional underlying oracle
+        oracle = await oracleFactory.deploy(
+            "NAME",
+            USDC,
+            "NIL",
+            6,
+            [underlyingOracle.address, underlyingOracle2.address],
+            [],
+            PERIOD
+        );
+
+        const price = BigNumber.from(1);
+        const tokenLiqudity = BigNumber.from(1);
+        const quoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+        await underlyingOracle2.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        const totalTokenLiquidity = tokenLiqudity.mul(2);
+        const totalQuoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+
+        const consultation = await oracle["consult(address,uint256)"](AddressZero, 0);
+
+        expect(consultation["price"]).to.equal(price);
+        expect(consultation["tokenLiquidity"]).to.equal(totalTokenLiquidity);
+        expect(consultation["quoteTokenLiquidity"]).to.equal(totalQuoteTokenLiquidity);
+    });
+
+    it("Should report liquidities of uint112.max when they exceeds that", async function () {
+        const underlyingOracle2 = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle2.deployed();
+
+        // Redeploy with additional underlying oracle
+        oracle = await oracleFactory.deploy(
+            "NAME",
+            USDC,
+            "NIL",
+            6,
+            [underlyingOracle.address, underlyingOracle2.address],
+            [],
+            PERIOD
+        );
+
+        const price = BigNumber.from(1);
+        const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+        const quoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+
+        await underlyingOracle.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+        await underlyingOracle2.stubSetInstantRates(AddressZero, price, tokenLiqudity, quoteTokenLiquidity);
+
+        const totalTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+        const totalQuoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
+
+        const consultation = await oracle["consult(address,uint256)"](AddressZero, 0);
+
+        expect(consultation["price"]).to.equal(price);
+        expect(consultation["tokenLiquidity"]).to.equal(totalTokenLiquidity);
+        expect(consultation["quoteTokenLiquidity"]).to.equal(totalQuoteTokenLiquidity);
     });
 });
 
@@ -1374,9 +1577,6 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         // to the max supported value.
         const totalTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
         const totalQuoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
-
-        // Slight loss of precision from the harmonic mean calculation, but this is okay (it's negligible)
-        price = BigNumber.from("1000000000000000121");
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)), "Update log")
             .to.emit(oracle, "Updated")

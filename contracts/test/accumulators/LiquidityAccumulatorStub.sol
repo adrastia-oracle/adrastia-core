@@ -16,6 +16,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         bool needsUpdate;
         bool validateObservationOverridden;
         bool validateObservation;
+        bool useLastAccumulationAsCurrent;
     }
 
     mapping(address => MockLiquidity) public mockLiquidity;
@@ -55,6 +56,19 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         observation.timestamp = timestamp;
     }
 
+    function stubSetAccumulation(
+        address token,
+        uint112 cumulativeTokenLiquidity,
+        uint112 cumulativeQuoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        AccumulationLibrary.LiquidityAccumulator storage accumulation = accumulations[token];
+
+        accumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
+        accumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
+        accumulation.timestamp = timestamp;
+    }
+
     function overrideChangeThresholdPassed(bool overridden, bool changeThresholdPassed) public {
         config.changeThresholdOverridden = overridden;
         config.changeThresholdPassed = changeThresholdPassed;
@@ -68,6 +82,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     function overrideValidateObservation(bool overridden, bool validateObservation_) public {
         config.validateObservationOverridden = overridden;
         config.validateObservation = validateObservation_;
+    }
+
+    function overrideCurrentAccumulation(bool useLastAccumulationAsCurrent) public {
+        config.useLastAccumulationAsCurrent = useLastAccumulationAsCurrent;
     }
 
     function stubValidateObservation(
@@ -129,6 +147,17 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     ) internal view virtual override returns (bool) {
         if (config.changeThresholdOverridden) return config.changeThresholdPassed;
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
+    }
+
+    function getCurrentAccumulation(address token)
+        public
+        view
+        virtual
+        override
+        returns (AccumulationLibrary.LiquidityAccumulator memory accumulation)
+    {
+        if (config.useLastAccumulationAsCurrent) return getLastAccumulation(token);
+        else return super.getCurrentAccumulation(token);
     }
 }
 

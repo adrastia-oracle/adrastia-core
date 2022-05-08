@@ -102,11 +102,15 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
             address pool = computeAddress(uniswapFactory, initCodeHash, getPoolKey(token, quoteToken, _poolFees[i]));
 
             if (pool.isContract()) {
-                uint256 liquidity = IUniswapV3Pool(pool).liquidity();
+                uint256 liquidity = IUniswapV3Pool(pool).liquidity(); // Note: returns uint128
                 if (liquidity == 0) {
                     // No in-range liquidity, so ignore
                     continue;
                 }
+
+                // Shift liquidity for more precise calculations as we divide this by the pool price
+                // This is safe as liquidity < 2^128
+                liquidity = liquidity << 120;
 
                 (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(pool).slot0();
 
@@ -114,9 +118,12 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
                 // This should realistically never overflow
                 uint256 poolPrice = calculatePriceFromSqrtPrice(token, quoteToken, sqrtPriceX96, wholeTokenAmount) + 1;
 
+                // Supports up to 256 pools with max liquidity (2^128) before overflowing (with liquidity << 120)
                 numerator += liquidity;
 
-                // Note: (liquidity / poolPrice) will equal 0 if liquidity < pool price (i.e. very low liquidity)
+                // Note: (liquidity / poolPrice) will equal 0 if liquidity < poolPrice, but
+                // for this to happen, price would have to be insanely high
+                // (over 18 figures left of the decimal w/ 18 decimal places)
                 denominator += liquidity / poolPrice;
             }
         }

@@ -32,6 +32,21 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         priceAccumulator = priceAccumulator_;
     }
 
+    /// @inheritdoc PeriodicOracle
+    function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
+        if (
+            ILiquidityAccumulator(liquidityAccumulator).getLastAccumulation(token).timestamp == 0 ||
+            IPriceAccumulator(priceAccumulator).getLastAccumulation(token).timestamp == 0
+        ) {
+            // Can't update if the accumulators haven't been initialized
+            return false;
+        }
+
+        return super.canUpdate(data);
+    }
+
     /// @inheritdoc AbstractOracle
     function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
         address token = abi.decode(data, (address));
@@ -59,6 +74,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         bool updatedObservation;
         bool missingPrice;
+        bool anythingUpdated;
 
         /*
          * 1. Update price
@@ -92,6 +108,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
                 lastAccumulation.cumulativePrice = freshAccumulation.cumulativePrice;
                 lastAccumulation.timestamp = freshAccumulation.timestamp;
+
+                anythingUpdated = true;
             }
         }
 
@@ -123,6 +141,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
                 lastAccumulation.cumulativeQuoteTokenLiquidity = freshAccumulation.cumulativeQuoteTokenLiquidity;
                 lastAccumulation.timestamp = freshAccumulation.timestamp;
+
+                anythingUpdated = true;
             }
         }
 
@@ -141,6 +161,23 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             );
         }
 
-        return true;
+        return anythingUpdated;
+    }
+
+    /// @inheritdoc AbstractOracle
+    function instantFetch(address token)
+        internal
+        view
+        virtual
+        override
+        returns (
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
+        )
+    {
+        // We assume the accumulators are also oracles... the interfaces need to be refactored
+        price = IPriceOracle(priceAccumulator).consultPrice(token, 0);
+        (tokenLiquidity, quoteTokenLiquidity) = ILiquidityOracle(liquidityAccumulator).consultLiquidity(token, 0);
     }
 }

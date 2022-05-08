@@ -1543,6 +1543,22 @@ describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteT
             expect(
                 await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
             ).to.equal(true);
+
+            const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+            const receipt = await tx.wait();
+            const timestamp = await blockTimestamp(receipt.blockNumber);
+
+            await expect(tx)
+                .to.emit(accumulator, "ValidationPerformed")
+                .withArgs(
+                    token.address,
+                    oTokenLiquidity,
+                    oQuoteTokenLiquidity,
+                    pTokenLiquidity,
+                    pQuoteTokenLiquidity,
+                    timestamp,
+                    true
+                );
         });
 
         it("Should return false when the observed token liquidity is too different from the provided value", async function () {
@@ -1562,6 +1578,22 @@ describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteT
             expect(
                 await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
             ).to.equal(false);
+
+            const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+            const receipt = await tx.wait();
+            const timestamp = await blockTimestamp(receipt.blockNumber);
+
+            await expect(tx)
+                .to.emit(accumulator, "ValidationPerformed")
+                .withArgs(
+                    token.address,
+                    oTokenLiquidity,
+                    oQuoteTokenLiquidity,
+                    pTokenLiquidity,
+                    pQuoteTokenLiquidity,
+                    timestamp,
+                    false
+                );
         });
 
         it("Should return false when the observed quote token liquidity is too different from the provided value", async function () {
@@ -1581,6 +1613,22 @@ describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteT
             expect(
                 await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
             ).to.equal(false);
+
+            const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+            const receipt = await tx.wait();
+            const timestamp = await blockTimestamp(receipt.blockNumber);
+
+            await expect(tx)
+                .to.emit(accumulator, "ValidationPerformed")
+                .withArgs(
+                    token.address,
+                    oTokenLiquidity,
+                    oQuoteTokenLiquidity,
+                    pTokenLiquidity,
+                    pQuoteTokenLiquidity,
+                    timestamp,
+                    false
+                );
         });
 
         it("Should return false when the observed liquidity levels are too different from the provided values", async function () {
@@ -1600,6 +1648,22 @@ describe("LiquidityAccumulator#validateObservation(token, tokenLiquidity, quoteT
             expect(
                 await accumulator.callStatic.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity)
             ).to.equal(false);
+
+            const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+            const receipt = await tx.wait();
+            const timestamp = await blockTimestamp(receipt.blockNumber);
+
+            await expect(tx)
+                .to.emit(accumulator, "ValidationPerformed")
+                .withArgs(
+                    token.address,
+                    oTokenLiquidity,
+                    oQuoteTokenLiquidity,
+                    pTokenLiquidity,
+                    pQuoteTokenLiquidity,
+                    timestamp,
+                    false
+                );
         });
     });
 });

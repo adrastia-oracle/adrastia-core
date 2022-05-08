@@ -13,6 +13,8 @@ contract MockOracle is AbstractOracle {
     bool _updateError;
     bool _updateErrorWithReason;
 
+    mapping(address => ObservationLibrary.Observation) instantRates;
+
     constructor(address quoteToken_) AbstractOracle(quoteToken_) {}
 
     function stubSetObservation(
@@ -28,6 +30,19 @@ contract MockOracle is AbstractOracle {
         observation.tokenLiquidity = tokenLiquidity;
         observation.quoteTokenLiquidity = quoteTokenLiquidity;
         observation.timestamp = timestamp;
+    }
+
+    function stubSetInstantRates(
+        address token,
+        uint112 price,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
+    ) public {
+        ObservationLibrary.Observation storage observation = instantRates[token];
+
+        observation.price = price;
+        observation.tokenLiquidity = tokenLiquidity;
+        observation.quoteTokenLiquidity = quoteTokenLiquidity;
     }
 
     function stubSetNeedsUpdate(bool b) public {
@@ -102,5 +117,23 @@ contract MockOracle is AbstractOracle {
 
     function canUpdate(bytes memory data) public view virtual override returns (bool) {
         return needsUpdate(data);
+    }
+
+    function instantFetch(address token)
+        internal
+        view
+        virtual
+        override
+        returns (
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
+        )
+    {
+        ObservationLibrary.Observation storage observation = instantRates[token];
+
+        price = observation.price;
+        tokenLiquidity = observation.tokenLiquidity;
+        quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 }

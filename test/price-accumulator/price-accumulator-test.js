@@ -1152,7 +1152,7 @@ describe("PriceAccumulator#consultPrice(token, maxAge = 60)", function () {
     });
 });
 
-describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteTokenLiquidity)", function () {
+describe("PriceAccumulator#validateObservation(token, price)", function () {
     const minUpdateDelay = 10000;
     const maxUpdateDelay = 30000;
 
@@ -1191,6 +1191,14 @@ describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteToken
             const updateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token.address, pPrice]);
 
             expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(true);
+
+            const tx = await accumulator.stubValidateObservation(updateData, oPrice);
+            const receipt = await tx.wait();
+            const timestamp = await blockTimestamp(receipt.blockNumber);
+
+            await expect(tx)
+                .to.emit(accumulator, "ValidationPerformed")
+                .withArgs(token.address, oPrice, pPrice, timestamp, true);
         });
 
         it("Should return false when the observed price is too different from the provided value", async function () {
@@ -1203,6 +1211,14 @@ describe("PriceAccumulator#validateObservation(token, tokenLiquidity, quoteToken
             const updateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token.address, pPrice]);
 
             expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(false);
+
+            const tx = await accumulator.stubValidateObservation(updateData, oPrice);
+            const receipt = await tx.wait();
+            const timestamp = await blockTimestamp(receipt.blockNumber);
+
+            await expect(tx)
+                .to.emit(accumulator, "ValidationPerformed")
+                .withArgs(token.address, oPrice, pPrice, timestamp, false);
         });
     });
 });

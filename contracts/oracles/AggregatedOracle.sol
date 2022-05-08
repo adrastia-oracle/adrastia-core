@@ -157,7 +157,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             }
         }
 
-        (, , , uint256 validResponses) = aggregateUnderlying(token);
+        (, , , uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
         return validResponses >= 1;
@@ -196,7 +196,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         uint256 quoteTokenLiquidity;
         uint256 validResponses;
 
-        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token);
+        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
         // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we set the observation to the max
         // This allows the price to continue to be updated while tightly packing liquidities for gas efficiency
@@ -229,7 +229,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
     }
 
-    function aggregateUnderlying(address token)
+    function aggregateUnderlying(address token, uint256 maxAge)
         internal
         view
         returns (
@@ -240,8 +240,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         )
     {
         uint256 qtDecimals = quoteTokenDecimals();
-
-        uint256 maxAge = calculateMaxAge();
 
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
@@ -265,6 +263,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                     uint256 oracleQuoteTokenLiquidity = oQuoteTokenLiquidity;
 
                     {
+                        // Shift liquidity for more precise calculations as we divide this by the price
+                        // This is safe as liquidity < 2^112
+                        oracleQuoteTokenLiquidity = oracleQuoteTokenLiquidity << 120;
+
                         uint256 decimals = _oracles[i].quoteTokenDecimals;
 
                         // Fix differing quote token decimal places
@@ -287,10 +289,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                         ++validResponses;
 
                         // Note: (oracleQuoteTokenLiquidity / oraclePrice) will equal 0 if oracleQuoteTokenLiquidity <
-                        //   oraclePrice (i.e. very low liquidity)
+                        //   oraclePrice, but for this to happen, price would have to be insanely high
                         denominator += oracleQuoteTokenLiquidity / oraclePrice;
 
-                        // These should never overflow: supply of an asset cannot be greater than uint256.max
+                        // Should never realistically overflow
                         tokenLiquidity += oracleTokenLiquidity;
                         quoteTokenLiquidity += oracleQuoteTokenLiquidity;
                     }
@@ -299,5 +301,50 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         }
 
         price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
+
+        // Right shift liquidity to undo the left shift and get the real value
+        quoteTokenLiquidity = quoteTokenLiquidity >> 120;
+    }
+
+    /// @inheritdoc AbstractOracle
+    function instantFetch(address token)
+        internal
+        view
+        virtual
+        override
+        returns (
+            uint112 price,
+            uint112 tokenLiquidity,
+            uint112 quoteTokenLiquidity
+        )
+    {
+        (
+            uint256 bigPrice,
+            uint256 bigTokenLiquidity,
+            uint256 bigQuoteTokenLiquidity,
+            uint256 validResponses
+        ) = aggregateUnderlying(token, 0);
+
+        // Reverts if none of the underlying oracles report anything
+        require(validResponses > 0, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+
+        // This revert should realistically never occur, but we use it to prevent an invalid price from being returned
+        require(bigPrice <= type(uint112).max, "AggregatedOracle: PRICE_TOO_HIGH");
+
+        price = uint112(bigPrice);
+
+        // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we use the max value
+        // This matches how observations are stored
+        if (bigTokenLiquidity > type(uint112).max) {
+            tokenLiquidity = type(uint112).max;
+        } else {
+            tokenLiquidity = uint112(bigTokenLiquidity);
+        }
+
+        if (bigQuoteTokenLiquidity > type(uint112).max) {
+            quoteTokenLiquidity = type(uint112).max;
+        } else {
+            quoteTokenLiquidity = uint112(bigQuoteTokenLiquidity);
+        }
     }
 }
