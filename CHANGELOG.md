@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.0.0-rc.9
+### Interfaces
+- Change the spec of oracle consultations where using a max age of 0 will return data as of the latest block, straight from the source
+
+### Oracles
+- Improve price calculation precision of AggregatedOracle
+- Add PeriodicAccumulationOracle#canUpdate that returns false when one or both of the accumulators are uninitialized
+- Make PeriodicAccumulationOracle#update return true only if something was updated
+- Update AggregatedOracle and PeriodicAccumulation oracle to conform to the new oracle spec
+
+### Accumulators
+- Improve price calculation precision of UniswapV3PriceAccumulator
+- Add observation validation logs
+
 ## v1.0.0-rc.8
 ### Interfaces
 - Add IUpdateable#lastUpdateTime and IUpdateable#timeSinceLastUpdate
