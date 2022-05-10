@@ -8,8 +8,12 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
 
 import "../../../libraries/SafeCastExt.sol";
+import "../../../libraries/uniswap-lib/TickMath.sol";
+import "../../../libraries/uniswap-lib/TickBitmap.sol";
 
 import "../../LiquidityAccumulator.sol";
+
+import "hardhat/console.sol";
 
 contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
@@ -94,6 +98,57 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         );
     }
 
+    function isPoolReliable(IUniswapV3Pool pool) internal view virtual returns (bool) {
+        uint256 liquidity = pool.liquidity();
+        if (liquidity == 0) {
+            // No in-range liquidity, so the pool is not reliable
+            return false;
+        }
+
+        (, int24 currentTick, , , , , ) = pool.slot0();
+        int24 tickSpacing = pool.tickSpacing(); // Always positive
+        if (currentTick - tickSpacing <= TickMath.MIN_TICK || currentTick + tickSpacing >= TickMath.MAX_TICK) {
+            // Either the current tick cannot go lower or higher -> pool is not reliable
+            return false;
+        }
+
+        (int24 leftTick, bool leftTickInitialized) = TickBitmap.nextInitializedTickWithinOneWord(
+            pool,
+            currentTick - tickSpacing,
+            tickSpacing,
+            true
+        );
+        if (!leftTickInitialized) {
+            // Possibly no liquidity to the left of the current tick, so price may be unable to move downwards
+            return false;
+        }
+
+        (uint128 leftLiquidity, , , , , , , ) = pool.ticks(leftTick);
+        if (leftLiquidity == 0) {
+            // Possibly no liquidity to the left of the current tick, so price may be unable to move downwards
+            return false;
+        }
+
+        (int24 rightTick, bool rightTickInitialized) = TickBitmap.nextInitializedTickWithinOneWord(
+            pool,
+            currentTick + tickSpacing,
+            tickSpacing,
+            false
+        );
+        if (!rightTickInitialized) {
+            // Possibly no liquidity to the right of the current tick, so price may be unable to move upwards
+            return false;
+        }
+
+        (uint128 rightLiquidity, , , , , , , ) = pool.ticks(rightTick);
+        if (rightLiquidity == 0) {
+            // Possibly no liquidity to the right of the current tick, so price may be unable to move upwards
+            return false;
+        }
+
+        return true;
+    }
+
     function fetchLiquidity(address token)
         internal
         view
@@ -117,9 +172,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
             address pool = computeAddress(_uniswapFactory, initCodeHash, getPoolKey(token, _quoteToken, _poolFees[i]));
 
             if (pool.isContract()) {
-                uint256 liquidity = IUniswapV3Pool(pool).liquidity();
-                if (liquidity == 0) {
-                    // No in-range liquidity, so ignore
+                if (!isPoolReliable(IUniswapV3Pool(pool))) {
                     continue;
                 }
 
