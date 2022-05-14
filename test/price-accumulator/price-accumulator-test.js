@@ -1,5 +1,6 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 const AddressZero = ethers.constants.AddressZero;
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -214,6 +215,40 @@ describe("PriceAccumulator#changeThresholdSurpassed", () => {
         { args: [102, 100, TWO_PERCENT_CHANGE], expected: true },
         { args: [103, 100, TWO_PERCENT_CHANGE], expected: true },
         { args: [1000000, 100, TWO_PERCENT_CHANGE], expected: true },
+        { args: [BigNumber.from(2).pow(256).sub(1), 100, TWO_PERCENT_CHANGE], expected: true },
+        { args: [100, BigNumber.from(2).pow(256).sub(1), TWO_PERCENT_CHANGE], expected: true },
+        {
+            args: [BigNumber.from(2).pow(256).sub(1), BigNumber.from(2).pow(256).sub(1), TWO_PERCENT_CHANGE],
+            expected: false,
+        },
+        {
+            args: [ethers.utils.parseUnits("1.0", 18), ethers.utils.parseUnits("1.0", 18), TWO_PERCENT_CHANGE],
+            expected: false,
+        },
+        {
+            args: [ethers.utils.parseUnits("1.0", 18), ethers.utils.parseUnits("1.02", 18), TWO_PERCENT_CHANGE],
+            expected: true,
+        },
+        {
+            args: [ethers.utils.parseUnits("1.02", 18), ethers.utils.parseUnits("1.0", 18), TWO_PERCENT_CHANGE],
+            expected: true,
+        },
+        {
+            args: [
+                ethers.utils.parseUnits("1000000000.0", 18),
+                ethers.utils.parseUnits("1020000000.0", 18),
+                TWO_PERCENT_CHANGE,
+            ],
+            expected: true,
+        },
+        {
+            args: [
+                ethers.utils.parseUnits("1020000000.0", 18),
+                ethers.utils.parseUnits("1000000000.0", 18),
+                TWO_PERCENT_CHANGE,
+            ],
+            expected: true,
+        },
     ];
 
     beforeEach(async () => {
