@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.8.11;
+pragma solidity =0.8.13;
 
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
@@ -120,6 +120,50 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     /*
      * Public functions
      */
+
+    /// @inheritdoc ExplicitQuotationMetadata
+    function quoteTokenName()
+        public
+        view
+        virtual
+        override(ExplicitQuotationMetadata, IQuoteToken, SimpleQuotationMetadata)
+        returns (string memory)
+    {
+        return ExplicitQuotationMetadata.quoteTokenName();
+    }
+
+    /// @inheritdoc ExplicitQuotationMetadata
+    function quoteTokenAddress()
+        public
+        view
+        virtual
+        override(ExplicitQuotationMetadata, IQuoteToken, SimpleQuotationMetadata)
+        returns (address)
+    {
+        return ExplicitQuotationMetadata.quoteTokenAddress();
+    }
+
+    /// @inheritdoc ExplicitQuotationMetadata
+    function quoteTokenSymbol()
+        public
+        view
+        virtual
+        override(ExplicitQuotationMetadata, IQuoteToken, SimpleQuotationMetadata)
+        returns (string memory)
+    {
+        return ExplicitQuotationMetadata.quoteTokenSymbol();
+    }
+
+    /// @inheritdoc ExplicitQuotationMetadata
+    function quoteTokenDecimals()
+        public
+        view
+        virtual
+        override(ExplicitQuotationMetadata, IQuoteToken, SimpleQuotationMetadata)
+        returns (uint8)
+    {
+        return ExplicitQuotationMetadata.quoteTokenDecimals();
+    }
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)

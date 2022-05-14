@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.11;
+pragma solidity =0.8.13;
 
 import "../../oracles/AggregatedOracle.sol";
 
@@ -60,9 +60,9 @@ contract AggregatedOracleStub is AggregatedOracle {
 
     /* Overridden functions */
 
-    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override(IUpdateable, PeriodicOracle) returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
-        else return super.needsUpdate(data);
+        else return PeriodicOracle.needsUpdate(data);
     }
 
     function quoteTokenDecimals() public view virtual override returns (uint8) {
