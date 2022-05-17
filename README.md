@@ -117,8 +117,23 @@ import '@pythia-oracle/pythia-core/contracts/interfaces/IOracle.sol';
 contract PriceConsumer {
   IOracle oracle = IOracle(...);
 
-  function doSomethingWithPrice() external {
-    uint256 price = oracle.consultPrice(...);
+  function doSomethingWithPriceOf(address token) external {
+    uint112 price;
+
+    // Gets the price of `token` with the requirement that the price is 2 hours old or less
+    try oracle.consultPrice(token, 2 hours) returns (uint112 pythiaPrice) {
+      price = pythiaPrice;
+    } catch Error(string memory) {
+      // High-level error - maybe the price is older than 2 hours... use fallback oracle
+      ...
+    } catch (bytes memory) {
+      // Low-level error... use fallback oracle
+      ...
+    }
+
+    require(price != 0, "MISSING_PRICE");
+    // We have our price, now let's use it
+    ...
   }
 }
 ```
