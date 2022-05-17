@@ -382,10 +382,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                     continue;
                 }
 
-                if (!validateUnderlyingConsultation(token, oPrice, oTokenLiquidity, oQuoteTokenLiquidity)) {
-                    continue;
-                }
-
                 // Shift liquidity for more precise calculations as we divide this by the price
                 // This is safe as liquidity < 2^112
                 oQuoteTokenLiquidity = oQuoteTokenLiquidity << 120;
@@ -405,6 +401,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
                     oPrice /= scalar;
                     oQuoteTokenLiquidity /= scalar;
+                }
+
+                if (!validateUnderlyingConsultation(token, oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 120)) {
+                    continue;
                 }
 
                 if (oPrice != 0 && oQuoteTokenLiquidity != 0) {
