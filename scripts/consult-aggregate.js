@@ -20,6 +20,10 @@ const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const daiAddress = "0x6b175474e89094c44da98b954eedeac495271d0f";
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const grtAddress = "0xc944e90c64b2c07662a292be6244bdf05cda44a7";
+const compAddress = "0xc00e94cb662c3520282e6f5717214004a7f26888";
+const uniAddress = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984";
+const ustAddress = "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD";
+const usdtAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7";
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -136,13 +140,15 @@ async function createAggregatedOracle(
         quoteTokenDecimals,
         oracles,
         tokenSpecificOracles,
-        period
+        period,
+        1,
+        10 ** quoteTokenDecimals // minimum is one whole token
     );
 }
 
 async function main() {
-    const token = wethAddress;
-    const quoteToken = usdcAddress;
+    const token = compAddress;
+    const quoteToken = wethAddress;
 
     const underlyingPeriodSeconds = 5;
     const periodSeconds = 10;

@@ -2,10 +2,12 @@
 pragma solidity =0.8.13;
 
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
 import "../libraries/SafeCastExt.sol";
+import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
 
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotationMetadata {
@@ -25,6 +27,14 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         address oracle;
         uint8 quoteTokenDecimals;
     }
+
+    /// @notice The minimum quote token denominated value of the token liquidity required for all underlying oracles
+    /// to be considered valid and thus included in the aggregation.
+    uint256 public immutable minimumTokenLiquidityValue;
+
+    /// @notice The minimum quote token liquidity required for all underlying oracles to be considered valid and thus
+    /// included in the aggregation.
+    uint256 public immutable minimumQuoteTokenLiquidity;
 
     /*
      * Internal variables
@@ -51,12 +61,17 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         uint8 quoteTokenDecimals_,
         address[] memory oracles_,
         TokenSpecificOracle[] memory tokenSpecificOracles_,
-        uint256 period_
+        uint256 period_,
+        uint256 minimumTokenLiquidityValue_,
+        uint256 minimumQuoteTokenLiquidity_
     )
         PeriodicOracle(quoteTokenAddress_, period_)
         ExplicitQuotationMetadata(quoteTokenName_, quoteTokenAddress_, quoteTokenSymbol_, quoteTokenDecimals_)
     {
         require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");
+
+        minimumTokenLiquidityValue = minimumTokenLiquidityValue_;
+        minimumQuoteTokenLiquidity = minimumQuoteTokenLiquidity_;
 
         // Setup general oracles
         for (uint256 i = 0; i < oracles_.length; ++i) {
@@ -273,6 +288,58 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
     }
 
+    function sanityCheckTvlDistributionRatio(
+        address token,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) internal view virtual returns (bool) {
+        if (quoteTokenLiquidity == 0) {
+            // We'll always ignore consultations where the quote token liquidity is 0
+            return false;
+        }
+
+        // Calculate the ratio of token liquidity value (denominated in the quote token) to quote token liquidity
+        // Safe from overflows: price and tokenLiquidity are actually uint112 in disguise
+        // We multiply by 100 to avoid floating point errors => 100 represents a ratio of 1:1
+        uint256 ratio = ((price * tokenLiquidity * 100) / quoteTokenLiquidity) /
+            (uint256(10)**IERC20Metadata(token).decimals());
+
+        if (ratio > 1000 || ratio < 10) {
+            // Reject consultations where the ratio is above 10:1 or below 1:10
+            // This prevents Uniswap v3 or orderbook-like oracles from skewing our observations when liquidity is very
+            // one-sided as one-sided liquidity can be used as an attack vector
+            return false;
+        }
+
+        return true;
+    }
+
+    function sanityCheckQuoteTokenLiquidity(uint256 quoteTokenLiquidity) internal view virtual returns (bool) {
+        return quoteTokenLiquidity >= minimumQuoteTokenLiquidity;
+    }
+
+    function sanityCheckTokenLiquidityValue(
+        address token,
+        uint256 price,
+        uint256 tokenLiquidity
+    ) internal view virtual returns (bool) {
+        return
+            ((price * tokenLiquidity) / (uint256(10)**IERC20Metadata(token).decimals())) >= minimumTokenLiquidityValue;
+    }
+
+    function validateUnderlyingConsultation(
+        address token,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity
+    ) internal view virtual returns (bool) {
+        return
+            sanityCheckTokenLiquidityValue(token, price, tokenLiquidity) &&
+            sanityCheckQuoteTokenLiquidity(quoteTokenLiquidity) &&
+            sanityCheckTvlDistributionRatio(token, price, tokenLiquidity, quoteTokenLiquidity);
+    }
+
     function aggregateUnderlying(address token, uint256 maxAge)
         internal
         view
@@ -301,6 +368,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                     uint112 oTokenLiquidity,
                     uint112 oQuoteTokenLiquidity
                 ) {
+                    if (!validateUnderlyingConsultation(token, oPrice, oTokenLiquidity, oQuoteTokenLiquidity)) {
+                        continue;
+                    }
+
                     // Promote returned data to uint256 to prevent scaling up from overflowing
                     uint256 oraclePrice = oPrice;
                     uint256 oracleTokenLiquidity = oTokenLiquidity;
