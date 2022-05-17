@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.0-rc.10
+### Global
+- Upgrade solc from v0.8.11 to v0.8.13
+- Upgrade dependencies to latest versions
+
+### Oracles
+- Add aggregation restrictions to AggregatedOracle
+  - For each and every underlying oracle:
+    - Add ability to enforce minimum token liquidity value
+    - Add ability to enforce minimum quote token liquidity
+    - Add enforcement of TVL distribution ratio between the token and the quote token (must be between 10:1 and 1:10)
+
 ## v1.0.0-rc.9
 ### Interfaces
 - Change the spec of oracle consultations where using a max age of 0 will return data as of the latest block, straight from the source
