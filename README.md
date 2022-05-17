@@ -1,7 +1,7 @@
 # Pythia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![641 out of 641 tests passing](https://img.shields.io/badge/tests-641/641%20passing-brightgreen.svg?style=flat-square)
+![1274 out of 1274 tests passing](https://img.shields.io/badge/tests-1274/1274%20passing-brightgreen.svg?style=flat-square)
 ![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
 
 Pythia Core is a set of Solidity smart contracts for building EVM oracle solutions.
@@ -117,8 +117,23 @@ import '@pythia-oracle/pythia-core/contracts/interfaces/IOracle.sol';
 contract PriceConsumer {
   IOracle oracle = IOracle(...);
 
-  function doSomethingWithPrice() external {
-    uint256 price = oracle.consultPrice(...);
+  function doSomethingWithPriceOf(address token) external {
+    uint112 price;
+
+    // Gets the price of `token` with the requirement that the price is 2 hours old or less
+    try oracle.consultPrice(token, 2 hours) returns (uint112 pythiaPrice) {
+      price = pythiaPrice;
+    } catch Error(string memory) {
+      // High-level error - maybe the price is older than 2 hours... use fallback oracle
+      ...
+    } catch (bytes memory) {
+      // Low-level error... use fallback oracle
+      ...
+    }
+
+    require(price != 0, "MISSING_PRICE");
+    // We have our price, now let's use it
+    ...
   }
 }
 ```
