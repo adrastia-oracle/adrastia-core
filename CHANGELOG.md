@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0-rc.11
+### Oracles
+- Fix minor issue in AggregatedOracle - validate underlying oracle observations using the aggregated oracle's quote token decimal places rather than the underlying's decimal places
+
 ## v1.0.0-rc.10
 ### Global
 - Upgrade solc from v0.8.11 to v0.8.13

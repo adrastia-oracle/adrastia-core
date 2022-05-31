@@ -361,57 +361,63 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             else _oracles = tokenSpecificOracles[token];
 
             for (uint256 i = 0; i < _oracles.length; ++i) {
+                uint256 oPrice;
+                uint256 oTokenLiquidity;
+                uint256 oQuoteTokenLiquidity;
+
                 // We don't want problematic underlying oracles to prevent us from calculating the aggregated
                 // results from the other working oracles, so we use a try-catch block.
                 try IOracle(_oracles[i].oracle).consult(token, maxAge) returns (
-                    uint112 oPrice,
-                    uint112 oTokenLiquidity,
-                    uint112 oQuoteTokenLiquidity
+                    uint112 _price,
+                    uint112 _tokenLiquidity,
+                    uint112 _quoteTokenLiquidity
                 ) {
-                    if (!validateUnderlyingConsultation(token, oPrice, oTokenLiquidity, oQuoteTokenLiquidity)) {
-                        continue;
-                    }
-
                     // Promote returned data to uint256 to prevent scaling up from overflowing
-                    uint256 oraclePrice = oPrice;
-                    uint256 oracleTokenLiquidity = oTokenLiquidity;
-                    uint256 oracleQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                    oPrice = _price;
+                    oTokenLiquidity = _tokenLiquidity;
+                    oQuoteTokenLiquidity = _quoteTokenLiquidity;
+                } catch Error(string memory) {
+                    continue;
+                } catch (bytes memory) {
+                    continue;
+                }
 
-                    {
-                        // Shift liquidity for more precise calculations as we divide this by the price
-                        // This is safe as liquidity < 2^112
-                        oracleQuoteTokenLiquidity = oracleQuoteTokenLiquidity << 120;
+                // Shift liquidity for more precise calculations as we divide this by the price
+                // This is safe as liquidity < 2^112
+                oQuoteTokenLiquidity = oQuoteTokenLiquidity << 120;
 
-                        uint256 decimals = _oracles[i].quoteTokenDecimals;
+                uint256 decimals = _oracles[i].quoteTokenDecimals;
 
-                        // Fix differing quote token decimal places
-                        if (decimals < qtDecimals) {
-                            // Scale up
-                            uint256 scalar = 10**(qtDecimals - decimals);
+                // Fix differing quote token decimal places
+                if (decimals < qtDecimals) {
+                    // Scale up
+                    uint256 scalar = 10**(qtDecimals - decimals);
 
-                            oraclePrice *= scalar;
-                            oracleQuoteTokenLiquidity *= scalar;
-                        } else if (decimals > qtDecimals) {
-                            // Scale down
-                            uint256 scalar = 10**(decimals - qtDecimals);
+                    oPrice *= scalar;
+                    oQuoteTokenLiquidity *= scalar;
+                } else if (decimals > qtDecimals) {
+                    // Scale down
+                    uint256 scalar = 10**(decimals - qtDecimals);
 
-                            oraclePrice /= scalar;
-                            oracleQuoteTokenLiquidity /= scalar;
-                        }
-                    }
+                    oPrice /= scalar;
+                    oQuoteTokenLiquidity /= scalar;
+                }
 
-                    if (oraclePrice != 0 && oracleQuoteTokenLiquidity != 0) {
-                        ++validResponses;
+                if (!validateUnderlyingConsultation(token, oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 120)) {
+                    continue;
+                }
 
-                        // Note: (oracleQuoteTokenLiquidity / oraclePrice) will equal 0 if oracleQuoteTokenLiquidity <
-                        //   oraclePrice, but for this to happen, price would have to be insanely high
-                        denominator += oracleQuoteTokenLiquidity / oraclePrice;
+                if (oPrice != 0 && oQuoteTokenLiquidity != 0) {
+                    ++validResponses;
 
-                        // Should never realistically overflow
-                        tokenLiquidity += oracleTokenLiquidity;
-                        quoteTokenLiquidity += oracleQuoteTokenLiquidity;
-                    }
-                } catch Error(string memory) {} catch (bytes memory) {}
+                    // Note: (oQuoteTokenLiquidity / oPrice) will equal 0 if oQuoteTokenLiquidity <
+                    //   oPrice, but for this to happen, price would have to be insanely high
+                    denominator += oQuoteTokenLiquidity / oPrice;
+
+                    // Should never realistically overflow
+                    tokenLiquidity += oTokenLiquidity;
+                    quoteTokenLiquidity += oQuoteTokenLiquidity;
+                }
             }
         }
 
