@@ -1359,6 +1359,40 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         expect(oTimestamp).to.equal(timestamp);
     });
 
+    it("Should update successfully with a very high price and the lowest possible liquidity", async () => {
+        // Note: 2^112-1 as the price gets rounded to 2^112 when calculating the harmonic mean (loss of precision).
+        // This can't fit inside a uint112 and SafeCast will throw.
+        const price = BigNumber.from(2).pow(111);
+        const tokenLiquidity = BigNumber.from(1);
+        const quoteTokenLiquidity = BigNumber.from(1);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(price);
+        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+
     it("Has correct price and quote token liquidity when the oracle has delta +2 quote token decimals", async function () {
         const price = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
