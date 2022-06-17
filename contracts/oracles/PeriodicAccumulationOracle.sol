@@ -34,6 +34,16 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
     /// @inheritdoc PeriodicOracle
     function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        if (
+            (IUpdateable(priceAccumulator).needsUpdate(data) &&
+                IUpdateable(priceAccumulator).timeSinceLastUpdate(data) >= period) ||
+            (IUpdateable(liquidityAccumulator).needsUpdate(data) &&
+                IUpdateable(liquidityAccumulator).timeSinceLastUpdate(data) >= period)
+        ) {
+            // Shouldn't update if the accumulators are not up-to-date
+            return false;
+        }
+
         address token = abi.decode(data, (address));
 
         if (
@@ -68,6 +78,22 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     }
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
+        // We require that the accumulators do not need updates, or if they do, that they've been updated within the
+        // last period (i.e. they are up-to-date).
+        // If they are not up-to-date, the oracle will not update.
+        // It is expected that oracle consumers will check the last update time before using the data as to avoid using
+        // stale data.
+        require(
+            IUpdateable(priceAccumulator).timeSinceLastUpdate(data) < period ||
+                !IUpdateable(priceAccumulator).needsUpdate(data),
+            "PeriodicAccumulationOracle: PRICE_ACCUMULATOR_NEEDS_UPDATE"
+        );
+        require(
+            IUpdateable(liquidityAccumulator).timeSinceLastUpdate(data) < period ||
+                !IUpdateable(liquidityAccumulator).needsUpdate(data),
+            "PeriodicAccumulationOracle: LIQUIDITY_ACCUMULATOR_NEEDS_UPDATE"
+        );
+
         address token = abi.decode(data, (address));
 
         ObservationLibrary.Observation storage observation = observations[token];
@@ -80,7 +106,6 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
          * 1. Update price
          */
         {
-            // Note: We assume the accumulator is up-to-date (gas savings)
             AccumulationLibrary.PriceAccumulator memory freshAccumulation = IPriceAccumulator(priceAccumulator)
                 .getCurrentAccumulation(token);
 
@@ -117,7 +142,6 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
          * 2. Update liquidity
          */
         {
-            // Note: We assume the accumulator is up-to-date (gas savings)
             AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
                 liquidityAccumulator
             ).getCurrentAccumulation(token);
