@@ -318,11 +318,48 @@ describe("UniswapV3PriceAccumulator", function () {
         for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
         for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
 
-        tokens = tokens.sort(async (a, b) => await addressHelper.lessThan(a.address, b.address));
+        if (await addressHelper.lessThan(tokens[0].address, tokens[1].address)) {
+            // tokens[0] < tokens[1]
+            if (await addressHelper.lessThan(tokens[2].address, tokens[0].address)) {
+                // tokens[2] < tokens[0] < tokens[1]
+                ltToken = tokens[2];
+                quoteToken = tokens[0];
+                gtToken = tokens[1];
+            } else if (await addressHelper.lessThan(tokens[2].address, tokens[1].address)) {
+                // tokens[0] < tokens[2] < tokens[1]
+                ltToken = tokens[0];
+                quoteToken = tokens[2];
+                gtToken = tokens[1];
+            } else {
+                // tokens[0] < tokens[1] < tokens[2]
+                ltToken = tokens[0];
+                quoteToken = tokens[1];
+                gtToken = tokens[2];
+            }
+        } else {
+            // tokens[1] < tokens[0]
+            if (await addressHelper.lessThan(tokens[2].address, tokens[1].address)) {
+                // tokens[2] < tokens[1] < tokens[0]
+                ltToken = tokens[2];
+                quoteToken = tokens[1];
+                gtToken = tokens[0];
+            } else if (await addressHelper.lessThan(tokens[2].address, tokens[0].address)) {
+                // tokens[1] < tokens[2] < tokens[0]
+                ltToken = tokens[1];
+                quoteToken = tokens[2];
+                gtToken = tokens[0];
+            } else {
+                // tokens[1] < tokens[0] < tokens[2]
+                ltToken = tokens[1];
+                quoteToken = tokens[0];
+                gtToken = tokens[2];
+            }
+        }
 
-        token = ltToken = tokens[0];
-        quoteToken = tokens[1];
-        gtToken = tokens[2];
+        expect(await addressHelper.lessThan(ltToken.address, quoteToken.address)).to.be.true;
+        expect(await addressHelper.lessThan(quoteToken.address, gtToken.address)).to.be.true;
+
+        token = ltToken;
 
         uniswapFactory = await uniswapFactoryFactory.deploy(owner.getAddress());
         await uniswapFactory.deployed();
