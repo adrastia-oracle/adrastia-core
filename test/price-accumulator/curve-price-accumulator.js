@@ -145,7 +145,63 @@ describe("CurvePriceAccumulator#fetchPrice", function () {
         ethers.utils.parseUnits("1000000.0", 18),
     ];
 
-    beforeEach(async () => {
+    const supportedPoolTypes = ["CurvePoolStub", "CurvePoolStub2"];
+    const supportedPoolTypeDecs = ["get_dy(int128,int128,uint256)", "get_dy(uint256,uint256,uint256)"];
+
+    for (let i = 0; i < supportedPoolTypes.length; i++) {
+        describe("Pool implements " + supportedPoolTypeDecs[i], function () {
+            beforeEach(async () => {
+                // Create tokens
+                const erc20Factory = await ethers.getContractFactory("FakeERC20");
+
+                token = await erc20Factory.deploy("Token", "T", 18);
+                quoteToken = await erc20Factory.deploy("Quote Token", "QT", 18);
+
+                await token.deployed();
+                await quoteToken.deployed();
+
+                // Deploy the curve pool
+                const poolFactory = await ethers.getContractFactory(supportedPoolTypes[i]);
+                curvePool = await poolFactory.deploy([token.address, quoteToken.address]);
+                await curvePool.deployed();
+
+                // Deploy accumulator
+                const accumulatorFactory = await ethers.getContractFactory("CurvePriceAccumulatorStub");
+                accumulator = await accumulatorFactory.deploy(
+                    curvePool.address,
+                    2,
+                    quoteToken.address,
+                    quoteToken.address,
+                    TWO_PERCENT_CHANGE,
+                    minUpdateDelay,
+                    maxUpdateDelay
+                );
+            });
+
+            it("Should revert when given an invalid token", async function () {
+                await expect(accumulator.harnessFetchPrice(GRT)).to.be.revertedWith(
+                    "CurvePriceAccumulator: INVALID_TOKEN"
+                );
+            });
+
+            for (const rate of rates) {
+                it("price = " + rate, async function () {
+                    await curvePool.stubSetRate(token.address, quoteToken.address, rate);
+
+                    const price = await accumulator.harnessFetchPrice(token.address);
+
+                    if (rate == 0) {
+                        // 1 is reported rather than 0 because contracts may assume a price of 0 to be invalid
+                        expect(price).to.equal(1);
+                    } else {
+                        expect(price).to.equal(rate);
+                    }
+                });
+            }
+        });
+    }
+
+    it("Should revert when the pool implements an unsupported get_dy", async function () {
         // Create tokens
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
 
@@ -156,7 +212,7 @@ describe("CurvePriceAccumulator#fetchPrice", function () {
         await quoteToken.deployed();
 
         // Deploy the curve pool
-        const poolFactory = await ethers.getContractFactory("CurvePoolStub");
+        const poolFactory = await ethers.getContractFactory("CurvePoolStub3");
         curvePool = await poolFactory.deploy([token.address, quoteToken.address]);
         await curvePool.deployed();
 
@@ -171,24 +227,11 @@ describe("CurvePriceAccumulator#fetchPrice", function () {
             minUpdateDelay,
             maxUpdateDelay
         );
+
+        await curvePool.stubSetRate(token.address, quoteToken.address, 1);
+
+        await expect(accumulator.harnessFetchPrice(token.address)).to.be.revertedWith(
+            "CurvePriceAccumulator: CURVE_POOL_ERROR"
+        );
     });
-
-    it("Should revert when given an invalid token", async function () {
-        await expect(accumulator.harnessFetchPrice(GRT)).to.be.revertedWith("CurvePriceAccumulator: INVALID_TOKEN");
-    });
-
-    for (const rate of rates) {
-        it("price = " + rate, async function () {
-            await curvePool.stubSetRate(token.address, quoteToken.address, rate);
-
-            const price = await accumulator.harnessFetchPrice(token.address);
-
-            if (rate == 0) {
-                // 1 is reported rather than 0 because contracts may assume a price of 0 to be invalid
-                expect(price).to.equal(1);
-            } else {
-                expect(price).to.equal(rate);
-            }
-        });
-    }
 });

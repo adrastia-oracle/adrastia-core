@@ -10,6 +10,8 @@ import "../../../libraries/SafeCastExt.sol";
 import "./ICurvePool.sol";
 import "../../PriceAccumulator.sol";
 
+import "hardhat/console.sol";
+
 contract CurvePriceAccumulator is PriceAccumulator {
     using SafeCastExt for uint256;
 
@@ -75,19 +77,34 @@ contract CurvePriceAccumulator is PriceAccumulator {
      *   places.
      */
     function fetchPrice(address token) internal view virtual override returns (uint112 price) {
-        ICurvePool pool = ICurvePool(curvePool);
-
         TokenConfig memory config = tokenIndices[token];
         require(config.index != 0, "CurvePriceAccumulator: INVALID_TOKEN");
 
-        // Note: fees are included in the price
-        price = pool
-            .get_dy(
-                config.index - 1, // Subtract the added one
+        uint256 wholeTokenAmount = 10**config.decimals;
+
+        (bool success, bytes memory result) = curvePool.staticcall(
+            abi.encodeWithSignature(
+                "get_dy(int128,int128,uint256)",
+                config.index - 1,
                 quoteTokenIndex,
-                10**config.decimals // One whole token
+                wholeTokenAmount
             )
-            .toUint112();
+        );
+
+        if (!success || result.length != 32) {
+            (success, result) = curvePool.staticcall(
+                abi.encodeWithSignature(
+                    "get_dy(uint256,uint256,uint256)",
+                    uint256(int256(config.index - 1)),
+                    uint256(int256(quoteTokenIndex)),
+                    wholeTokenAmount
+                )
+            );
+        }
+
+        require(success && result.length == 32, "CurvePriceAccumulator: CURVE_POOL_ERROR");
+
+        price = abi.decode(result, (uint256)).toUint112();
 
         if (price == 0) return 1;
     }
