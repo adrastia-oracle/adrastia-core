@@ -10,8 +10,6 @@ import "../../../libraries/SafeCastExt.sol";
 import "./ICurvePool.sol";
 import "../../PriceAccumulator.sol";
 
-import "hardhat/console.sol";
-
 contract CurvePriceAccumulator is PriceAccumulator {
     using SafeCastExt for uint256;
 
