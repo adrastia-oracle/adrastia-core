@@ -75,6 +75,21 @@ describe("CurvePriceAccumulator#constructor", function () {
 
         expect(await accumulator.quoteToken()).equals(invalidToken.address);
     });
+
+    it("Should revert when the max update delay is less than the min update delay", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurvePriceAccumulator");
+        await expect(
+            accumulatorFactory.deploy(
+                curvePool.address,
+                2,
+                quoteToken.address, // pool quote token
+                quoteToken.address, // our quote token
+                TWO_PERCENT_CHANGE,
+                100, // min update delay
+                99 // max update delay
+            )
+        ).to.be.revertedWith("PriceAccumulator: INVALID_UPDATE_DELAYS");
+    });
 });
 
 describe("CurvePriceAccumulator#canUpdate", function () {

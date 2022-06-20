@@ -75,6 +75,21 @@ describe("CurveLiquidityAccumulator#constructor", function () {
 
         expect(await accumulator.quoteToken()).equals(invalidToken.address);
     });
+
+    it("Should revert when the max update delay is less than the min update delay", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulator");
+        await expect(
+            accumulatorFactory.deploy(
+                curvePool.address,
+                2,
+                quoteToken.address, // pool quote token
+                quoteToken.address, // our quote token
+                TWO_PERCENT_CHANGE,
+                100, // min update delay
+                99 // max update delay
+            )
+        ).to.be.revertedWith("LiquidityAccumulator: INVALID_UPDATE_DELAYS");
+    });
 });
 
 describe("CurveLiquidityAccumulator#canUpdate", function () {

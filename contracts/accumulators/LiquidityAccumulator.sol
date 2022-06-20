@@ -55,6 +55,8 @@ abstract contract LiquidityAccumulator is
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) AbstractAccumulator(updateThreshold_) SimpleQuotationMetadata(quoteToken_) {
+        require(maxUpdateDelay_ >= minUpdateDelay_, "LiquidityAccumulator: INVALID_UPDATE_DELAYS");
+
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
