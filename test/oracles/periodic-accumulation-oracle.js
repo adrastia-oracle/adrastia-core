@@ -74,6 +74,12 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
             }
         });
     });
+
+    it("Should revert if the period is zero", async function () {
+        await expect(oracleFactory.deploy(AddressZero, AddressZero, USDC, 0)).to.be.revertedWith(
+            "PeriodicOracle: INVALID_PERIOD"
+        );
+    });
 });
 
 describe("PeriodicAccumulationOracle#needsUpdate", function () {

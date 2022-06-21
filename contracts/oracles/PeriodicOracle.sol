@@ -9,6 +9,8 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
     uint256 public immutable override period;
 
     constructor(address quoteToken_, uint256 period_) AbstractOracle(quoteToken_) {
+        require(period_ > 0, "PeriodicOracle: INVALID_PERIOD");
+
         period = period_;
     }
 
