@@ -102,6 +102,10 @@ contract AggregatedOracleStub is AggregatedOracle {
         return validateUnderlyingConsultation(token, price, tokenLiquidity, quoteTokenLiquidity);
     }
 
+    function stubCalculateMaxAge() public view returns (uint256) {
+        return calculateMaxAge();
+    }
+
     function overrideValidateUnderlyingConsultation(bool overridden, bool validateUnderlyingConsultation_) public {
         config.validateUnderlyingConsultationOverridden = overridden;
         config.validateUnderlyingConsultation = validateUnderlyingConsultation_;

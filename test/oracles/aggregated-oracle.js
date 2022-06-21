@@ -2893,6 +2893,57 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
     }
 });
 
+describe("AggregatedOracle#calculateMaxAge", function () {
+    var underlyingOracle;
+
+    var oracleFactory;
+
+    beforeEach(async () => {
+        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+    });
+
+    it("Shouldn't return 0 when period is 1", async function () {
+        const oracle = await oracleFactory.deploy(
+            "USD Coin",
+            USDC,
+            "USDC",
+            6,
+            [underlyingOracle.address],
+            [],
+            1, // period
+            0,
+            0
+        );
+
+        expect(await oracle.stubCalculateMaxAge()).to.not.equal(0);
+    });
+
+    const periods = [2, 100, 1000, 10000];
+
+    for (const period of periods) {
+        it(`Should return ${period - 1} when period = ${period}`, async function () {
+            const oracle = await oracleFactory.deploy(
+                "USD Coin",
+                USDC,
+                "USDC",
+                6,
+                [underlyingOracle.address],
+                [],
+                period, // period
+                0,
+                0
+            );
+
+            expect(await oracle.stubCalculateMaxAge()).to.equal(period - 1);
+        });
+    }
+});
+
 describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
     var oracle;
     var interfaceIds;

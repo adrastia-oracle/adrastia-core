@@ -285,6 +285,12 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
      * @return maxAge The maximum age of underlying oracles' responses, in seconds.
      */
     function calculateMaxAge() internal view returns (uint256) {
+        if (period == 1) {
+            // We don't want to subtract 1 from this and use 0 as the max age, because that would cause the oracle
+            // to return data straight from the current block, which may not be secure.
+            return 1;
+        }
+
         return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
     }
 
