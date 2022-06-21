@@ -219,7 +219,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         (, , , uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
-        return validResponses >= 1;
+        return validResponses >= minimumResponses();
     }
 
     /*
@@ -262,7 +262,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         if (tokenLiquidity > type(uint112).max) tokenLiquidity = type(uint112).max;
         if (quoteTokenLiquidity > type(uint112).max) quoteTokenLiquidity = type(uint112).max;
 
-        if (validResponses >= 1) {
+        if (validResponses >= minimumResponses()) {
             ObservationLibrary.Observation storage observation = observations[token];
 
             observation.price = price.toUint112(); // Should never (realistically) overflow
@@ -276,6 +276,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
         return underlyingUpdated;
+    }
+
+    /**
+     * @notice The minimum number of valid underlying oracle consultations required to perform an update.
+     */
+    function minimumResponses() internal view virtual returns (uint256) {
+        return 1;
     }
 
     /**
