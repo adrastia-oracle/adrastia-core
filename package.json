@@ -1,11 +1,11 @@
 {
-  "name": "@pythia-oracle/pythia-core",
+  "name": "@adrastia-oracle/adrastia-core",
   "version": "1.0.0-rc.11",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
   "license": "MIT",
   "keywords": [
-    "pythia",
+    "adrastia",
     "oracle",
     "library",
     "ethereum",
@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/pythia-oracle/pythia-core"
+    "url": "https://github.com/adrastia-oracle/adrastia-core"
   },
   "files": [
     "contracts",

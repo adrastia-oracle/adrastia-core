@@ -1,13 +1,13 @@
-# Pythia Core
+# Adrastia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 ![1310 out of 1310 tests passing](https://img.shields.io/badge/tests-1310/1310%20passing-brightgreen.svg?style=flat-square)
 ![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
 
-Pythia Core is a set of Solidity smart contracts for building EVM oracle solutions.
+Adrastia Core is a set of Solidity smart contracts for building EVM oracle solutions.
 
 ## Table of contents
-- [Pythia Core](#pythia-core)
+- [Adrastia Core](#adrastia-core)
   - [Table of contents](#table-of-contents)
   - [Background](#background)
   - [Install](#install)
@@ -48,7 +48,7 @@ The current standard in DeFi is to use trusted and centralized price oracle solu
 - Price reporters must not collude to report inaccurate prices
 - Price reporters must maintain the highest level of physical and digital security to protect their code and keys from attacks
 
-Pythia is designed to mitigate these risks by keeping everything on-chain - prices are only ever read from decentralized exchanges that have the highest levels of availability, transparency, and censorship-resistance. While Pythia may still be susceptible to bugs and errors, the likeliness of them happening is minimized by:
+Adrastia is designed to mitigate these risks by keeping everything on-chain - prices are only ever read from decentralized exchanges that have the highest levels of availability, transparency, and censorship-resistance. While Adrastia may still be susceptible to bugs and errors, the likeliness of them happening is minimized by:
 - Clean code
 - Keeping everything open-source
 - Having the code professionally audited
@@ -57,9 +57,9 @@ Pythia is designed to mitigate these risks by keeping everything on-chain - pric
 - Rigorous and thorough testing with 100% test coverage
 - And more
 
-Furthermore, while it's still possible to manipulate on-chain prices, the presence of arbitrageurs, MEV, and regular users makes doing so incredibly costly. The further use of TWAPs (time-weighted average prices) increases the cost exponentially by allowing arbitrageurs time to move funds between exchanges and profit greatly from trading. Please read [this related paper](https://github.com/pythia-oracle/uni-v3-twap-manipulation/blob/master/cost-of-attack.pdf) on the topic.
+Furthermore, while it's still possible to manipulate on-chain prices, the presence of arbitrageurs, MEV, and regular users makes doing so incredibly costly. The further use of TWAPs (time-weighted average prices) increases the cost exponentially by allowing arbitrageurs time to move funds between exchanges and profit greatly from trading. Please read [this related paper](https://github.com/adrastia-oracle/uni-v3-twap-manipulation/blob/master/cost-of-attack.pdf) on the topic.
 
-Assuming the precense of arbitrageurs, MEV, on/off ramps and bridges, and someone (anyone) to call Pythia's simple update functions, Pythia therefore delivers the highest level of secure, accurate, and reliable price feeds.
+Assuming the precense of arbitrageurs, MEV, on/off ramps and bridges, and someone (anyone) to call Adrastia's simple update functions, Adrastia therefore delivers the highest level of secure, accurate, and reliable price feeds.
 
 ## Install
 
@@ -78,13 +78,13 @@ Assuming the precense of arbitrageurs, MEV, on/off ramps and bridges, and someon
 1. Clone the repository
 
 ```console
-git clone git@github.com:pythia-oracle/pythia-core.git
+git clone git@github.com:adrastia-oracle/adrastia-core.git
 ```
 
 2. Enter the project folder
 
 ```console
-cd pythia-core
+cd adrastia-core
 ```
 
 3. Install using yarn (npm should work too)
@@ -97,22 +97,22 @@ yarn install --lock-file
 
 ### Using Solidity interfaces
 
-The Pythia Core interfaces are available for import into Solidity smart contracts via the npm artifact `@pythia-oracle/pythia-core`.
+The Adrastia Core interfaces are available for import into Solidity smart contracts via the npm artifact `@adrastia-oracle/adrastia-core`.
 
 #### Install
 
 ```console
-yarn add @pythia-oracle/pythia-core
+yarn add @adrastia-oracle/adrastia-core
 ```
 or
 ```console
-npm install @pythia-oracle/pythia-core
+npm install @adrastia-oracle/adrastia-core
 ```
 
 #### Importing
 
 ```solidity
-import '@pythia-oracle/pythia-core/contracts/interfaces/IOracle.sol';
+import '@adrastia-oracle/adrastia-core/contracts/interfaces/IOracle.sol';
 
 contract PriceConsumer {
   IOracle oracle = IOracle(...);
@@ -121,8 +121,8 @@ contract PriceConsumer {
     uint112 price;
 
     // Gets the price of `token` with the requirement that the price is 2 hours old or less
-    try oracle.consultPrice(token, 2 hours) returns (uint112 pythiaPrice) {
-      price = pythiaPrice;
+    try oracle.consultPrice(token, 2 hours) returns (uint112 adrastiaPrice) {
+      price = adrastiaPrice;
     } catch Error(string memory) {
       // High-level error - maybe the price is older than 2 hours... use fallback oracle
       ...
@@ -194,7 +194,7 @@ Please refer to the [contributing guide](CONTRIBUTING.md).
 
 ## License
 
-Pythia Core is licensed under the [MIT License](LICENSE).
+Adrastia Core is licensed under the [MIT License](LICENSE).
 
 ### Exceptions
 
