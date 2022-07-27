@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0
+### Oracles
+- Require accumulators to be up-to-date when updating PeriodicAccumulationOracle
+- Disallow a period of zero in PeriodicOracle
+- Prevent AggregatedOracle#calculateMaxAge from returning 0
+- Add AggregatedOracle#minimumResponses()
+### Accumulators
+- Add support for different Curve pool implementations in the Curve price and liquidity accumulators
+- Add update delay validation in constructors
+
 ## v1.0.0-rc.11
 ### Oracles
 - Fix minor issue in AggregatedOracle - validate underlying oracle observations using the aggregated oracle's quote token decimal places rather than the underlying's decimal places

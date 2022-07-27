@@ -1,6 +1,6 @@
 {
   "name": "@adrastia-oracle/adrastia-core",
-  "version": "1.0.0-rc.11",
+  "version": "1.0.0",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
   "license": "MIT",
