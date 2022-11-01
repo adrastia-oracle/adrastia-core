@@ -73,12 +73,12 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function stubSanityCheckTvlDistributionRatio(
-        address token,
+        address, /*token*/
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) public view returns (bool) {
-        return sanityCheckTvlDistributionRatio(token, price, tokenLiquidity, quoteTokenLiquidity);
+        return sanityCheckTvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function stubSanityCheckQuoteTokenLiquidity(uint256 quoteTokenLiquidity) public view returns (bool) {
@@ -86,20 +86,20 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function stubSanityCheckTokenLiquidityValue(
-        address token,
+        address, /*token*/
         uint256 price,
         uint256 tokenLiquidity
     ) public view returns (bool) {
-        return sanityCheckTokenLiquidityValue(token, price, tokenLiquidity);
+        return sanityCheckTokenLiquidityValue(price, tokenLiquidity);
     }
 
     function stubValidateUnderlyingConsultation(
-        address token,
+        address, /*token*/
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) public view returns (bool) {
-        return validateUnderlyingConsultation(token, price, tokenLiquidity, quoteTokenLiquidity);
+        return validateUnderlyingConsultation(price, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function stubCalculateMaxAge() public view returns (uint256) {
@@ -139,23 +139,21 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function validateUnderlyingConsultation(
-        address token,
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) internal view virtual override returns (bool) {
         if (config.validateUnderlyingConsultationOverridden) return config.validateUnderlyingConsultation;
-        else return super.validateUnderlyingConsultation(token, price, tokenLiquidity, quoteTokenLiquidity);
+        else return super.validateUnderlyingConsultation(price, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function sanityCheckTvlDistributionRatio(
-        address token,
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) internal view virtual override returns (bool) {
         if (config.sanityCheckTvlDistributionRatioOverridden) return config.sanityCheckTvlDistributionRatio;
-        else return super.sanityCheckTvlDistributionRatio(token, price, tokenLiquidity, quoteTokenLiquidity);
+        else return super.sanityCheckTvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function sanityCheckQuoteTokenLiquidity(uint256 quoteTokenLiquidity) internal view virtual override returns (bool) {
@@ -163,12 +161,14 @@ contract AggregatedOracleStub is AggregatedOracle {
         else return super.sanityCheckQuoteTokenLiquidity(quoteTokenLiquidity);
     }
 
-    function sanityCheckTokenLiquidityValue(
-        address token,
-        uint256 price,
-        uint256 tokenLiquidity
-    ) internal view virtual override returns (bool) {
+    function sanityCheckTokenLiquidityValue(uint256 price, uint256 tokenLiquidity)
+        internal
+        view
+        virtual
+        override
+        returns (bool)
+    {
         if (config.sanityCheckTokenLiquidityValueOverridden) return config.sanityCheckTokenLiquidityValue;
-        else return super.sanityCheckTokenLiquidityValue(token, price, tokenLiquidity);
+        else return super.sanityCheckTokenLiquidityValue(price, tokenLiquidity);
     }
 }

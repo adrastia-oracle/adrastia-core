@@ -36,6 +36,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     /// included in the aggregation.
     uint256 public immutable minimumQuoteTokenLiquidity;
 
+    /// @notice The minimum quote token liquidity, in whole units, required for all underlying oracles to be considered
+    /// valid and thus included in the aggregation.
+    uint256 internal immutable _minimumQuoteTokenLiquidity;
+
+    /// @notice One whole unit of the quote token, in the quote token's smallest denomination.
+    uint256 internal immutable _quoteTokenWholeUnit;
+
     /*
      * Internal variables
      */
@@ -72,6 +79,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
         minimumTokenLiquidityValue = minimumTokenLiquidityValue_;
         minimumQuoteTokenLiquidity = minimumQuoteTokenLiquidity_;
+
+        _quoteTokenWholeUnit = 10**quoteTokenDecimals_;
+        _minimumQuoteTokenLiquidity = minimumQuoteTokenLiquidity_ / _quoteTokenWholeUnit;
 
         // Setup general oracles
         for (uint256 i = 0; i < oracles_.length; ++i) {
@@ -302,7 +312,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     }
 
     function sanityCheckTvlDistributionRatio(
-        address token,
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
@@ -315,8 +324,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         // Calculate the ratio of token liquidity value (denominated in the quote token) to quote token liquidity
         // Safe from overflows: price and tokenLiquidity are actually uint112 in disguise
         // We multiply by 100 to avoid floating point errors => 100 represents a ratio of 1:1
-        uint256 ratio = ((price * tokenLiquidity * 100) / quoteTokenLiquidity) /
-            (uint256(10)**IERC20Metadata(token).decimals());
+        uint256 ratio = ((((price * tokenLiquidity) / _quoteTokenWholeUnit) * 100) / quoteTokenLiquidity);
 
         if (ratio > 1000 || ratio < 10) {
             // Reject consultations where the ratio is above 10:1 or below 1:10
@@ -329,28 +337,27 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     }
 
     function sanityCheckQuoteTokenLiquidity(uint256 quoteTokenLiquidity) internal view virtual returns (bool) {
-        return quoteTokenLiquidity >= minimumQuoteTokenLiquidity;
+        return quoteTokenLiquidity >= _minimumQuoteTokenLiquidity;
     }
 
-    function sanityCheckTokenLiquidityValue(
-        address token,
-        uint256 price,
-        uint256 tokenLiquidity
-    ) internal view virtual returns (bool) {
-        return
-            ((price * tokenLiquidity) / (uint256(10)**IERC20Metadata(token).decimals())) >= minimumTokenLiquidityValue;
+    function sanityCheckTokenLiquidityValue(uint256 price, uint256 tokenLiquidity)
+        internal
+        view
+        virtual
+        returns (bool)
+    {
+        return (price * tokenLiquidity) >= minimumTokenLiquidityValue;
     }
 
     function validateUnderlyingConsultation(
-        address token,
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) internal view virtual returns (bool) {
         return
-            sanityCheckTokenLiquidityValue(token, price, tokenLiquidity) &&
+            sanityCheckTokenLiquidityValue(price, tokenLiquidity) &&
             sanityCheckQuoteTokenLiquidity(quoteTokenLiquidity) &&
-            sanityCheckTvlDistributionRatio(token, price, tokenLiquidity, quoteTokenLiquidity);
+            sanityCheckTvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity);
     }
 
     function aggregateUnderlying(address token, uint256 maxAge)
@@ -416,7 +423,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                     oQuoteTokenLiquidity /= scalar;
                 }
 
-                if (!validateUnderlyingConsultation(token, oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 120)) {
+                if (!validateUnderlyingConsultation(oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 120)) {
                     continue;
                 }
 

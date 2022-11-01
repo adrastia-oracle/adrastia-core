@@ -14,6 +14,8 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
 
     bytes32 public immutable initCodeHash;
 
+    uint256 internal immutable _quoteTokenWholeUnit;
+
     constructor(
         address uniswapFactory_,
         bytes32 initCodeHash_,
@@ -24,6 +26,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
+        _quoteTokenWholeUnit = 10**super.quoteTokenDecimals();
     }
 
     /// @inheritdoc LiquidityAccumulator
@@ -65,6 +68,9 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
             tokenLiquidity = reserve1;
             quoteTokenLiquidity = reserve0;
         }
+
+        tokenLiquidity /= uint112(10**IERC20Metadata(token).decimals());
+        quoteTokenLiquidity /= uint112(_quoteTokenWholeUnit);
     }
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order

@@ -159,13 +159,9 @@ async function main() {
                 quoteTokenSymbol
             );
 
-            const tokenLiquidityStr = ethers.utils.commify(
-                ethers.utils.formatUnits(consultation["tokenLiquidity"], tokenDecimals)
-            );
+            const tokenLiquidityStr = ethers.utils.commify(consultation["tokenLiquidity"]);
 
-            const quoteTokenLiquidityStr = ethers.utils.commify(
-                ethers.utils.formatUnits(consultation["quoteTokenLiquidity"], quoteTokenDecimals)
-            );
+            const quoteTokenLiquidityStr = ethers.utils.commify(consultation["quoteTokenLiquidity"]);
 
             console.log(
                 "\u001b[" + 31 + "m" + "Liquidity(%s) = %s, Liquidity(%s) = %s" + "\u001b[0m",

@@ -15,6 +15,8 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
 
     uint256 public immutable quoteTokenIndex;
 
+    uint256 internal immutable _quoteTokenWholeUnit;
+
     mapping(address => uint256) tokenIndices;
 
     constructor(
@@ -45,6 +47,8 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         require(quoteTokenIndex_ != type(uint256).max, "CurveLiquidityAccumulator: INVALID_QUOTE_TOKEN");
 
         quoteTokenIndex = quoteTokenIndex_;
+
+        _quoteTokenWholeUnit = 10**super.quoteTokenDecimals();
     }
 
     /// @inheritdoc LiquidityAccumulator
@@ -68,7 +72,10 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         uint256 tokenIndex = tokenIndices[token];
         require(tokenIndex != 0, "CurveLiquidityAccumulator: INVALID_TOKEN");
 
-        tokenLiquidity = pool.balances(tokenIndex - 1).toUint112(); // Subtract the added one
-        quoteTokenLiquidity = pool.balances(quoteTokenIndex).toUint112();
+        uint256 _tokenLiquidity = pool.balances(tokenIndex - 1).toUint112(); // Subtract the added one
+        uint256 _quoteTokenLiquidity = pool.balances(quoteTokenIndex).toUint112();
+
+        tokenLiquidity = (_tokenLiquidity / 10**IERC20Metadata(token).decimals()).toUint112();
+        quoteTokenLiquidity = (_quoteTokenLiquidity / _quoteTokenWholeUnit).toUint112();
     }
 }

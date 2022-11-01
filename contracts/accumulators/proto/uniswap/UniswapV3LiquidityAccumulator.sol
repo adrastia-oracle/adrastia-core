@@ -28,6 +28,8 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
 
     uint24[] public poolFees;
 
+    uint256 internal immutable _quoteTokenWholeUnit;
+
     constructor(
         address uniswapFactory_,
         bytes32 initCodeHash_,
@@ -40,6 +42,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         poolFees = poolFees_;
+        _quoteTokenWholeUnit = 10**super.quoteTokenDecimals();
     }
 
     /// @inheritdoc LiquidityAccumulator
@@ -142,7 +145,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
             quoteTokenLiquidity_ -= fees0;
         }
 
-        tokenLiquidity = tokenLiquidity_.toUint112();
-        quoteTokenLiquidity = quoteTokenLiquidity_.toUint112();
+        tokenLiquidity = (tokenLiquidity_ / 10**IERC20Metadata(token).decimals()).toUint112();
+        quoteTokenLiquidity = (quoteTokenLiquidity_ / _quoteTokenWholeUnit).toUint112();
     }
 }
