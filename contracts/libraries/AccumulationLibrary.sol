@@ -46,7 +46,7 @@ library AccumulationLibrary {
          * @dev Overflow is desired and results in correct behavior as long as the difference between two snapshots
          *   is less than or equal to 2^112.
          */
-        uint112 cumulativePrice;
+        uint224 cumulativePrice;
         /*
          * @notice The unix timestamp (in seconds) of the last update of (addition to) the cumulative price.
          */
