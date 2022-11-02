@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@openzeppelin-v4/contracts": "npm:@openzeppelin/contracts@4.6.0",
+    "@prb/math": "^2.5.0",
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v3-core": "^1.0.1"
   },
