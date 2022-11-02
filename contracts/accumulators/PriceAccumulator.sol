@@ -260,15 +260,14 @@ abstract contract PriceAccumulator is
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
+            uint224 timeWeightedPrice = observation.price * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
-                accumulation.cumulativePrice += observation.price * deltaTime;
-
-                observation.price = price;
-
-                observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
+                accumulation.cumulativePrice += timeWeightedPrice;
             }
+            observation.price = price;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, price, block.timestamp);
 

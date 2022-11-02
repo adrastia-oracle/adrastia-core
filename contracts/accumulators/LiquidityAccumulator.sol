@@ -186,14 +186,15 @@ abstract contract LiquidityAccumulator is
 
         if (deltaTime != 0) {
             // The last observation liquidities have existed for some time, so we add that
+            uint112 timeWeightedTokenLiquidity = lastObservation.tokenLiquidity * deltaTime;
+            uint112 timeWeightedQuoteTokenLiquidity = lastObservation.quoteTokenLiquidity * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the liquidites multiplied by the time those liquidities were present
-                accumulation.cumulativeTokenLiquidity += lastObservation.tokenLiquidity * deltaTime;
-                accumulation.cumulativeQuoteTokenLiquidity += lastObservation.quoteTokenLiquidity * deltaTime;
-
-                accumulation.timestamp = block.timestamp.toUint32();
+                accumulation.cumulativeTokenLiquidity += timeWeightedTokenLiquidity;
+                accumulation.cumulativeQuoteTokenLiquidity += timeWeightedQuoteTokenLiquidity;
             }
+            accumulation.timestamp = block.timestamp.toUint32();
         }
     }
 
@@ -268,8 +269,8 @@ abstract contract LiquidityAccumulator is
             /*
              * Initialize
              */
-            observation.tokenLiquidity = accumulation.cumulativeTokenLiquidity = tokenLiquidity;
-            observation.quoteTokenLiquidity = accumulation.cumulativeQuoteTokenLiquidity = quoteTokenLiquidity;
+            observation.tokenLiquidity = tokenLiquidity;
+            observation.quoteTokenLiquidity = quoteTokenLiquidity;
             observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
@@ -284,17 +285,17 @@ abstract contract LiquidityAccumulator is
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
+            uint112 timeWeightedTokenLiquidity = observation.tokenLiquidity * deltaTime;
+            uint112 timeWeightedQuoteTokenLiquidity = observation.quoteTokenLiquidity * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the liquidites multiplied by the time those liquidities were present
-                accumulation.cumulativeTokenLiquidity += observation.tokenLiquidity * deltaTime;
-                accumulation.cumulativeQuoteTokenLiquidity += observation.quoteTokenLiquidity * deltaTime;
-
-                observation.tokenLiquidity = tokenLiquidity;
-                observation.quoteTokenLiquidity = quoteTokenLiquidity;
-
-                observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
+                accumulation.cumulativeTokenLiquidity += timeWeightedTokenLiquidity;
+                accumulation.cumulativeQuoteTokenLiquidity += timeWeightedQuoteTokenLiquidity;
             }
+            observation.tokenLiquidity = tokenLiquidity;
+            observation.quoteTokenLiquidity = quoteTokenLiquidity;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
 
