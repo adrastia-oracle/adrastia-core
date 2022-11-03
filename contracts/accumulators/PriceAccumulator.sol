@@ -178,7 +178,7 @@ abstract contract PriceAccumulator is
 
         if (deltaTime != 0) {
             // The last observation price has existed for some time, so we add that
-            uint224 timeWeightedPrice = lastObservation.price * deltaTime;
+            uint224 timeWeightedPrice = uint224(lastObservation.price) * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
@@ -260,7 +260,7 @@ abstract contract PriceAccumulator is
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
-            uint224 timeWeightedPrice = observation.price * deltaTime;
+            uint224 timeWeightedPrice = uint224(observation.price) * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
