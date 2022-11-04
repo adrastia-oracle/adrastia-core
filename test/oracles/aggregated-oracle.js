@@ -2056,7 +2056,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
     const token = GRT;
     const tokenDecimals = 18;
 
-    const minimumTokenLiquidityValue = ethers.utils.parseUnits("1.0", 6); // 1 USDC worth
+    const minimumTokenLiquidityValue = ethers.utils.parseUnits("10.0", 6); // 10 USDC worth
     const minimumQuoteTokenLiquidity = BigNumber.from(0);
 
     var underlyingOracle;
@@ -2092,8 +2092,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
 
     it("Shouldn't update when the underlying oracle has less token liquidity value than the minimum", async () => {
         const price = ethers.utils.parseUnits("0.9", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals); // 1 whole token worth 0.9 USDC
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+        const tokenLiquidity = BigNumber.from(10); // 10 whole tokens worth 9 USDC
+        const quoteTokenLiquidity = BigNumber.from(10);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2126,8 +2126,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
 
     it("Should update successfully when the underlying oracle has the minimum token liquidity value", async () => {
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals); // 1 whole token worth 1 USDC
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+        const tokenLiquidity = BigNumber.from(10); // 10 whole tokens worth 10 USDC
+        const quoteTokenLiquidity = BigNumber.from(10);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2163,7 +2163,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
     const tokenDecimals = 18;
 
     const minimumTokenLiquidityValue = BigNumber.from(0);
-    const minimumQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 6); // 1 USDC
+    const minimumQuoteTokenLiquidity = ethers.utils.parseUnits("10.0", 6); // 10 USDC
 
     var underlyingOracle;
 
@@ -2198,8 +2198,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
 
     it("Shouldn't update when the underlying oracle has less token quote token liquidity than the minimum", async () => {
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("0.9", 6); // 0.9 USDC
+        const tokenLiquidity = BigNumber.from(10);
+        const quoteTokenLiquidity = BigNumber.from(9); // 9 USDC
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2232,8 +2232,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
 
     it("Should update successfully when the underlying oracle has the minimum quote token liquidity", async () => {
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1.0", 6); // 1 USDC
+        const tokenLiquidity = BigNumber.from(10);
+        const quoteTokenLiquidity = BigNumber.from(10); // 10 USDC
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2302,8 +2302,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     it("Shouldn't update when the underlying oracle has one-sided liquidity (100:1)", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 100:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("100", tokenDecimals);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1.0", 6);
+        const tokenLiquidity = BigNumber.from(100);
+        const quoteTokenLiquidity = BigNumber.from(1);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2337,8 +2337,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     it("Should update successfully when the underlying oracle has balanced liquidity (10:1)", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 10:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("10.0", 6);
+        const tokenLiquidity = BigNumber.from(1);
+        const quoteTokenLiquidity = BigNumber.from(10);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2370,8 +2370,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     it("Should update successfully when the underlying oracle has balanced liquidity (1:1)", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 1:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1.0", 6);
+        const tokenLiquidity = BigNumber.from(1);
+        const quoteTokenLiquidity = BigNumber.from(1);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2442,8 +2442,8 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
     it("Should update successfully using only the data from the passing oracle", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 1:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = ethers.utils.parseUnits("1", tokenDecimals);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1.0", 6);
+        const tokenLiquidity = BigNumber.from(1);
+        const quoteTokenLiquidity = BigNumber.from(1);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle1.stubSetObservation(
@@ -2545,8 +2545,12 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                             " when quoteTokenLiquidity = " +
                             quoteTokenLiquidity.sub(1),
                         async function () {
+                            // Note: stubSanityCheckQuoteTokenLiquidity takes whole token amounts while
+                            // quoteTokenLiquidity is in wei
                             expect(
-                                await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity.sub(1))
+                                await oracle.stubSanityCheckQuoteTokenLiquidity(
+                                    quoteTokenLiquidity.div(BigNumber.from(10).pow(6)).sub(1)
+                                )
                             ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.sub(1)));
                         }
                     );
@@ -2558,9 +2562,13 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                         " when quoteTokenLiquidity = " +
                         quoteTokenLiquidity,
                     async function () {
-                        expect(await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity)).to.equal(
-                            expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity)
-                        );
+                        // Note: stubSanityCheckQuoteTokenLiquidity takes whole token amounts while
+                        // quoteTokenLiquidity is in wei
+                        expect(
+                            await oracle.stubSanityCheckQuoteTokenLiquidity(
+                                quoteTokenLiquidity.div(BigNumber.from(10).pow(6))
+                            )
+                        ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity));
                     }
                 );
 
@@ -2571,8 +2579,12 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                             " when quoteTokenLiquidity = " +
                             quoteTokenLiquidity.add(1),
                         async function () {
+                            // Note: stubSanityCheckQuoteTokenLiquidity takes whole token amounts while
+                            // quoteTokenLiquidity is in wei
                             expect(
-                                await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity.add(1))
+                                await oracle.stubSanityCheckQuoteTokenLiquidity(
+                                    quoteTokenLiquidity.div(BigNumber.from(10).pow(6)).add(1)
+                                )
                             ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.add(1)));
                         }
                     );
@@ -2678,7 +2690,7 @@ describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
                                                 await oracle.stubSanityCheckTokenLiquidityValue(
                                                     token.address,
                                                     price,
-                                                    tokenLiquidity
+                                                    tokenLiquidity.div(BigNumber.from(10).pow(decimals))
                                                 )
                                             ).to.equal(
                                                 expectedReturn(
@@ -2794,8 +2806,8 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
                                                 await oracle.stubSanityCheckTvlDistributionRatio(
                                                     token.address,
                                                     price,
-                                                    tokenLiquidity,
-                                                    quoteTokenLiquidity
+                                                    tokenLiquidity.div(BigNumber.from(10).pow(decimals)),
+                                                    quoteTokenLiquidity.div(BigNumber.from(10).pow(6))
                                                 )
                                             ).to.equal(
                                                 expectedReturn(price, tokenLiquidity, quoteTokenLiquidity, decimals)

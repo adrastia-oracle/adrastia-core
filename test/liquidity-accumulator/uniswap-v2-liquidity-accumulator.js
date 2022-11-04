@@ -128,7 +128,11 @@ describe("UniswapV2LiquidityAccumulator", function () {
     });
 
     describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
-        const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
+        const tests = [
+            { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("10000", 18)] },
+            { args: [ethers.utils.parseUnits("100000", 18), ethers.utils.parseUnits("10000", 18)] },
+            { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("100000", 18)] },
+        ];
 
         beforeEach(async function () {
             // Configure pairs
@@ -189,10 +193,18 @@ describe("UniswapV2LiquidityAccumulator", function () {
                     gtToken.address
                 );
 
-                expect(ltTokenLiquidity).to.equal(BigNumber.from(args[0]));
-                expect(gtTokenLiquidity).to.equal(BigNumber.from(args[0]));
-                expect(quoteTokenLiquidity1).to.equal(BigNumber.from(args[1]));
-                expect(quoteTokenLiquidity2).to.equal(BigNumber.from(args[1]));
+                expect(ltTokenLiquidity).to.equal(
+                    BigNumber.from(args[0].div(BigNumber.from(10).pow(await ltToken.decimals())))
+                );
+                expect(gtTokenLiquidity).to.equal(
+                    BigNumber.from(args[0].div(BigNumber.from(10).pow(await gtToken.decimals())))
+                );
+                expect(quoteTokenLiquidity1).to.equal(
+                    BigNumber.from(args[1].div(BigNumber.from(10).pow(await quoteToken.decimals())))
+                );
+                expect(quoteTokenLiquidity2).to.equal(
+                    BigNumber.from(args[1].div(BigNumber.from(10).pow(await quoteToken.decimals())))
+                );
             });
         });
     });

@@ -66,14 +66,17 @@ describe("UniswapV3LiquidityAccumulator", function () {
 
     var expectedTokenLiquidity;
     var expectedQuoteTokenLiquidity;
-    var expectedPrice;
 
     var quoteToken;
     var token;
     var ltToken;
     var gtToken;
 
-    const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
+    const tests = [
+        { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("10000", 18)] },
+        { args: [ethers.utils.parseUnits("100000", 18), ethers.utils.parseUnits("10000", 18)] },
+        { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("100000", 18)] },
+    ];
 
     beforeEach(async () => {
         const erc20Factory = await ethers.getContractFactory("FakeERC20");
@@ -150,7 +153,6 @@ describe("UniswapV3LiquidityAccumulator", function () {
 
         expectedTokenLiquidity = BigNumber.from(0);
         expectedQuoteTokenLiquidity = BigNumber.from(0);
-        expectedPrice = BigNumber.from(0);
     });
 
     describe("UniswapV3LiquidityAccumulator#canUpdate", function () {
@@ -227,21 +229,20 @@ describe("UniswapV3LiquidityAccumulator", function () {
             await helper.helperAddLiquidity(params);
 
             if (await addressHelper.lessThan(token.address, quoteToken.address)) {
-                expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount0);
-                expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount1);
+                expectedTokenLiquidity = expectedTokenLiquidity.add(
+                    rAmount0.div(BigNumber.from(10).pow(await token.decimals()))
+                );
+                expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(
+                    rAmount1.div(BigNumber.from(10).pow(await quoteToken.decimals()))
+                );
             } else {
-                expectedTokenLiquidity = expectedTokenLiquidity.add(rAmount1);
-                expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(rAmount0);
+                expectedTokenLiquidity = expectedTokenLiquidity.add(
+                    rAmount1.div(BigNumber.from(10).pow(await token.decimals()))
+                );
+                expectedQuoteTokenLiquidity = expectedQuoteTokenLiquidity.add(
+                    rAmount0.div(BigNumber.from(10).pow(await quoteToken.decimals()))
+                );
             }
-
-            const decimalFactor = BigNumber.from(10).pow(await token.decimals());
-            const precisionFactor = BigNumber.from(10).pow(6);
-
-            expectedPrice = expectedQuoteTokenLiquidity
-                .mul(precisionFactor)
-                .mul(decimalFactor)
-                .div(expectedTokenLiquidity)
-                .div(precisionFactor);
         }
 
         it("Shouldn't revert when there are no pools", async function () {
@@ -291,8 +292,12 @@ describe("UniswapV3LiquidityAccumulator", function () {
                         await createPool(sqrtPrice, fee);
                         await addLiquidity(args[0], args[1], fee);
 
-                        tokenLiquiditySum = tokenLiquiditySum.add(args[0]);
-                        quoteTokenLiquiditySum = quoteTokenLiquiditySum.add(args[1]);
+                        tokenLiquiditySum = tokenLiquiditySum.add(
+                            args[0].div(BigNumber.from(10).pow(await token.decimals()))
+                        );
+                        quoteTokenLiquiditySum = quoteTokenLiquiditySum.add(
+                            args[1].div(BigNumber.from(10).pow(await quoteToken.decimals()))
+                        );
                     }
 
                     const [tokenLiquidity, quoteTokenLiquidity] = await liquidityAccumulator.harnessFetchLiquidity(
@@ -300,8 +305,24 @@ describe("UniswapV3LiquidityAccumulator", function () {
                     );
 
                     // Verify liquidities based off what our helper reports
-                    expect(tokenLiquidity).to.equal(expectedTokenLiquidity);
-                    expect(quoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
+                    {
+                        // Allow 1% difference to account for fees and Uniswap math precision loss
+                        const expectedTokenLiquidityFloor = expectedTokenLiquidity.sub(expectedTokenLiquidity.div(100));
+                        const expectedTokenLiquidityCeil = expectedTokenLiquidity.add(expectedTokenLiquidity.div(100));
+
+                        const expectedQuoteTokenLiquidityFloor = expectedQuoteTokenLiquidity.sub(
+                            expectedQuoteTokenLiquidity.div(100)
+                        );
+                        const expectedQuoteTokenLiquidityCeil = expectedQuoteTokenLiquidity.add(
+                            expectedQuoteTokenLiquidity.div(100)
+                        );
+
+                        expect(tokenLiquidity).to.be.within(expectedTokenLiquidityFloor, expectedTokenLiquidityCeil);
+                        expect(quoteTokenLiquidity).to.be.within(
+                            expectedQuoteTokenLiquidityFloor,
+                            expectedQuoteTokenLiquidityCeil
+                        );
+                    }
 
                     // Verify liquidities based off our input
                     {

@@ -153,7 +153,11 @@ describe("CurveLiquidityAccumulator#fetchLiquidity", function () {
     var quoteToken;
     var token;
 
-    const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
+    const tests = [
+        { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("10000", 18)] },
+        { args: [ethers.utils.parseUnits("100000", 18), ethers.utils.parseUnits("10000", 18)] },
+        { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("100000", 18)] },
+    ];
 
     beforeEach(async () => {
         // Create tokens
@@ -196,8 +200,12 @@ describe("CurveLiquidityAccumulator#fetchLiquidity", function () {
 
             const [tokenLiquidity, quoteTokenLiquidity] = await accumulator.harnessFetchLiquidity(token.address);
 
-            expect(tokenLiquidity).to.equal(BigNumber.from(args[0]));
-            expect(quoteTokenLiquidity).to.equal(BigNumber.from(args[1]));
+            expect(tokenLiquidity).to.equal(
+                BigNumber.from(args[0].div(BigNumber.from(10).pow(await token.decimals())))
+            );
+            expect(quoteTokenLiquidity).to.equal(
+                BigNumber.from(args[1].div(BigNumber.from(10).pow(await quoteToken.decimals())))
+            );
         });
     });
 });

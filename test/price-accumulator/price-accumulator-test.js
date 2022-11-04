@@ -8,7 +8,8 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const TWO_PERCENT_CHANGE = 2000000;
 
-const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(112).sub(1);
+const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(224).sub(1);
+const MAX_PRICE = BigNumber.from(2).pow(112).sub(1);
 
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
@@ -463,7 +464,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: MAX_CUMULATIVE_VALUE,
+                initialPrice: MAX_PRICE,
             },
             expectedReturn: true,
         },
@@ -524,7 +525,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: MAX_CUMULATIVE_VALUE,
+                initialPrice: MAX_PRICE,
                 overrideNeedsUpdate: {
                     needsUpdate: false,
                 },
@@ -588,7 +589,7 @@ describe("PriceAccumulator#update", () => {
         },
         {
             args: {
-                initialPrice: MAX_CUMULATIVE_VALUE,
+                initialPrice: MAX_PRICE,
                 overrideNeedsUpdate: {
                     needsUpdate: true,
                 },
@@ -671,7 +672,8 @@ describe("PriceAccumulator#update", () => {
         {
             // ** Overflow test **
             args: {
-                initialPrice: MAX_CUMULATIVE_VALUE,
+                initialPrice: MAX_PRICE,
+                initialCumulativePrice: MAX_CUMULATIVE_VALUE,
                 secondPrice: ethers.utils.parseEther("100"),
                 overrideNeedsUpdate: {
                     needsUpdate: true,
@@ -691,7 +693,13 @@ describe("PriceAccumulator#update", () => {
         startingTime = BigNumber.from(0);
     });
 
-    async function verifyUpdate(expectedReturn, initialPrice, secondPrice = undefined, firstUpdateTime = 0) {
+    async function verifyUpdate(
+        expectedReturn,
+        initialPrice,
+        secondPrice = undefined,
+        firstUpdateTime = 0,
+        initialCumulativePrice = BigNumber.from(0)
+    ) {
         expect(await accumulator.callStatic.update(ethers.utils.hexZeroPad(GRT, 32))).to.equal(expectedReturn);
 
         const receipt = await accumulator.update(ethers.utils.hexZeroPad(GRT, 32));
@@ -725,7 +733,9 @@ describe("PriceAccumulator#update", () => {
                 const deltaTime = updateTime - firstUpdateTime;
 
                 // Calculate cumulatives
-                expectedCumulativePrice = BigNumber.from(initialPrice).mul(BigNumber.from(deltaTime));
+                expectedCumulativePrice = initialCumulativePrice.add(
+                    BigNumber.from(initialPrice).mul(BigNumber.from(deltaTime))
+                );
 
                 // Process overflows
                 while (expectedCumulativePrice.gt(MAX_CUMULATIVE_VALUE)) {
@@ -874,6 +884,11 @@ describe("PriceAccumulator#update", () => {
 
             const updateTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
+            // Override cumulativePrice
+            if (args["initialCumulativePrice"]) {
+                await (await accumulator.stubSetAccumulation(GRT, args["initialCumulativePrice"], updateTime)).wait();
+            }
+
             // Configure price
             await (await accumulator.setPrice(GRT, args["secondPrice"])).wait();
 
@@ -882,7 +897,13 @@ describe("PriceAccumulator#update", () => {
                 await (await accumulator.overrideNeedsUpdate(true, args["overrideNeedsUpdate"]["needsUpdate"])).wait();
             }
 
-            await verifyUpdate(expectedReturn, args["initialPrice"], args["secondPrice"], updateTime);
+            await verifyUpdate(
+                expectedReturn,
+                args["initialPrice"],
+                args["secondPrice"],
+                updateTime,
+                args["initialCumulativePrice"] ?? BigNumber.from(0)
+            );
         });
     });
 
@@ -928,7 +949,7 @@ describe("PriceAccumulator#update", () => {
 
             const deltaTime = firstUpdateTime - initialUpdateTime;
 
-            const expectedCumulativePrice = initialPrice.add(initialPrice.mul(BigNumber.from(deltaTime)));
+            const expectedCumulativePrice = initialPrice.mul(BigNumber.from(deltaTime));
 
             const accumulation = await accumulator.getLastAccumulation(GRT);
             const observation = await accumulator.observations(GRT);
@@ -970,7 +991,7 @@ describe("PriceAccumulator#update", () => {
         const accumulation = await accumulator.getLastAccumulation(GRT);
         const observation = await accumulator.observations(GRT);
 
-        expect(accumulation["cumulativePrice"]).to.equal(initialPrice);
+        expect(accumulation["cumulativePrice"]).to.equal(0);
         expect(observation["price"]).to.equal(initialPrice);
         expect(observation["timestamp"]).to.equal(initialUpdateTime);
     });
