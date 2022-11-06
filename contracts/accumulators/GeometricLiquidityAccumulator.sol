@@ -58,11 +58,22 @@ abstract contract GeometricLiquidityAccumulator is LiquidityAccumulator {
         uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
 
         if (deltaTime != 0) {
+            uint256 tokenLiquidity = lastObservation.tokenLiquidity;
+            uint256 quoteTokenLiquidity = lastObservation.quoteTokenLiquidity;
+
+            if (tokenLiquidity == 0) {
+                // ln(0) = undefined, so we set the token liquidity to 1
+                tokenLiquidity = 1;
+            }
+
+            if (quoteTokenLiquidity == 0) {
+                // ln(0) = undefined, so we set the quote token liquidity to 1
+                quoteTokenLiquidity = 1;
+            }
+
             // The last observation liquidities have existed for some time, so we add that
-            uint112 timeWeightedTokenLiquidity = (uint256(lastObservation.tokenLiquidity).fromUint().ln() * deltaTime)
-                .toUint112();
-            uint112 timeWeightedQuoteTokenLiquidity = (uint256(lastObservation.quoteTokenLiquidity).fromUint().ln() *
-                deltaTime).toUint112();
+            uint112 timeWeightedTokenLiquidity = (tokenLiquidity.fromUint().ln() * deltaTime).toUint112();
+            uint112 timeWeightedQuoteTokenLiquidity = (quoteTokenLiquidity.fromUint().ln() * deltaTime).toUint112();
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the liquidites multiplied by the time those liquidities were present
@@ -104,10 +115,21 @@ abstract contract GeometricLiquidityAccumulator is LiquidityAccumulator {
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
-            uint112 timeWeightedTokenLiquidity = (uint256(observation.tokenLiquidity).fromUint().ln() * deltaTime)
-                .toUint112();
-            uint112 timeWeightedQuoteTokenLiquidity = (uint256(observation.quoteTokenLiquidity).fromUint().ln() *
-                deltaTime).toUint112();
+            uint256 oTokenLiquidity = observation.tokenLiquidity;
+            uint256 oQuoteTokenLiquidity = observation.quoteTokenLiquidity;
+
+            if (oTokenLiquidity == 0) {
+                // ln(0) = undefined, so we set the token liquidity to 1
+                oTokenLiquidity = 1;
+            }
+
+            if (oQuoteTokenLiquidity == 0) {
+                // ln(0) = undefined, so we set the quote token liquidity to 1
+                oQuoteTokenLiquidity = 1;
+            }
+
+            uint112 timeWeightedTokenLiquidity = (oTokenLiquidity.fromUint().ln() * deltaTime).toUint112();
+            uint112 timeWeightedQuoteTokenLiquidity = (oQuoteTokenLiquidity.fromUint().ln() * deltaTime).toUint112();
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the liquidites multiplied by the time those liquidities were present

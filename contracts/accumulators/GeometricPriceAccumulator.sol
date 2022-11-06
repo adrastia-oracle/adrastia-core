@@ -52,8 +52,14 @@ abstract contract GeometricPriceAccumulator is PriceAccumulator {
         uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
 
         if (deltaTime != 0) {
+            uint256 price = lastObservation.price;
+            if (price == 0) {
+                // ln(0) = undefined, so we set the price to 1
+                price = 1;
+            }
+
             // The last observation price has existed for some time, so we add that
-            uint224 timeWeightedPrice = (uint256(lastObservation.price).fromUint().ln() * deltaTime).toUint224();
+            uint224 timeWeightedPrice = (price.fromUint().ln() * deltaTime).toUint224();
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the natural log of the last price multiplied by the time that price was active
@@ -93,7 +99,13 @@ abstract contract GeometricPriceAccumulator is PriceAccumulator {
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
-            uint224 timeWeightedPrice = (uint256(observation.price).fromUint().ln() * deltaTime).toUint224();
+            uint256 oPrice = observation.price;
+            if (oPrice == 0) {
+                // ln(0) = undefined, so we set the price to 1
+                oPrice = 1;
+            }
+
+            uint224 timeWeightedPrice = (oPrice.fromUint().ln() * deltaTime).toUint224();
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the natural log of the last price multiplied by the time that price was active
