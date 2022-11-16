@@ -10,6 +10,9 @@ const PERIOD = 100;
 const MINIMUM_TOKEN_LIQUIDITY_VALUE = BigNumber.from(0);
 const MINIMUM_QUOTE_TOKEN_LIQUIDITY = BigNumber.from(0);
 
+const LOWEST_ACCEPTABLE_PRICE = BigNumber.from(2);
+const LOWEST_ACCEPTABLE_LIQUIDITY = BigNumber.from(2);
+
 // Credits: https://stackoverflow.com/questions/53311809/all-possible-combinations-of-a-2d-array-in-javascript
 function combos(list, n = 0, result = [], current = []) {
     if (n === list.length) result.push(current);
@@ -342,7 +345,13 @@ describe("AggregatedOracle#canUpdate", function () {
 
             const currentTime = await currentBlockTimestamp();
 
-            await underlyingOracle1.stubSetObservation(GRT, 1, 1, 1, currentTime);
+            await underlyingOracle1.stubSetObservation(
+                GRT,
+                LOWEST_ACCEPTABLE_PRICE,
+                LOWEST_ACCEPTABLE_LIQUIDITY,
+                LOWEST_ACCEPTABLE_LIQUIDITY,
+                currentTime
+            );
 
             expect(await oracle.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
         });
@@ -376,10 +385,10 @@ describe("AggregatedOracle#consultPrice(token)", function () {
         await expect(oracle["consultPrice(address)"](GRT)).to.be.revertedWith("AbstractOracle: MISSING_OBSERVATION");
     });
 
-    it("Should get the set price (=1)", async () => {
-        const price = BigNumber.from(1);
+    it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
+        const price = LOWEST_ACCEPTABLE_PRICE;
 
-        await oracle.stubSetObservation(GRT, price, 1, 1, 1);
+        await oracle.stubSetObservation(GRT, price, LOWEST_ACCEPTABLE_LIQUIDITY, LOWEST_ACCEPTABLE_LIQUIDITY, 1);
 
         expect(await oracle["consultPrice(address)"](GRT)).to.equal(price);
     });
@@ -387,7 +396,7 @@ describe("AggregatedOracle#consultPrice(token)", function () {
     it("Should get the set price (=1e18)", async () => {
         const price = BigNumber.from(10).pow(18);
 
-        await oracle.stubSetObservation(GRT, price, 1, 1, 1);
+        await oracle.stubSetObservation(GRT, price, LOWEST_ACCEPTABLE_LIQUIDITY, LOWEST_ACCEPTABLE_LIQUIDITY, 1);
 
         expect(await oracle["consultPrice(address)"](GRT)).to.equal(price);
     });
@@ -425,8 +434,8 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
         );
     });
 
-    it("Should get the set price (=1)", async () => {
-        const price = BigNumber.from(1);
+    it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
+        const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2);
         const quoteTokenLiquidity = BigNumber.from(3);
 
@@ -524,11 +533,17 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
         await expect(oracle["consultPrice(address,uint256)"](GRT, MAX_AGE)).to.not.be.reverted;
     });
 
-    it("Should get the set price (=1)", async () => {
+    it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
         const observationTime = await currentBlockTimestamp();
-        const price = BigNumber.from(1);
+        const price = LOWEST_ACCEPTABLE_PRICE;
 
-        await oracle.stubSetObservation(GRT, price, 1, 1, observationTime);
+        await oracle.stubSetObservation(
+            GRT,
+            price,
+            LOWEST_ACCEPTABLE_LIQUIDITY,
+            LOWEST_ACCEPTABLE_LIQUIDITY,
+            observationTime
+        );
 
         expect(await oracle["consultPrice(address,uint256)"](GRT, MAX_AGE)).to.equal(price);
     });
@@ -537,7 +552,13 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
         const observationTime = await currentBlockTimestamp();
         const price = BigNumber.from(10).pow(18);
 
-        await oracle.stubSetObservation(GRT, price, 1, 1, observationTime);
+        await oracle.stubSetObservation(
+            GRT,
+            price,
+            LOWEST_ACCEPTABLE_LIQUIDITY,
+            LOWEST_ACCEPTABLE_LIQUIDITY,
+            observationTime
+        );
 
         expect(await oracle["consultPrice(address,uint256)"](GRT, MAX_AGE)).to.equal(price);
     });
@@ -662,8 +683,8 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
         );
     });
 
-    it("Should get the set price (=1)", async () => {
-        const price = BigNumber.from(1);
+    it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
+        const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2);
         const quoteTokenLiquidity = BigNumber.from(3);
 
@@ -969,8 +990,8 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         );
     });
 
-    it("Should get the set price (=1)", async () => {
-        const price = BigNumber.from(1);
+    it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
+        const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2);
         const quoteTokenLiquidity = BigNumber.from(3);
 
@@ -1031,9 +1052,9 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
 
-        const price = BigNumber.from(1);
+        const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
-        const quoteTokenLiquidity = BigNumber.from(1);
+        const quoteTokenLiquidity = LOWEST_ACCEPTABLE_LIQUIDITY;
 
         await underlyingOracle.stubSetInstantRates(GRT, price, tokenLiqudity, quoteTokenLiquidity);
         await underlyingOracle2.stubSetInstantRates(GRT, price, tokenLiqudity, quoteTokenLiquidity);
@@ -1065,8 +1086,8 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
 
-        const price = BigNumber.from(1);
-        const tokenLiqudity = BigNumber.from(1);
+        const price = LOWEST_ACCEPTABLE_PRICE;
+        const tokenLiqudity = LOWEST_ACCEPTABLE_LIQUIDITY;
         const quoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
 
         await underlyingOracle.stubSetInstantRates(GRT, price, tokenLiqudity, quoteTokenLiquidity);
@@ -1099,7 +1120,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
 
-        const price = BigNumber.from(1);
+        const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
         const quoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
 
@@ -1363,8 +1384,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         // Note: 2^112-1 as the price gets rounded to 2^112 when calculating the harmonic mean (loss of precision).
         // This can't fit inside a uint112 and SafeCast will throw.
         const price = BigNumber.from(2).pow(111);
-        const tokenLiquidity = BigNumber.from(1);
-        const quoteTokenLiquidity = BigNumber.from(1);
+        const tokenLiquidity = LOWEST_ACCEPTABLE_LIQUIDITY;
+        const quoteTokenLiquidity = LOWEST_ACCEPTABLE_LIQUIDITY;
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2302,8 +2323,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     it("Shouldn't update when the underlying oracle has one-sided liquidity (100:1)", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 100:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = BigNumber.from(100);
-        const quoteTokenLiquidity = BigNumber.from(1);
+        const tokenLiquidity = BigNumber.from(1000);
+        const quoteTokenLiquidity = BigNumber.from(10);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2337,8 +2358,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     it("Should update successfully when the underlying oracle has balanced liquidity (10:1)", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 10:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = BigNumber.from(1);
-        const quoteTokenLiquidity = BigNumber.from(10);
+        const tokenLiquidity = BigNumber.from(10);
+        const quoteTokenLiquidity = BigNumber.from(100);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2370,8 +2391,8 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     it("Should update successfully when the underlying oracle has balanced liquidity (1:1)", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 1:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = BigNumber.from(1);
-        const quoteTokenLiquidity = BigNumber.from(1);
+        const tokenLiquidity = BigNumber.from(10);
+        const quoteTokenLiquidity = BigNumber.from(10);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle.stubSetObservation(
@@ -2442,8 +2463,8 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
     it("Should update successfully using only the data from the passing oracle", async () => {
         // tokenLiquidityValue:quoteTokenLiquidityValue = 1:1
         const price = ethers.utils.parseUnits("1.0", 6);
-        const tokenLiquidity = BigNumber.from(1);
-        const quoteTokenLiquidity = BigNumber.from(1);
+        const tokenLiquidity = LOWEST_ACCEPTABLE_LIQUIDITY;
+        const quoteTokenLiquidity = LOWEST_ACCEPTABLE_LIQUIDITY;
         const timestamp = (await currentBlockTimestamp()) + 10;
 
         await underlyingOracle1.stubSetObservation(

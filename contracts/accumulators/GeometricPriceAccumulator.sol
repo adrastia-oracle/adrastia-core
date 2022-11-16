@@ -37,13 +37,9 @@ abstract contract GeometricPriceAccumulator is PriceAccumulator {
     }
 
     /// @inheritdoc IPriceAccumulator
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.PriceAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.PriceAccumulator memory accumulation) {
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
         require(lastObservation.timestamp != 0, "PriceAccumulator: UNINITIALIZED");
 

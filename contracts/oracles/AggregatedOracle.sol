@@ -402,6 +402,12 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                     continue;
                 }
 
+                if (oPrice <= 1 || oTokenLiquidity <= 1 || oQuoteTokenLiquidity <= 1) {
+                    // Reject consultations where the price, token liquidity, or quote token liquidity is 0 or 1
+                    // These values are typically reserved for errors and zero liquidity
+                    continue;
+                }
+
                 // Shift liquidity for more precise calculations as we divide this by the price
                 // This is safe as liquidity < 2^112
                 oQuoteTokenLiquidity = oQuoteTokenLiquidity << 120;
