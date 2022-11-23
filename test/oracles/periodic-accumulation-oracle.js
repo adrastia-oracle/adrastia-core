@@ -82,6 +82,37 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
     });
 });
 
+describe("PeriodicAccumulationOracle#liquidityDecimals", function () {
+    async function doTest(liquidityDecimals) {
+        const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const la = await laFactory.deploy(USDC, 100, 100, 100);
+        await la.deployed();
+
+        await la.stubSetLiquidityDecimals(liquidityDecimals);
+
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
+        const oracle = await oracleFactory.deploy(la.address, AddressZero, USDC, 100);
+
+        expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
+    }
+
+    it("Should return 0 when the LA uses 0 liquidity decimals", async function () {
+        await doTest(0);
+    });
+
+    it("Should return 4 when the LA uses 4 liquidity decimals", async function () {
+        await doTest(4);
+    });
+
+    it("Should return 6 when the LA uses 6 liquidity decimals", async function () {
+        await doTest(6);
+    });
+
+    it("Should return 18 when the LA uses 18 liquidity decimals", async function () {
+        await doTest(18);
+    });
+});
+
 describe("PeriodicAccumulationOracle#needsUpdate", function () {
     var oracle;
 
@@ -1118,6 +1149,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             2,
             quoteToken.address,
             quoteToken.address,
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
             MAX_UPDATE_DELAY

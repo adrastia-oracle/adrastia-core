@@ -28,7 +28,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period) {
+async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period, liquidityDecimals) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
@@ -39,6 +39,7 @@ async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period) {
         3,
         poolQuoteToken,
         ourQuoteToken,
+        liquidityDecimals,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
@@ -80,7 +81,9 @@ async function main() {
 
     const period = 10; // 10 seconds
 
-    const curve = await createCurveOracle(poolAddress, poolQuoteToken, ourQuoteToken, period);
+    const liquidityDecimals = 4;
+
+    const curve = await createCurveOracle(poolAddress, poolQuoteToken, ourQuoteToken, period, liquidityDecimals);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", ourQuoteToken);

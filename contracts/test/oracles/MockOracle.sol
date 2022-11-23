@@ -13,9 +13,13 @@ contract MockOracle is AbstractOracle {
     bool _updateError;
     bool _updateErrorWithReason;
 
+    uint8 _liquidityDecimals;
+
     mapping(address => ObservationLibrary.Observation) instantRates;
 
-    constructor(address quoteToken_) AbstractOracle(quoteToken_) {}
+    constructor(address quoteToken_) AbstractOracle(quoteToken_) {
+        _liquidityDecimals = 0;
+    }
 
     function stubSetObservation(
         address token,
@@ -65,41 +69,32 @@ contract MockOracle is AbstractOracle {
         _updateErrorWithReason = b;
     }
 
-    function consult(address token)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        )
-    {
+    function stubSetLiquidityDecimals(uint8 decimals) public {
+        _liquidityDecimals = decimals;
+    }
+
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return _liquidityDecimals;
+    }
+
+    function consult(
+        address token
+    ) public view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (_consultError) price = 2 * type(uint112).max;
 
         return super.consult(token);
     }
 
-    function consult(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        )
-    {
+    function consult(
+        address token,
+        uint256 maxAge
+    ) public view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (_consultError) price = 2 * type(uint112).max;
 
         return super.consult(token, maxAge);
     }
 
-    function update(
-        bytes memory /*data*/
-    ) public virtual override returns (bool) {
+    function update(bytes memory /*data*/) public virtual override returns (bool) {
         callCounts["update(address)"]++;
 
         if (_updateError) return 2 * type(uint256).max == 0;
@@ -109,9 +104,7 @@ contract MockOracle is AbstractOracle {
         return _updateReturn;
     }
 
-    function needsUpdate(
-        bytes memory /*data*/
-    ) public view virtual override returns (bool) {
+    function needsUpdate(bytes memory /*data*/) public view virtual override returns (bool) {
         return _needsUpdate;
     }
 
@@ -119,17 +112,9 @@ contract MockOracle is AbstractOracle {
         return needsUpdate(data);
     }
 
-    function instantFetch(address token)
-        internal
-        view
-        virtual
-        override
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        )
-    {
+    function instantFetch(
+        address token
+    ) internal view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         ObservationLibrary.Observation storage observation = instantRates[token];
 
         price = observation.price;

@@ -15,6 +15,10 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
 
     uint256 public immutable quoteTokenIndex;
 
+    uint8 internal immutable _liquidityDecimals;
+
+    uint256 internal immutable _decimalFactor;
+
     uint256 internal immutable _quoteTokenWholeUnit;
 
     mapping(address => uint256) tokenIndices;
@@ -24,6 +28,7 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         uint8 nCoins_,
         address poolQuoteToken_,
         address ourQuoteToken_,
+        uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
@@ -47,8 +52,10 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         require(quoteTokenIndex_ != type(uint256).max, "CurveLiquidityAccumulator: INVALID_QUOTE_TOKEN");
 
         quoteTokenIndex = quoteTokenIndex_;
+        _liquidityDecimals = decimals_;
+        _decimalFactor = 10 ** decimals_;
 
-        _quoteTokenWholeUnit = 10**super.quoteTokenDecimals();
+        _quoteTokenWholeUnit = 10 ** super.quoteTokenDecimals();
     }
 
     /// @inheritdoc LiquidityAccumulator
@@ -60,22 +67,26 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         return super.canUpdate(data);
     }
 
-    function fetchLiquidity(address token)
-        internal
-        view
-        virtual
-        override
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function quoteTokenDecimals() public view virtual override(SimpleQuotationMetadata, IQuoteToken) returns (uint8) {
+        return _liquidityDecimals;
+    }
+
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return _liquidityDecimals;
+    }
+
+    function fetchLiquidity(
+        address token
+    ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         ICurvePool pool = ICurvePool(curvePool);
 
         uint256 tokenIndex = tokenIndices[token];
         require(tokenIndex != 0, "CurveLiquidityAccumulator: INVALID_TOKEN");
 
-        uint256 _tokenLiquidity = pool.balances(tokenIndex - 1).toUint112(); // Subtract the added one
-        uint256 _quoteTokenLiquidity = pool.balances(quoteTokenIndex).toUint112();
+        uint256 _tokenLiquidity = pool.balances(tokenIndex - 1); // Subtract the added one
+        uint256 _quoteTokenLiquidity = pool.balances(quoteTokenIndex);
 
-        tokenLiquidity = (_tokenLiquidity / 10**IERC20Metadata(token).decimals()).toUint112();
-        quoteTokenLiquidity = (_quoteTokenLiquidity / _quoteTokenWholeUnit).toUint112();
+        tokenLiquidity = ((_tokenLiquidity * _decimalFactor) / 10 ** IERC20Metadata(token).decimals()).toUint112();
+        quoteTokenLiquidity = ((_quoteTokenLiquidity * _decimalFactor) / _quoteTokenWholeUnit).toUint112();
     }
 }

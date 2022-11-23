@@ -27,7 +27,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) {
+async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, liquidityDecimals) {
     const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -40,6 +40,7 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
         initCodeHash,
         poolFees,
         quoteToken,
+        liquidityDecimals,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
@@ -76,13 +77,15 @@ async function main() {
     const quoteToken = usdcAddress;
 
     const underlyingPeriodSeconds = 5;
-    const periodSeconds = 10;
+
+    const liquidityDecimals = 4;
 
     const uniswapV3 = await createUniswapV3Oracle(
         uniswapV3FactoryAddress,
         uniswapV3InitCodeHash,
         quoteToken,
-        underlyingPeriodSeconds
+        underlyingPeriodSeconds,
+        liquidityDecimals
     );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);

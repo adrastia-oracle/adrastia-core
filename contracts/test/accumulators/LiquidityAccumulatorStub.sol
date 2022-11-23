@@ -17,6 +17,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         bool validateObservationOverridden;
         bool validateObservation;
         bool useLastAccumulationAsCurrent;
+        uint8 liquidityDecimals;
     }
 
     mapping(address => MockLiquidity) public mockLiquidity;
@@ -32,15 +33,15 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
 
     /* Stub functions */
 
-    function setLiquidity(
-        address token,
-        uint112 tokenLiquidity,
-        uint112 quoteTokenLiquidity
-    ) public {
+    function setLiquidity(address token, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) public {
         MockLiquidity storage liquidity = mockLiquidity[token];
 
         liquidity.tokenLiquidity = tokenLiquidity;
         liquidity.quoteTokenLiquidity = quoteTokenLiquidity;
+    }
+
+    function stubSetLiquidityDecimals(uint8 decimals) public {
+        config.liquidityDecimals = decimals;
     }
 
     function stubSetObservation(
@@ -96,23 +97,21 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
-    function stubFetchLiquidity(address token)
-        public
-        view
-        returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity)
-    {
+    function stubFetchLiquidity(
+        address token
+    ) public view returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
         return fetchLiquidity(token);
     }
 
-    function harnessChangeThresholdSurpassed(
-        uint256 a,
-        uint256 b,
-        uint256 updateThreshold
-    ) public view returns (bool) {
+    function harnessChangeThresholdSurpassed(uint256 a, uint256 b, uint256 updateThreshold) public view returns (bool) {
         return changeThresholdSurpassed(a, b, updateThreshold);
     }
 
     /* Overridden functions */
+
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return config.liquidityDecimals;
+    }
 
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
@@ -128,13 +127,9 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         else return super.validateObservation(updateData, tokenLiquidity, quoteTokenLiquidity);
     }
 
-    function fetchLiquidity(address token)
-        internal
-        view
-        virtual
-        override
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function fetchLiquidity(
+        address token
+    ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         MockLiquidity storage liquidity = mockLiquidity[token];
 
         return (liquidity.tokenLiquidity, liquidity.quoteTokenLiquidity);
@@ -149,13 +144,9 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
     }
 
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.LiquidityAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.LiquidityAccumulator memory accumulation) {
         if (config.useLastAccumulationAsCurrent) return getLastAccumulation(token);
         else return super.getCurrentAccumulation(token);
     }

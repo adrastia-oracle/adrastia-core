@@ -104,6 +104,10 @@ contract HarmonicLiquidityAccumulatorStub is HarmonicLiquidityAccumulator {
 
     /* Overridden functions */
 
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return 0;
+    }
+
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
         else return super.needsUpdate(data);

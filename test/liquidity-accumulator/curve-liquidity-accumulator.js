@@ -38,7 +38,8 @@ describe("CurveLiquidityAccumulator#constructor", function () {
                 curvePool.address,
                 2,
                 invalidToken.address, // pool quote token
-                invalidToken.address, // our quote token
+                invalidToken.address, // our quote token,
+                0, // Liquidity decimals
                 TWO_PERCENT_CHANGE,
                 1,
                 100
@@ -54,6 +55,7 @@ describe("CurveLiquidityAccumulator#constructor", function () {
                 2,
                 invalidToken.address, // pool quote token
                 quoteToken.address, // our quote token
+                0, // Liquidity decimals
                 TWO_PERCENT_CHANGE,
                 1,
                 100
@@ -68,6 +70,7 @@ describe("CurveLiquidityAccumulator#constructor", function () {
             2,
             quoteToken.address, // pool quote token
             invalidToken.address, // our quote token
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             1,
             100
@@ -84,11 +87,46 @@ describe("CurveLiquidityAccumulator#constructor", function () {
                 2,
                 quoteToken.address, // pool quote token
                 quoteToken.address, // our quote token
+                0, // Liquidity decimals
                 TWO_PERCENT_CHANGE,
                 100, // min update delay
                 99 // max update delay
             )
         ).to.be.revertedWith("LiquidityAccumulator: INVALID_UPDATE_DELAYS");
+    });
+
+    it("Should properly set liquidity decimals to 0", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            curvePool.address,
+            2,
+            quoteToken.address, // pool quote token
+            invalidToken.address, // our quote token
+            0, // Liquidity decimals
+            TWO_PERCENT_CHANGE,
+            1,
+            100
+        );
+
+        expect(await accumulator.liquidityDecimals()).equals(0);
+        expect(await accumulator.quoteTokenDecimals()).equals(0);
+    });
+
+    it("Should properly set liquidity decimals to 18", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            curvePool.address,
+            2,
+            quoteToken.address, // pool quote token
+            invalidToken.address, // our quote token
+            18, // Liquidity decimals
+            TWO_PERCENT_CHANGE,
+            1,
+            100
+        );
+
+        expect(await accumulator.liquidityDecimals()).equals(18);
+        expect(await accumulator.quoteTokenDecimals()).equals(18);
     });
 });
 
@@ -126,6 +164,7 @@ describe("CurveLiquidityAccumulator#canUpdate", function () {
             2,
             quoteToken.address,
             quoteToken.address,
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             minUpdateDelay,
             maxUpdateDelay
@@ -181,6 +220,7 @@ describe("CurveLiquidityAccumulator#fetchLiquidity", function () {
             2,
             quoteToken.address,
             quoteToken.address,
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             minUpdateDelay,
             maxUpdateDelay

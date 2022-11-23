@@ -10,6 +10,9 @@ import "../libraries/SafeCastExt.sol";
 import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
 
+import "hardhat/console.sol";
+
+/// @dev Limitation: Supports up to 16 underlying oracles.
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotationMetadata {
     using SafeCast for uint256;
     using SafeCastExt for uint256;
@@ -26,22 +29,21 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     struct OracleConfig {
         address oracle;
         uint8 quoteTokenDecimals;
+        uint8 liquidityDecimals;
     }
 
-    /// @notice The minimum quote token denominated value of the token liquidity required for all underlying oracles
-    /// to be considered valid and thus included in the aggregation.
+    /// @notice The minimum quote token denominated value of the token liquidity, scaled by this oracle's liquidity
+    /// decimals, required for all underlying oracles to be considered valid and thus included in the aggregation.
     uint256 public immutable minimumTokenLiquidityValue;
 
-    /// @notice The minimum quote token liquidity required for all underlying oracles to be considered valid and thus
-    /// included in the aggregation.
+    /// @notice The minimum quote token liquidity, scaled by this oracle's liquidity decimals, required for all
+    /// underlying oracles to be considered valid and thus included in the aggregation.
     uint256 public immutable minimumQuoteTokenLiquidity;
-
-    /// @notice The minimum quote token liquidity, in whole units, required for all underlying oracles to be considered
-    /// valid and thus included in the aggregation.
-    uint256 internal immutable _minimumQuoteTokenLiquidity;
 
     /// @notice One whole unit of the quote token, in the quote token's smallest denomination.
     uint256 internal immutable _quoteTokenWholeUnit;
+
+    uint8 internal immutable _liquidityDecimals;
 
     /*
      * Internal variables
@@ -66,6 +68,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
         uint8 quoteTokenDecimals_,
+        uint8 liquidityDecimals_,
         address[] memory oracles_,
         TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_,
@@ -80,8 +83,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         minimumTokenLiquidityValue = minimumTokenLiquidityValue_;
         minimumQuoteTokenLiquidity = minimumQuoteTokenLiquidity_;
 
-        _quoteTokenWholeUnit = 10**quoteTokenDecimals_;
-        _minimumQuoteTokenLiquidity = minimumQuoteTokenLiquidity_ / _quoteTokenWholeUnit;
+        _quoteTokenWholeUnit = 10 ** quoteTokenDecimals_;
+
+        _liquidityDecimals = liquidityDecimals_;
 
         // Setup general oracles
         for (uint256 i = 0; i < oracles_.length; ++i) {
@@ -90,7 +94,11 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             oracleExists[oracles_[i]] = true;
 
             oracles.push(
-                OracleConfig({oracle: oracles_[i], quoteTokenDecimals: IOracle(oracles_[i]).quoteTokenDecimals()})
+                OracleConfig({
+                    oracle: oracles_[i],
+                    quoteTokenDecimals: IOracle(oracles_[i]).quoteTokenDecimals(),
+                    liquidityDecimals: IOracle(oracles_[i]).liquidityDecimals()
+                })
             );
         }
 
@@ -104,7 +112,11 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             oracleForExists[oracle.token][oracle.oracle] = true;
 
             tokenSpecificOracles[oracle.token].push(
-                OracleConfig({oracle: oracle.oracle, quoteTokenDecimals: IOracle(oracle.oracle).quoteTokenDecimals()})
+                OracleConfig({
+                    oracle: oracle.oracle,
+                    quoteTokenDecimals: IOracle(oracle.oracle).quoteTokenDecimals(),
+                    liquidityDecimals: IOracle(oracle.oracle).liquidityDecimals()
+                })
             );
         }
     }
@@ -191,13 +203,9 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     }
 
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(PeriodicOracle, ExplicitQuotationMetadata)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(PeriodicOracle, ExplicitQuotationMetadata) returns (bool) {
         return
             interfaceId == type(IAggregatedOracle).interfaceId ||
             ExplicitQuotationMetadata.supportsInterface(interfaceId) ||
@@ -230,6 +238,11 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
         return validResponses >= minimumResponses();
+    }
+
+    /// @inheritdoc IOracle
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return _liquidityDecimals;
     }
 
     /*
@@ -337,16 +350,14 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     }
 
     function sanityCheckQuoteTokenLiquidity(uint256 quoteTokenLiquidity) internal view virtual returns (bool) {
-        return quoteTokenLiquidity >= _minimumQuoteTokenLiquidity;
+        return quoteTokenLiquidity >= minimumQuoteTokenLiquidity;
     }
 
-    function sanityCheckTokenLiquidityValue(uint256 price, uint256 tokenLiquidity)
-        internal
-        view
-        virtual
-        returns (bool)
-    {
-        return (price * tokenLiquidity) >= minimumTokenLiquidityValue;
+    function sanityCheckTokenLiquidityValue(
+        uint256 price,
+        uint256 tokenLiquidity
+    ) internal view virtual returns (bool) {
+        return ((price * tokenLiquidity) / _quoteTokenWholeUnit) >= minimumTokenLiquidityValue;
     }
 
     function validateUnderlyingConsultation(
@@ -360,18 +371,14 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             sanityCheckTvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity);
     }
 
-    function aggregateUnderlying(address token, uint256 maxAge)
+    function aggregateUnderlying(
+        address token,
+        uint256 maxAge
+    )
         internal
         view
-        returns (
-            uint256 price,
-            uint256 tokenLiquidity,
-            uint256 quoteTokenLiquidity,
-            uint256 validResponses
-        )
+        returns (uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity, uint256 validResponses)
     {
-        uint256 qtDecimals = quoteTokenDecimals();
-
         uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
 
         for (uint256 j = 0; j < 2; ++j) {
@@ -410,30 +417,42 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
                 // Shift liquidity for more precise calculations as we divide this by the price
                 // This is safe as liquidity < 2^112
-                oQuoteTokenLiquidity = oQuoteTokenLiquidity << 120;
+                // Shifting left by 140 bits allows us to add 16 maximum liquidity values without overflowing
+                oQuoteTokenLiquidity = oQuoteTokenLiquidity << 140;
 
-                uint256 decimals = _oracles[i].quoteTokenDecimals;
-
-                // Fix differing quote token decimal places
-                if (decimals < qtDecimals) {
+                // Fix differing quote token decimal places (for price)
+                if (_oracles[i].quoteTokenDecimals < quoteTokenDecimals()) {
                     // Scale up
-                    uint256 scalar = 10**(qtDecimals - decimals);
+                    uint256 scalar = 10 ** (quoteTokenDecimals() - _oracles[i].quoteTokenDecimals);
 
                     oPrice *= scalar;
-                    oQuoteTokenLiquidity *= scalar;
-                } else if (decimals > qtDecimals) {
+                } else if (_oracles[i].quoteTokenDecimals > quoteTokenDecimals()) {
                     // Scale down
-                    uint256 scalar = 10**(decimals - qtDecimals);
+                    uint256 scalar = 10 ** (_oracles[i].quoteTokenDecimals - quoteTokenDecimals());
 
                     oPrice /= scalar;
+                }
+
+                // Fix differing liquidity decimal places
+                if (_oracles[i].liquidityDecimals < liquidityDecimals()) {
+                    // Scale up
+                    uint256 scalar = 10 ** (liquidityDecimals() - _oracles[i].liquidityDecimals);
+
+                    oTokenLiquidity *= scalar;
+                    oQuoteTokenLiquidity *= scalar;
+                } else if (_oracles[i].liquidityDecimals > liquidityDecimals()) {
+                    // Scale down
+                    uint256 scalar = 10 ** (_oracles[i].liquidityDecimals - liquidityDecimals());
+
+                    oTokenLiquidity /= scalar;
                     oQuoteTokenLiquidity /= scalar;
                 }
 
-                if (!validateUnderlyingConsultation(oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 120)) {
+                if (!validateUnderlyingConsultation(oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 140)) {
                     continue;
                 }
 
-                if (oPrice != 0 && oQuoteTokenLiquidity != 0) {
+                if (oPrice != 0 && oQuoteTokenLiquidity != 0 && oQuoteTokenLiquidity > oPrice) {
                     ++validResponses;
 
                     // Note: (oQuoteTokenLiquidity / oPrice) will equal 0 if oQuoteTokenLiquidity <
@@ -450,21 +469,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
 
         // Right shift liquidity to undo the left shift and get the real value
-        quoteTokenLiquidity = quoteTokenLiquidity >> 120;
+        quoteTokenLiquidity = quoteTokenLiquidity >> 140;
     }
 
     /// @inheritdoc AbstractOracle
-    function instantFetch(address token)
-        internal
-        view
-        virtual
-        override
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        )
-    {
+    function instantFetch(
+        address token
+    ) internal view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         (
             uint256 bigPrice,
             uint256 bigTokenLiquidity,
@@ -474,6 +485,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
         // Reverts if none of the underlying oracles report anything
         require(validResponses > 0, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+
+        console.log("AggregatedOracle: instantFetch: bigPrice", bigPrice);
 
         // This revert should realistically never occur, but we use it to prevent an invalid price from being returned
         require(bigPrice <= type(uint112).max, "AggregatedOracle: PRICE_TOO_HIGH");

@@ -10,6 +10,7 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
         address uniswapFactory_,
         bytes32 initCodeHash_,
         address quoteToken_,
+        uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
@@ -18,25 +19,20 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
             uniswapFactory_,
             initCodeHash_,
             quoteToken_,
+            decimals_,
             updateTheshold_,
             minUpdateDelay_,
             maxUpdateDelay_
         )
     {}
 
-    function harnessFetchLiquidity(address token)
-        public
-        view
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function harnessFetchLiquidity(
+        address token
+    ) public view returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         return super.fetchLiquidity(token);
     }
 
-    function validateObservation(
-        bytes memory,
-        uint112,
-        uint112
-    ) internal virtual override returns (bool) {
+    function validateObservation(bytes memory, uint112, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
     }
 }

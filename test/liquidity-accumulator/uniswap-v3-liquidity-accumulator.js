@@ -16,6 +16,7 @@ const {
 } = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
 
 const uniswapV3InitCodeHash = "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54";
+const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
@@ -56,6 +57,50 @@ const MIN_UPDATE_DELAY = 10000;
 const MAX_UPDATE_DELAY = 30000;
 
 const POOL_FEES = [500, 3000, 10000];
+
+describe("UniswapV3LiquidityAccumulator#constructor", function () {
+    var uniswapFactory;
+
+    beforeEach(async () => {
+        const uniswapFactoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+        uniswapFactory = await uniswapFactoryFactory.deploy();
+        await uniswapFactory.deployed();
+    });
+
+    it("Should properly set liquidity decimals to 0", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            uniswapFactory.address,
+            uniswapV3InitCodeHash,
+            POOL_FEES,
+            USDC,
+            0, // Liquidity decimals
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+
+        expect(await accumulator.liquidityDecimals()).equals(0);
+        expect(await accumulator.quoteTokenDecimals()).equals(0);
+    });
+
+    it("Should properly set liquidity decimals to 18", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("UniswapV3LiquidityAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            uniswapFactory.address,
+            uniswapV3InitCodeHash,
+            POOL_FEES,
+            USDC,
+            18, // Liquidity decimals
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+
+        expect(await accumulator.liquidityDecimals()).equals(18);
+        expect(await accumulator.quoteTokenDecimals()).equals(18);
+    });
+});
 
 describe("UniswapV3LiquidityAccumulator", function () {
     this.timeout(100000);
@@ -143,6 +188,7 @@ describe("UniswapV3LiquidityAccumulator", function () {
             uniswapV3InitCodeHash,
             POOL_FEES,
             quoteToken.address,
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
             MAX_UPDATE_DELAY

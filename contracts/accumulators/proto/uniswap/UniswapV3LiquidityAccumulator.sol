@@ -28,6 +28,10 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
 
     uint24[] public poolFees;
 
+    uint8 internal immutable _liquidityDecimals;
+
+    uint256 internal immutable _decimalFactor;
+
     uint256 internal immutable _quoteTokenWholeUnit;
 
     constructor(
@@ -35,6 +39,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         bytes32 initCodeHash_,
         uint24[] memory poolFees_,
         address quoteToken_,
+        uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
@@ -42,7 +47,9 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         poolFees = poolFees_;
-        _quoteTokenWholeUnit = 10**super.quoteTokenDecimals();
+        _liquidityDecimals = decimals_;
+        _decimalFactor = 10 ** decimals_;
+        _quoteTokenWholeUnit = 10 ** super.quoteTokenDecimals();
     }
 
     /// @inheritdoc LiquidityAccumulator
@@ -57,16 +64,20 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         return super.canUpdate(data);
     }
 
+    function quoteTokenDecimals() public view virtual override(SimpleQuotationMetadata, IQuoteToken) returns (uint8) {
+        return _liquidityDecimals;
+    }
+
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return _liquidityDecimals;
+    }
+
     /// @notice Returns PoolKey: the ordered tokens with the matched fee levels
     /// @param tokenA The first token of a pool, unsorted
     /// @param tokenB The second token of a pool, unsorted
     /// @param fee The fee level of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function getPoolKey(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) internal pure returns (PoolKey memory) {
+    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure returns (PoolKey memory) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
     }
@@ -97,13 +108,9 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         );
     }
 
-    function fetchLiquidity(address token)
-        internal
-        view
-        virtual
-        override
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function fetchLiquidity(
+        address token
+    ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         require(token != address(0), "UniswapV3LiquidityAccumulator: INVALID_TOKEN");
 
         uint256 tokenLiquidity_;
@@ -145,7 +152,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
             quoteTokenLiquidity_ -= fees0;
         }
 
-        tokenLiquidity = (tokenLiquidity_ / 10**IERC20Metadata(token).decimals()).toUint112();
-        quoteTokenLiquidity = (quoteTokenLiquidity_ / _quoteTokenWholeUnit).toUint112();
+        tokenLiquidity = ((tokenLiquidity_ * _decimalFactor) / 10 ** IERC20Metadata(token).decimals()).toUint112();
+        quoteTokenLiquidity = ((quoteTokenLiquidity_ * _decimalFactor) / _quoteTokenWholeUnit).toUint112();
     }
 }

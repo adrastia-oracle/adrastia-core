@@ -2,6 +2,8 @@ const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+const AddressZero = ethers.constants.AddressZero;
+
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 const BAT = "0x0D8775F648430679A709E98d2b0Cb6250d2887EF";
@@ -80,6 +82,7 @@ describe("AggregatedOracle#constructor", async function () {
         const quoteTokenAddress = USDC;
         const quoteTokenSymbol = "USDC";
         const quoteTokenDecimals = 6;
+        const liquidityDecimals = 4;
         const oracles = [oracle1.address];
         const tokenSpecificOracles = [grtOracle];
         const period = 30;
@@ -91,6 +94,7 @@ describe("AggregatedOracle#constructor", async function () {
             quoteTokenAddress,
             quoteTokenSymbol,
             quoteTokenDecimals,
+            liquidityDecimals,
             oracles,
             tokenSpecificOracles,
             period,
@@ -102,6 +106,7 @@ describe("AggregatedOracle#constructor", async function () {
         expect(await oracle.quoteTokenAddress()).to.equal(quoteTokenAddress);
         expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);
         expect(await oracle.quoteTokenDecimals()).to.equal(quoteTokenDecimals);
+        expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
         expect(await oracle.getOracles()).to.eql(oracles); // eql = deep equality
         expect(await oracle.period()).to.equal(period);
         expect(await oracle.minimumTokenLiquidityValue()).to.equal(minimumTokenLiquidityValue);
@@ -119,6 +124,7 @@ describe("AggregatedOracle#constructor", async function () {
                 USDC,
                 "NIL",
                 18,
+                0,
                 [],
                 [],
                 PERIOD,
@@ -138,6 +144,7 @@ describe("AggregatedOracle#constructor", async function () {
                 USDC,
                 "NIL",
                 18,
+                0,
                 [oracle1.address, oracle1.address],
                 [],
                 PERIOD,
@@ -162,6 +169,7 @@ describe("AggregatedOracle#constructor", async function () {
                 USDC,
                 "NIL",
                 18,
+                0,
                 [],
                 [oracle1Config, oracle1Config],
                 PERIOD,
@@ -186,6 +194,7 @@ describe("AggregatedOracle#constructor", async function () {
                 USDC,
                 "NIL",
                 18,
+                0,
                 [oracle1.address],
                 [oracle1Config],
                 PERIOD,
@@ -211,6 +220,7 @@ describe("AggregatedOracle#needsUpdate", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -292,6 +302,7 @@ describe("AggregatedOracle#canUpdate", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle1.address],
             [],
             PERIOD,
@@ -373,6 +384,7 @@ describe("AggregatedOracle#consultPrice(token)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -426,6 +438,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
             USDC,
             "NIL",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -462,6 +475,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -618,6 +632,7 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -675,6 +690,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
             USDC,
             "NIL",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -745,6 +761,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -921,6 +938,7 @@ describe("AggregatedOracle#consult(token)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -982,6 +1000,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             USDC,
             "NIL",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -1018,7 +1037,8 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             "NAME",
             USDC,
             "NIL",
-            18,
+            7,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -1027,10 +1047,17 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         );
 
         const price = BigNumber.from(2).pow(112).sub(1); // = uint112.max
-        const tokenLiqudity = BigNumber.from(2);
-        const quoteTokenLiquidity = BigNumber.from(3);
+        const tokenLiqudity = BigNumber.from(200);
+        const quoteTokenLiquidity = BigNumber.from(300);
 
         await underlyingOracle.stubSetInstantRates(GRT, price, tokenLiqudity, quoteTokenLiquidity);
+
+        // Sanity checks
+        expect(await underlyingOracle.quoteTokenDecimals()).to.equal(
+            6,
+            "Underlying oracle should use 6 decimals for the price"
+        );
+        expect(await oracle.quoteTokenDecimals()).to.equal(7, "Aggregated oracle should use 7 decimals for the price");
 
         await expect(oracle["consult(address,uint256)"](GRT, 0)).to.be.revertedWith("AggregatedOracle: PRICE_TOO_HIGH");
     });
@@ -1045,6 +1072,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             USDC,
             "NIL",
             6,
+            0,
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
@@ -1079,6 +1107,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             USDC,
             "NIL",
             6,
+            0,
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
@@ -1113,6 +1142,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             USDC,
             "NIL",
             6,
+            0,
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
@@ -1214,6 +1244,7 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -1335,10 +1366,13 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
+        await underlyingOracle.stubSetLiquidityDecimals(6);
+
         oracle = await oracleFactory.deploy(
             "USD Coin",
             quoteToken,
             "USDC",
+            6,
             6,
             [underlyingOracle.address],
             [],
@@ -1414,7 +1448,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         expect(oTimestamp).to.equal(timestamp);
     });
 
-    it("Has correct price and quote token liquidity when the oracle has delta +2 quote token decimals", async function () {
+    it("Has correct price when the oracle has delta +2 quote token decimals", async function () {
         const price = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
@@ -1431,23 +1465,22 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         await oracle.stubSetQuoteTokenDecimals((await oracle.quoteTokenDecimals()) + 2);
         // Increase by 2 decimal places (delta from underlying is +2), so multiply by 10^2
         const expectedPrice = price.mul(100);
-        const expectedQuoteTokenLiquidity = quoteTokenLiquidity.mul(100);
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
-            .withArgs(token, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
+            .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
-        expect(oQuoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
         expect(oTimestamp).to.equal(timestamp);
     });
 
-    it("Has correct price and quote token liquidity when the oracle has delta -2 quote token decimals", async function () {
+    it("Has correct price when the oracle has delta -2 quote token decimals", async function () {
         const price = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
@@ -1464,18 +1497,83 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         await oracle.stubSetQuoteTokenDecimals((await oracle.quoteTokenDecimals()) - 2);
         // Decrease by 2 decimal places (delta from underlying is -2), so divide by 10^2
         const expectedPrice = price.div(100);
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(expectedPrice);
+        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+
+    it("Has correct liquidity when the oracle has delta +2 liquidity decimals", async function () {
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await oracle.stubSetLiquidityDecimals((await underlyingOracle.liquidityDecimals()) + 2);
+        // Increase by 2 decimal places (delta from underlying is +2), so multiply by 10^2
+        const expectedTokenLiquidity = tokenLiquidity.mul(100);
+        const expectedQuoteTokenLiquidity = quoteTokenLiquidity.mul(100);
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+            .to.emit(oracle, "Updated")
+            .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+
+        expect(oPrice).to.equal(price);
+        expect(oTokenLiquidity).to.equal(expectedTokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+
+    it("Has correct liquidity when the oracle has delta -2 liquidity decimals", async function () {
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await oracle.stubSetLiquidityDecimals((await underlyingOracle.liquidityDecimals()) - 2);
+        // Decrease by 2 decimal places (delta from underlying is -2), so divide by 10^2
+        const expectedTokenLiquidity = tokenLiquidity.div(100);
         const expectedQuoteTokenLiquidity = quoteTokenLiquidity.div(100);
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "Updated")
-            .withArgs(token, expectedPrice, tokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
+            .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
 
-        expect(oPrice).to.equal(expectedPrice);
-        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oPrice).to.equal(price);
+        expect(oTokenLiquidity).to.equal(expectedTokenLiquidity);
         expect(oQuoteTokenLiquidity).to.equal(expectedQuoteTokenLiquidity);
         expect(oTimestamp).to.equal(timestamp);
     });
@@ -1783,6 +1881,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             quoteToken,
             "USDC",
             6,
+            0,
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD,
@@ -1967,6 +2066,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
             quoteToken,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [
                 {
@@ -2077,7 +2177,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
     const token = GRT;
     const tokenDecimals = 18;
 
-    const minimumTokenLiquidityValue = ethers.utils.parseUnits("10.0", 6); // 10 USDC worth
+    const minimumTokenLiquidityValue = BigNumber.from(10); // 10 USDC worth
     const minimumQuoteTokenLiquidity = BigNumber.from(0);
 
     var underlyingOracle;
@@ -2099,6 +2199,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             quoteToken,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -2184,7 +2285,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
     const tokenDecimals = 18;
 
     const minimumTokenLiquidityValue = BigNumber.from(0);
-    const minimumQuoteTokenLiquidity = ethers.utils.parseUnits("10.0", 6); // 10 USDC
+    const minimumQuoteTokenLiquidity = BigNumber.from(10); // 10 USDC
 
     var underlyingOracle;
 
@@ -2205,6 +2306,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             quoteToken,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -2308,6 +2410,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             quoteToken,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -2450,6 +2553,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
             quoteToken,
             "USDC",
             6,
+            0,
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD,
@@ -2550,6 +2654,7 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                     USDC,
                     "USDC",
                     6,
+                    0,
                     [underlyingOracle.address],
                     [],
                     PERIOD,
@@ -2566,12 +2671,8 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                             " when quoteTokenLiquidity = " +
                             quoteTokenLiquidity.sub(1),
                         async function () {
-                            // Note: stubSanityCheckQuoteTokenLiquidity takes whole token amounts while
-                            // quoteTokenLiquidity is in wei
                             expect(
-                                await oracle.stubSanityCheckQuoteTokenLiquidity(
-                                    quoteTokenLiquidity.div(BigNumber.from(10).pow(6)).sub(1)
-                                )
+                                await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity.sub(1))
                             ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.sub(1)));
                         }
                     );
@@ -2583,13 +2684,9 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                         " when quoteTokenLiquidity = " +
                         quoteTokenLiquidity,
                     async function () {
-                        // Note: stubSanityCheckQuoteTokenLiquidity takes whole token amounts while
-                        // quoteTokenLiquidity is in wei
-                        expect(
-                            await oracle.stubSanityCheckQuoteTokenLiquidity(
-                                quoteTokenLiquidity.div(BigNumber.from(10).pow(6))
-                            )
-                        ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity));
+                        expect(await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity)).to.equal(
+                            expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity)
+                        );
                     }
                 );
 
@@ -2600,12 +2697,8 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                             " when quoteTokenLiquidity = " +
                             quoteTokenLiquidity.add(1),
                         async function () {
-                            // Note: stubSanityCheckQuoteTokenLiquidity takes whole token amounts while
-                            // quoteTokenLiquidity is in wei
                             expect(
-                                await oracle.stubSanityCheckQuoteTokenLiquidity(
-                                    quoteTokenLiquidity.div(BigNumber.from(10).pow(6)).add(1)
-                                )
+                                await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity.add(1))
                             ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.add(1)));
                         }
                     );
@@ -2659,70 +2752,67 @@ describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
         return true;
     };
 
-    for (const minimumTokenLiquidityValue of tests) {
-        describe("Minimum token liquidity value = " + minimumTokenLiquidityValue, function () {
-            var oracle;
+    for (const quoteTokenDecimals of tokenDecimals) {
+        describe("Quote token decimals = " + quoteTokenDecimals, function () {
+            for (const liquidityDecimals of tokenDecimals) {
+                describe("Liquidity decimals = " + liquidityDecimals, function () {
+                    for (const minimumTokenLiquidityValue of tests) {
+                        describe("Minimum token liquidity value = " + minimumTokenLiquidityValue, function () {
+                            var oracle;
 
-            beforeEach(async function () {
-                const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+                            beforeEach(async function () {
+                                const mockOracleFactory = await ethers.getContractFactory("MockOracle");
 
-                underlyingOracle = await mockOracleFactory.deploy(USDC);
-                await underlyingOracle.deployed();
+                                underlyingOracle = await mockOracleFactory.deploy(USDC);
+                                await underlyingOracle.deployed();
 
-                oracle = await oracleFactory.deploy(
-                    "USD Coin",
-                    USDC,
-                    "USDC",
-                    6,
-                    [underlyingOracle.address],
-                    [],
-                    PERIOD,
-                    minimumTokenLiquidityValue,
-                    MINIMUM_QUOTE_TOKEN_LIQUIDITY
-                );
-            });
+                                oracle = await oracleFactory.deploy(
+                                    "USD Coin",
+                                    USDC,
+                                    "USDC",
+                                    quoteTokenDecimals,
+                                    liquidityDecimals,
+                                    [underlyingOracle.address],
+                                    [],
+                                    PERIOD,
+                                    minimumTokenLiquidityValue,
+                                    MINIMUM_QUOTE_TOKEN_LIQUIDITY
+                                );
+                            });
 
-            for (const decimals of tokenDecimals) {
-                describe("Token decimals = " + decimals, function () {
-                    var token;
-
-                    beforeEach(async function () {
-                        const mockTokenFactory = await ethers.getContractFactory("FakeERC20");
-
-                        token = await mockTokenFactory.deploy("Name", "SYMB", decimals);
-                    });
-
-                    for (const price of prices) {
-                        describe("Price = " + price, function () {
-                            for (const tokenLiquidity of liquidities) {
-                                describe("Token liquidity = " + tokenLiquidity, function () {
-                                    it(
-                                        "Should return " +
-                                            expectedReturn(
-                                                minimumTokenLiquidityValue,
-                                                price,
-                                                tokenLiquidity,
-                                                decimals
-                                            ) +
-                                            " when tokenLiquidityValue = " +
-                                            tokenLiquidityValue(price, tokenLiquidity, decimals),
-                                        async function () {
-                                            expect(
-                                                await oracle.stubSanityCheckTokenLiquidityValue(
-                                                    token.address,
-                                                    price,
-                                                    tokenLiquidity.div(BigNumber.from(10).pow(decimals))
-                                                )
-                                            ).to.equal(
-                                                expectedReturn(
-                                                    minimumTokenLiquidityValue,
-                                                    price,
-                                                    tokenLiquidity,
-                                                    decimals
-                                                )
+                            for (const price of prices) {
+                                describe("Price = " + price, function () {
+                                    for (const tokenLiquidity of liquidities) {
+                                        describe("Token liquidity = " + tokenLiquidity, function () {
+                                            it(
+                                                "Should return " +
+                                                    expectedReturn(
+                                                        minimumTokenLiquidityValue,
+                                                        price,
+                                                        tokenLiquidity,
+                                                        quoteTokenDecimals
+                                                    ) +
+                                                    " when tokenLiquidityValue = " +
+                                                    tokenLiquidityValue(price, tokenLiquidity, quoteTokenDecimals),
+                                                async function () {
+                                                    expect(
+                                                        await oracle.stubSanityCheckTokenLiquidityValue(
+                                                            AddressZero,
+                                                            price,
+                                                            tokenLiquidity
+                                                        )
+                                                    ).to.equal(
+                                                        expectedReturn(
+                                                            minimumTokenLiquidityValue,
+                                                            price,
+                                                            tokenLiquidity,
+                                                            quoteTokenDecimals
+                                                        )
+                                                    );
+                                                }
                                             );
-                                        }
-                                    );
+                                        });
+                                    }
                                 });
                             }
                         });
@@ -2749,6 +2839,7 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
             USDC,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -2861,6 +2952,7 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
             USDC,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,
@@ -2946,6 +3038,7 @@ describe("AggregatedOracle#calculateMaxAge", function () {
             USDC,
             "USDC",
             6,
+            0,
             [underlyingOracle.address],
             [],
             1, // period
@@ -2965,6 +3058,7 @@ describe("AggregatedOracle#calculateMaxAge", function () {
                 USDC,
                 "USDC",
                 6,
+                0,
                 [underlyingOracle.address],
                 [],
                 period, // period
@@ -2994,6 +3088,7 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
             USDC,
             "NIL",
             18,
+            0,
             [underlyingOracle.address],
             [],
             PERIOD,

@@ -6,6 +6,52 @@ const AddressZero = ethers.constants.AddressZero;
 const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 
 const TWO_PERCENT_CHANGE = 2000000;
+const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+
+describe("UniswapV2LiquidityAccumulator#constructor", function () {
+    var fakeUniswapV2Factory;
+
+    beforeEach(async () => {
+        const [owner] = await ethers.getSigners();
+
+        // Deploy fake uniswap v2 factory
+        const FakeUniswapV2Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+        fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
+        await fakeUniswapV2Factory.deployed();
+    });
+
+    it("Should properly set liquidity decimals to 0", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("UniswapV2LiquidityAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            fakeUniswapV2Factory.address,
+            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+            USDC,
+            0, // Liquidity decimals
+            TWO_PERCENT_CHANGE,
+            100,
+            100
+        );
+
+        expect(await accumulator.liquidityDecimals()).equals(0);
+        expect(await accumulator.quoteTokenDecimals()).equals(0);
+    });
+
+    it("Should properly set liquidity decimals to 18", async function () {
+        const accumulatorFactory = await ethers.getContractFactory("UniswapV2LiquidityAccumulator");
+        const accumulator = await accumulatorFactory.deploy(
+            fakeUniswapV2Factory.address,
+            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+            USDC,
+            18, // Liquidity decimals
+            TWO_PERCENT_CHANGE,
+            100,
+            100
+        );
+
+        expect(await accumulator.liquidityDecimals()).equals(18);
+        expect(await accumulator.quoteTokenDecimals()).equals(18);
+    });
+});
 
 describe("UniswapV2LiquidityAccumulator", function () {
     this.timeout(100000);
@@ -97,6 +143,7 @@ describe("UniswapV2LiquidityAccumulator", function () {
             fakeUniswapV2Factory.address,
             "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
             quoteToken.address,
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             minUpdateDelay,
             maxUpdateDelay

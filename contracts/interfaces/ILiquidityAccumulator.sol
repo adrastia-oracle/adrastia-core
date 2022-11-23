@@ -42,18 +42,16 @@ abstract contract ILiquidityAccumulator is IAccumulator {
     /// @notice Gets the last cumulative liquidity levels for the token and quote token that was stored.
     /// @param token The address of the token to get the cumulative liquidity levels for (with the quote token).
     /// @return The last cumulative liquidity levels (in wei) along with the timestamp of those levels.
-    function getLastAccumulation(address token)
-        public
-        view
-        virtual
-        returns (AccumulationLibrary.LiquidityAccumulator memory);
+    function getLastAccumulation(
+        address token
+    ) public view virtual returns (AccumulationLibrary.LiquidityAccumulator memory);
 
     /// @notice Gets the current cumulative liquidity levels for the token and quote token.
     /// @param token The address of the token to get the cumulative liquidity levels for (with the quote token).
     /// @return The current cumulative liquidity levels (in wei) along with the timestamp of those levels.
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        returns (AccumulationLibrary.LiquidityAccumulator memory);
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual returns (AccumulationLibrary.LiquidityAccumulator memory);
+
+    function liquidityDecimals() public view virtual returns (uint8);
 }

@@ -17,6 +17,8 @@ contract AggregatedOracleStub is AggregatedOracle {
         bool sanityCheckQuoteTokenLiquidity;
         bool sanityCheckTokenLiquidityValueOverridden;
         bool sanityCheckTokenLiquidityValue;
+        bool liquidityDecimalsOverridden;
+        uint8 liquidityDecimals;
     }
 
     Config public config;
@@ -26,6 +28,7 @@ contract AggregatedOracleStub is AggregatedOracle {
         address quoteTokenAddress_,
         string memory quoteTokenSymbol_,
         uint8 quoteTokenDecimals_,
+        uint8 liquidityDecimals_,
         address[] memory oracles_,
         AggregatedOracle.TokenSpecificOracle[] memory _tokenSpecificOracles,
         uint256 period_,
@@ -37,6 +40,7 @@ contract AggregatedOracleStub is AggregatedOracle {
             quoteTokenAddress_,
             quoteTokenSymbol_,
             quoteTokenDecimals_,
+            liquidityDecimals_,
             oracles_,
             _tokenSpecificOracles,
             period_,
@@ -45,6 +49,11 @@ contract AggregatedOracleStub is AggregatedOracle {
         )
     {
         overrideValidateUnderlyingConsultation(true, true); // Skip validation by default
+    }
+
+    function stubSetLiquidityDecimals(uint8 decimals) public {
+        config.liquidityDecimalsOverridden = true;
+        config.liquidityDecimals = decimals;
     }
 
     function stubSetQuoteTokenDecimals(uint8 decimals) public {
@@ -73,7 +82,7 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function stubSanityCheckTvlDistributionRatio(
-        address, /*token*/
+        address /*token*/,
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
@@ -86,7 +95,7 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function stubSanityCheckTokenLiquidityValue(
-        address, /*token*/
+        address /*token*/,
         uint256 price,
         uint256 tokenLiquidity
     ) public view returns (bool) {
@@ -94,7 +103,7 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function stubValidateUnderlyingConsultation(
-        address, /*token*/
+        address /*token*/,
         uint256 price,
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
@@ -138,6 +147,11 @@ contract AggregatedOracleStub is AggregatedOracle {
         else return super.quoteTokenDecimals();
     }
 
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        if (config.liquidityDecimalsOverridden) return config.liquidityDecimals;
+        else return super.liquidityDecimals();
+    }
+
     function validateUnderlyingConsultation(
         uint256 price,
         uint256 tokenLiquidity,
@@ -161,13 +175,10 @@ contract AggregatedOracleStub is AggregatedOracle {
         else return super.sanityCheckQuoteTokenLiquidity(quoteTokenLiquidity);
     }
 
-    function sanityCheckTokenLiquidityValue(uint256 price, uint256 tokenLiquidity)
-        internal
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function sanityCheckTokenLiquidityValue(
+        uint256 price,
+        uint256 tokenLiquidity
+    ) internal view virtual override returns (bool) {
         if (config.sanityCheckTokenLiquidityValueOverridden) return config.sanityCheckTokenLiquidityValue;
         else return super.sanityCheckTokenLiquidityValue(price, tokenLiquidity);
     }

@@ -32,7 +32,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) {
+async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, liquidityDecimals) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
@@ -42,6 +42,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
         factory,
         initCodeHash,
         quoteToken,
+        liquidityDecimals,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
@@ -81,7 +82,9 @@ async function main() {
 
     const period = 10; // 10 seconds
 
-    const uniswapV2 = await createUniswapV2Oracle(factoryAddress, initCodeHash, quoteToken, period);
+    const liquidityDecimals = 4;
+
+    const uniswapV2 = await createUniswapV2Oracle(factoryAddress, initCodeHash, quoteToken, period, liquidityDecimals);
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
