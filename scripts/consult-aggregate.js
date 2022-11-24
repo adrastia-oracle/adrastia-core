@@ -45,7 +45,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidit
     const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
-        "UniswapV2LiquidityAccumulator",
+        "UniswapV2HarmonicLiquidityAccumulator",
         factory,
         initCodeHash,
         quoteToken,
@@ -56,7 +56,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidit
     );
 
     const priceAccumulator = await createContract(
-        "UniswapV2PriceAccumulator",
+        "UniswapV2GeometricPriceAccumulator",
         factory,
         initCodeHash,
         quoteToken,
@@ -88,7 +88,7 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, liquidit
     const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
-        "UniswapV3LiquidityAccumulator",
+        "UniswapV3HarmonicLiquidityAccumulator",
         factory,
         initCodeHash,
         poolFees,
@@ -100,7 +100,7 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, liquidit
     );
 
     const priceAccumulator = await createContract(
-        "UniswapV3PriceAccumulator",
+        "UniswapV3GeometricPriceAccumulator",
         factory,
         initCodeHash,
         poolFees,
