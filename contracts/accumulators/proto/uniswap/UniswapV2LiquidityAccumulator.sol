@@ -6,24 +6,36 @@ pragma experimental ABIEncoderV2;
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "../../LiquidityAccumulator.sol";
+import "../../../libraries/SafeCastExt.sol";
 
 contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
+    using SafeCastExt for uint256;
 
     address public immutable uniswapFactory;
 
     bytes32 public immutable initCodeHash;
 
+    uint8 internal immutable _liquidityDecimals;
+
+    uint256 internal immutable _decimalFactor;
+
+    uint256 internal immutable _quoteTokenWholeUnit;
+
     constructor(
         address uniswapFactory_,
         bytes32 initCodeHash_,
         address quoteToken_,
+        uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
+        _liquidityDecimals = decimals_;
+        _decimalFactor = 10 ** decimals_;
+        _quoteTokenWholeUnit = 10 ** super.quoteTokenDecimals();
     }
 
     /// @inheritdoc LiquidityAccumulator
@@ -45,13 +57,17 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
         return super.canUpdate(data);
     }
 
-    function fetchLiquidity(address token)
-        internal
-        view
-        virtual
-        override
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function quoteTokenDecimals() public view virtual override(SimpleQuotationMetadata, IQuoteToken) returns (uint8) {
+        return _liquidityDecimals;
+    }
+
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return _liquidityDecimals;
+    }
+
+    function fetchLiquidity(
+        address token
+    ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
         require(pairAddress.isContract(), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");
@@ -65,6 +81,10 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
             tokenLiquidity = reserve1;
             quoteTokenLiquidity = reserve0;
         }
+
+        tokenLiquidity = ((uint256(tokenLiquidity) * _decimalFactor) / 10 ** IERC20Metadata(token).decimals())
+            .toUint112();
+        quoteTokenLiquidity = ((uint256(quoteTokenLiquidity) * _decimalFactor) / _quoteTokenWholeUnit).toUint112();
     }
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order

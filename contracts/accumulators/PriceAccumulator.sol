@@ -11,6 +11,7 @@ import "../interfaces/IPriceAccumulator.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
+import "../libraries/SafeCastExt.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
 abstract contract PriceAccumulator is
@@ -22,6 +23,7 @@ abstract contract PriceAccumulator is
 {
     using AddressLibrary for address;
     using SafeCast for uint256;
+    using SafeCastExt for uint256;
 
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
@@ -69,7 +71,8 @@ abstract contract PriceAccumulator is
 
         unchecked {
             // Underflow is desired and results in correct functionality
-            price = (secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime;
+            price = uint256((secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime)
+                .toUint112();
         }
     }
 
@@ -175,13 +178,13 @@ abstract contract PriceAccumulator is
 
         if (deltaTime != 0) {
             // The last observation price has existed for some time, so we add that
+            uint224 timeWeightedPrice = uint224(lastObservation.price) * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
-                accumulation.cumulativePrice += lastObservation.price * deltaTime;
-
-                accumulation.timestamp = block.timestamp.toUint32();
+                accumulation.cumulativePrice += timeWeightedPrice;
             }
+            accumulation.timestamp = block.timestamp.toUint32();
         }
     }
 
@@ -242,7 +245,7 @@ abstract contract PriceAccumulator is
             /*
              * Initialize
              */
-            observation.price = accumulation.cumulativePrice = price;
+            observation.price = price;
             observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, price, block.timestamp);
@@ -257,15 +260,14 @@ abstract contract PriceAccumulator is
         uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
 
         if (deltaTime != 0) {
+            uint224 timeWeightedPrice = uint224(observation.price) * deltaTime;
             unchecked {
                 // Overflow is desired and results in correct functionality
                 // We add the last price multiplied by the time that price was active
-                accumulation.cumulativePrice += observation.price * deltaTime;
-
-                observation.price = price;
-
-                observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
+                accumulation.cumulativePrice += timeWeightedPrice;
             }
+            observation.price = price;
+            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
 
             emit Updated(token, price, block.timestamp);
 

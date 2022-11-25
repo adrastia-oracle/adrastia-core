@@ -6,194 +6,267 @@ const AddressZero = ethers.constants.AddressZero;
 const { abi: FACTORY_ABI, bytecode: FACTORY_BYTECODE } = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 
 const TWO_PERCENT_CHANGE = 2000000;
+const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
-describe("UniswapV2LiquidityAccumulator", function () {
-    this.timeout(100000);
+function describeUniswapV2LiquidityAccumulatorTests(contractName, stubContractName) {
+    describe(contractName + "#constructor", function () {
+        var fakeUniswapV2Factory;
 
-    const minUpdateDelay = 10000;
-    const maxUpdateDelay = 30000;
+        beforeEach(async () => {
+            const [owner] = await ethers.getSigners();
 
-    var fakeUniswapV2Factory;
-    var accumulator;
-    var addressHelper;
-
-    var quoteToken;
-    var token;
-    var ltToken;
-    var gtToken;
-
-    var noPairToken;
-
-    beforeEach(async () => {
-        const [owner] = await ethers.getSigners();
-
-        // Deploy fake uniswap v2 factory
-        const FakeUniswapV2Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
-        fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
-        await fakeUniswapV2Factory.deployed();
-
-        const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
-
-        addressHelper = await addressHelperFactory.deploy();
-
-        // Create tokens
-        const erc20Factory = await ethers.getContractFactory("FakeERC20");
-
-        noPairToken = await erc20Factory.deploy("No Pair Token", "NPT", 18);
-        await noPairToken.deployed();
-
-        token = await erc20Factory.deploy("Token", "T", 18);
-        await token.deployed();
-
-        var tokens = [undefined, undefined, undefined];
-
-        for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
-        for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
-
-        if (await addressHelper.lessThan(tokens[0].address, tokens[1].address)) {
-            // tokens[0] < tokens[1]
-            if (await addressHelper.lessThan(tokens[2].address, tokens[0].address)) {
-                // tokens[2] < tokens[0] < tokens[1]
-                ltToken = tokens[2];
-                quoteToken = tokens[0];
-                gtToken = tokens[1];
-            } else if (await addressHelper.lessThan(tokens[2].address, tokens[1].address)) {
-                // tokens[0] < tokens[2] < tokens[1]
-                ltToken = tokens[0];
-                quoteToken = tokens[2];
-                gtToken = tokens[1];
-            } else {
-                // tokens[0] < tokens[1] < tokens[2]
-                ltToken = tokens[0];
-                quoteToken = tokens[1];
-                gtToken = tokens[2];
-            }
-        } else {
-            // tokens[1] < tokens[0]
-            if (await addressHelper.lessThan(tokens[2].address, tokens[1].address)) {
-                // tokens[2] < tokens[1] < tokens[0]
-                ltToken = tokens[2];
-                quoteToken = tokens[1];
-                gtToken = tokens[0];
-            } else if (await addressHelper.lessThan(tokens[2].address, tokens[0].address)) {
-                // tokens[1] < tokens[2] < tokens[0]
-                ltToken = tokens[1];
-                quoteToken = tokens[2];
-                gtToken = tokens[0];
-            } else {
-                // tokens[1] < tokens[0] < tokens[2]
-                ltToken = tokens[1];
-                quoteToken = tokens[0];
-                gtToken = tokens[2];
-            }
-        }
-
-        expect(await addressHelper.lessThan(ltToken.address, quoteToken.address)).to.be.true;
-        expect(await addressHelper.lessThan(quoteToken.address, gtToken.address)).to.be.true;
-
-        // Deploy uniswap v2 liquidity accumulator
-        const LiquidityAccumulator = await ethers.getContractFactory("UniswapV2LiquidityAccumulatorStub");
-        accumulator = await LiquidityAccumulator.deploy(
-            fakeUniswapV2Factory.address,
-            "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
-            quoteToken.address,
-            TWO_PERCENT_CHANGE,
-            minUpdateDelay,
-            maxUpdateDelay
-        );
-    });
-
-    describe("UniswapV2LiquidityAccumulator#canUpdate", function () {
-        describe("Can't update when", function () {
-            it("token = address(0)", async function () {
-                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
-            });
-
-            it("token = quoteToken", async function () {
-                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(quoteToken.address, 32))).to.equal(false);
-            });
-
-            it("The pool doesn't exist", async function () {
-                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(false);
-            });
+            // Deploy fake uniswap v2 factory
+            const FakeUniswapV2Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+            fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
+            await fakeUniswapV2Factory.deployed();
         });
 
-        describe("Can update when", function () {
-            it("The pool exists", async function () {
-                await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
+        it("Should properly set liquidity decimals to 0", async function () {
+            const accumulatorFactory = await ethers.getContractFactory(contractName);
+            const accumulator = await accumulatorFactory.deploy(
+                fakeUniswapV2Factory.address,
+                "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+                USDC,
+                0, // Liquidity decimals
+                TWO_PERCENT_CHANGE,
+                100,
+                100
+            );
 
-                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(true);
-            });
+            expect(await accumulator.liquidityDecimals()).equals(0);
+            expect(await accumulator.quoteTokenDecimals()).equals(0);
+        });
+
+        it("Should properly set liquidity decimals to 18", async function () {
+            const accumulatorFactory = await ethers.getContractFactory(contractName);
+            const accumulator = await accumulatorFactory.deploy(
+                fakeUniswapV2Factory.address,
+                "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+                USDC,
+                18, // Liquidity decimals
+                TWO_PERCENT_CHANGE,
+                100,
+                100
+            );
+
+            expect(await accumulator.liquidityDecimals()).equals(18);
+            expect(await accumulator.quoteTokenDecimals()).equals(18);
         });
     });
 
-    describe("UniswapV2LiquidityAccumulator#fetchLiquidity", function () {
-        const tests = [{ args: [10000, 10000] }, { args: [100000, 10000] }, { args: [10000, 100000] }];
+    describe(contractName, function () {
+        this.timeout(100000);
 
-        beforeEach(async function () {
-            // Configure pairs
-            await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
-            await fakeUniswapV2Factory.createPair(ltToken.address, quoteToken.address);
-            await fakeUniswapV2Factory.createPair(gtToken.address, quoteToken.address);
-        });
+        const minUpdateDelay = 10000;
+        const maxUpdateDelay = 30000;
 
-        it("Should revert when the pair does not exist", async () => {
-            await expect(accumulator.harnessFetchLiquidity(noPairToken.address)).to.be.revertedWith(
-                "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND"
+        var fakeUniswapV2Factory;
+        var accumulator;
+        var addressHelper;
+
+        var quoteToken;
+        var token;
+        var ltToken;
+        var gtToken;
+
+        var noPairToken;
+
+        beforeEach(async () => {
+            const [owner] = await ethers.getSigners();
+
+            // Deploy fake uniswap v2 factory
+            const FakeUniswapV2Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+            fakeUniswapV2Factory = await FakeUniswapV2Factory.deploy(owner.getAddress());
+            await fakeUniswapV2Factory.deployed();
+
+            const addressHelperFactory = await ethers.getContractFactory("AddressHelper");
+
+            addressHelper = await addressHelperFactory.deploy();
+
+            // Create tokens
+            const erc20Factory = await ethers.getContractFactory("FakeERC20");
+
+            noPairToken = await erc20Factory.deploy("No Pair Token", "NPT", 18);
+            await noPairToken.deployed();
+
+            token = await erc20Factory.deploy("Token", "T", 18);
+            await token.deployed();
+
+            var tokens = [undefined, undefined, undefined];
+
+            for (var i = 0; i < tokens.length; ++i) tokens[i] = await erc20Factory.deploy("Token " + i, "TOK" + i, 18);
+            for (var i = 0; i < tokens.length; ++i) await tokens[i].deployed();
+
+            if (await addressHelper.lessThan(tokens[0].address, tokens[1].address)) {
+                // tokens[0] < tokens[1]
+                if (await addressHelper.lessThan(tokens[2].address, tokens[0].address)) {
+                    // tokens[2] < tokens[0] < tokens[1]
+                    ltToken = tokens[2];
+                    quoteToken = tokens[0];
+                    gtToken = tokens[1];
+                } else if (await addressHelper.lessThan(tokens[2].address, tokens[1].address)) {
+                    // tokens[0] < tokens[2] < tokens[1]
+                    ltToken = tokens[0];
+                    quoteToken = tokens[2];
+                    gtToken = tokens[1];
+                } else {
+                    // tokens[0] < tokens[1] < tokens[2]
+                    ltToken = tokens[0];
+                    quoteToken = tokens[1];
+                    gtToken = tokens[2];
+                }
+            } else {
+                // tokens[1] < tokens[0]
+                if (await addressHelper.lessThan(tokens[2].address, tokens[1].address)) {
+                    // tokens[2] < tokens[1] < tokens[0]
+                    ltToken = tokens[2];
+                    quoteToken = tokens[1];
+                    gtToken = tokens[0];
+                } else if (await addressHelper.lessThan(tokens[2].address, tokens[0].address)) {
+                    // tokens[1] < tokens[2] < tokens[0]
+                    ltToken = tokens[1];
+                    quoteToken = tokens[2];
+                    gtToken = tokens[0];
+                } else {
+                    // tokens[1] < tokens[0] < tokens[2]
+                    ltToken = tokens[1];
+                    quoteToken = tokens[0];
+                    gtToken = tokens[2];
+                }
+            }
+
+            expect(await addressHelper.lessThan(ltToken.address, quoteToken.address)).to.be.true;
+            expect(await addressHelper.lessThan(quoteToken.address, gtToken.address)).to.be.true;
+
+            // Deploy uniswap v2 liquidity accumulator
+            const LiquidityAccumulator = await ethers.getContractFactory(stubContractName);
+            accumulator = await LiquidityAccumulator.deploy(
+                fakeUniswapV2Factory.address,
+                "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f",
+                quoteToken.address,
+                0, // Liquidity decimals
+                TWO_PERCENT_CHANGE,
+                minUpdateDelay,
+                maxUpdateDelay
             );
         });
 
-        it("Should revert if token == quoteToken", async function () {
-            await expect(accumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
+        describe(contractName + "#canUpdate", function () {
+            describe("Can't update when", function () {
+                it("token = address(0)", async function () {
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
+                });
+
+                it("token = quoteToken", async function () {
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(quoteToken.address, 32))).to.equal(
+                        false
+                    );
+                });
+
+                it("The pool doesn't exist", async function () {
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(false);
+                });
+            });
+
+            describe("Can update when", function () {
+                it("The pool exists", async function () {
+                    await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(token.address, 32))).to.equal(true);
+                });
+            });
         });
 
-        it("Should revert if token == address(0)", async function () {
-            await expect(accumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
-        });
+        describe(contractName + "#fetchLiquidity", function () {
+            const tests = [
+                { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("10000", 18)] },
+                { args: [ethers.utils.parseUnits("100000", 18), ethers.utils.parseUnits("10000", 18)] },
+                { args: [ethers.utils.parseUnits("10000", 18), ethers.utils.parseUnits("100000", 18)] },
+            ];
 
-        tests.forEach(({ args }) => {
-            it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
-                const [owner] = await ethers.getSigners();
+            beforeEach(async function () {
+                // Configure pairs
+                await fakeUniswapV2Factory.createPair(token.address, quoteToken.address);
+                await fakeUniswapV2Factory.createPair(ltToken.address, quoteToken.address);
+                await fakeUniswapV2Factory.createPair(gtToken.address, quoteToken.address);
+            });
 
-                // Get pair
-                const ltPair = await fakeUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
-                const gtPair = await fakeUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
-                const ltPairContract = await ethers.getContractAt("IUniswapV2Pair", ltPair);
-                const gtPairContract = await ethers.getContractAt("IUniswapV2Pair", gtPair);
-
-                // Approve transfers to pair (ltToken, quoteToken)
-                await ltToken.approve(ltPair, args[0]);
-                await quoteToken.approve(ltPair, args[1]);
-
-                // Approve transfers to pair (gtToken, quoteToken)
-                await gtToken.approve(gtPair, args[0]);
-                await quoteToken.approve(gtPair, args[1]);
-
-                // Send tokens to pair (ltToken, quoteToken)
-                await ltToken.transfer(ltPair, args[0]);
-                await quoteToken.transfer(ltPair, args[1]);
-
-                // Send tokens to pair (gtToken, quoteToken)
-                await gtToken.transfer(gtPair, args[0]);
-                await quoteToken.transfer(gtPair, args[1]);
-
-                // Mint the pairs
-                await ltPairContract.mint(owner.address);
-                await gtPairContract.mint(owner.address);
-
-                const [ltTokenLiquidity, quoteTokenLiquidity1] = await accumulator.harnessFetchLiquidity(
-                    ltToken.address
+            it("Should revert when the pair does not exist", async () => {
+                await expect(accumulator.harnessFetchLiquidity(noPairToken.address)).to.be.revertedWith(
+                    "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND"
                 );
+            });
 
-                const [gtTokenLiquidity, quoteTokenLiquidity2] = await accumulator.harnessFetchLiquidity(
-                    gtToken.address
-                );
+            it("Should revert if token == quoteToken", async function () {
+                await expect(accumulator.harnessFetchLiquidity(quoteToken.address)).to.be.reverted;
+            });
 
-                expect(ltTokenLiquidity).to.equal(BigNumber.from(args[0]));
-                expect(gtTokenLiquidity).to.equal(BigNumber.from(args[0]));
-                expect(quoteTokenLiquidity1).to.equal(BigNumber.from(args[1]));
-                expect(quoteTokenLiquidity2).to.equal(BigNumber.from(args[1]));
+            it("Should revert if token == address(0)", async function () {
+                await expect(accumulator.harnessFetchLiquidity(AddressZero)).to.be.reverted;
+            });
+
+            tests.forEach(({ args }) => {
+                it(`Should get liquidities {tokenLiqudity = ${args[0]}, quoteTokenLiquidity = ${args[1]}}`, async () => {
+                    const [owner] = await ethers.getSigners();
+
+                    // Get pair
+                    const ltPair = await fakeUniswapV2Factory.getPair(ltToken.address, quoteToken.address);
+                    const gtPair = await fakeUniswapV2Factory.getPair(gtToken.address, quoteToken.address);
+                    const ltPairContract = await ethers.getContractAt("IUniswapV2Pair", ltPair);
+                    const gtPairContract = await ethers.getContractAt("IUniswapV2Pair", gtPair);
+
+                    // Approve transfers to pair (ltToken, quoteToken)
+                    await ltToken.approve(ltPair, args[0]);
+                    await quoteToken.approve(ltPair, args[1]);
+
+                    // Approve transfers to pair (gtToken, quoteToken)
+                    await gtToken.approve(gtPair, args[0]);
+                    await quoteToken.approve(gtPair, args[1]);
+
+                    // Send tokens to pair (ltToken, quoteToken)
+                    await ltToken.transfer(ltPair, args[0]);
+                    await quoteToken.transfer(ltPair, args[1]);
+
+                    // Send tokens to pair (gtToken, quoteToken)
+                    await gtToken.transfer(gtPair, args[0]);
+                    await quoteToken.transfer(gtPair, args[1]);
+
+                    // Mint the pairs
+                    await ltPairContract.mint(owner.address);
+                    await gtPairContract.mint(owner.address);
+
+                    const [ltTokenLiquidity, quoteTokenLiquidity1] = await accumulator.harnessFetchLiquidity(
+                        ltToken.address
+                    );
+
+                    const [gtTokenLiquidity, quoteTokenLiquidity2] = await accumulator.harnessFetchLiquidity(
+                        gtToken.address
+                    );
+
+                    expect(ltTokenLiquidity).to.equal(
+                        BigNumber.from(args[0].div(BigNumber.from(10).pow(await ltToken.decimals())))
+                    );
+                    expect(gtTokenLiquidity).to.equal(
+                        BigNumber.from(args[0].div(BigNumber.from(10).pow(await gtToken.decimals())))
+                    );
+                    expect(quoteTokenLiquidity1).to.equal(
+                        BigNumber.from(args[1].div(BigNumber.from(10).pow(await quoteToken.decimals())))
+                    );
+                    expect(quoteTokenLiquidity2).to.equal(
+                        BigNumber.from(args[1].div(BigNumber.from(10).pow(await quoteToken.decimals())))
+                    );
+                });
             });
         });
     });
-});
+}
+
+describeUniswapV2LiquidityAccumulatorTests("UniswapV2LiquidityAccumulator", "UniswapV2LiquidityAccumulatorStub");
+describeUniswapV2LiquidityAccumulatorTests(
+    "UniswapV2HarmonicLiquidityAccumulator",
+    "UniswapV2HarmonicLiquidityAccumulatorStub"
+);
+describeUniswapV2LiquidityAccumulatorTests(
+    "UniswapV2GeometricLiquidityAccumulator",
+    "UniswapV2GeometricLiquidityAccumulatorStub"
+);

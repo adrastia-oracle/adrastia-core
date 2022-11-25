@@ -39,23 +39,24 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) {
+async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidityDecimals, period) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
-        "UniswapV2LiquidityAccumulator",
+        "UniswapV2HarmonicLiquidityAccumulator",
         factory,
         initCodeHash,
         quoteToken,
+        liquidityDecimals,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
     );
 
     const priceAccumulator = await createContract(
-        "UniswapV2PriceAccumulator",
+        "UniswapV2GeometricPriceAccumulator",
         factory,
         initCodeHash,
         quoteToken,
@@ -79,7 +80,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period) 
     };
 }
 
-async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) {
+async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, liquidityDecimals, period) {
     const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -87,18 +88,19 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period) 
     const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
-        "UniswapV3LiquidityAccumulator",
+        "UniswapV3HarmonicLiquidityAccumulator",
         factory,
         initCodeHash,
         poolFees,
         quoteToken,
+        liquidityDecimals,
         updateTheshold,
         minUpdateDelay,
         maxUpdateDelay
     );
 
     const priceAccumulator = await createContract(
-        "UniswapV3PriceAccumulator",
+        "UniswapV3GeometricPriceAccumulator",
         factory,
         initCodeHash,
         poolFees,
@@ -128,6 +130,7 @@ async function createAggregatedOracle(
     quoteTokenAddress,
     quoteTokenSymbol,
     quoteTokenDecimals,
+    liquidityDecimals,
     period,
     oracles,
     tokenSpecificOracles
@@ -138,6 +141,7 @@ async function createAggregatedOracle(
         quoteTokenAddress,
         quoteTokenSymbol,
         quoteTokenDecimals,
+        liquidityDecimals,
         oracles,
         tokenSpecificOracles,
         period,
@@ -147,28 +151,33 @@ async function createAggregatedOracle(
 }
 
 async function main() {
-    const token = compAddress;
-    const quoteToken = wethAddress;
+    const token = wethAddress;
+    const quoteToken = usdcAddress;
 
-    const underlyingPeriodSeconds = 5;
+    const underlyingPeriodSeconds = 10;
     const periodSeconds = 10;
+
+    const liquidityDecimals = 4;
 
     const uniswapV2 = await createUniswapV2Oracle(
         uniswapV2FactoryAddress,
         uniswapV2InitCodeHash,
         quoteToken,
+        liquidityDecimals,
         underlyingPeriodSeconds
     );
     const sushiswap = await createUniswapV2Oracle(
         sushiswapFactoryAddress,
         sushiswapInitCodeHash,
         quoteToken,
+        liquidityDecimals,
         underlyingPeriodSeconds
     );
     const uniswapV3 = await createUniswapV3Oracle(
         uniswapV3FactoryAddress,
         uniswapV3InitCodeHash,
         quoteToken,
+        liquidityDecimals,
         underlyingPeriodSeconds
     );
 
@@ -181,6 +190,7 @@ async function main() {
         quoteToken,
         "USDC",
         6,
+        liquidityDecimals,
         periodSeconds,
         oracles,
         tokenSpecificOracles
@@ -329,6 +339,11 @@ async function main() {
                 const updateTx = await oracle.update(updateData);
                 const updateReceipt = await updateTx.wait();
 
+                // Print event logs
+                for (const event of updateReceipt.events) {
+                    console.log("\u001b[" + 93 + "m" + event["event"] + " " + event["args"] + "\u001b[0m");
+                }
+
                 console.log(
                     "\u001b[" + 93 + "m" + "Oracle updated. Gas used = " + updateReceipt["gasUsed"] + "\u001b[0m"
                 );
@@ -354,11 +369,11 @@ async function main() {
             );
 
             const tokenLiquidityStr = ethers.utils.commify(
-                ethers.utils.formatUnits(consultation["tokenLiquidity"], tokenDecimals)
+                ethers.utils.formatUnits(consultation["tokenLiquidity"], liquidityDecimals)
             );
 
             const quoteTokenLiquidityStr = ethers.utils.commify(
-                ethers.utils.formatUnits(consultation["quoteTokenLiquidity"], quoteTokenDecimals)
+                ethers.utils.formatUnits(consultation["quoteTokenLiquidity"], liquidityDecimals)
             );
 
             console.log(

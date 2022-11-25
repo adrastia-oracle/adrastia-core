@@ -44,7 +44,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
 
     function stubSetAccumulation(
         address token,
-        uint112 cumulativePrice,
+        uint224 cumulativePrice,
         uint32 timestamp
     ) public {
         AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];

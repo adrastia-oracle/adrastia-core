@@ -77,6 +77,11 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             super.supportsInterface(interfaceId);
     }
 
+    /// @inheritdoc IOracle
+    function liquidityDecimals() public view virtual override returns (uint8) {
+        return ILiquidityAccumulator(liquidityAccumulator).liquidityDecimals();
+    }
+
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
         // We require that the accumulators do not need updates, or if they do, that they've been updated within the
         // last period (i.e. they are up-to-date).
@@ -189,17 +194,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     }
 
     /// @inheritdoc AbstractOracle
-    function instantFetch(address token)
-        internal
-        view
-        virtual
-        override
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        )
-    {
+    function instantFetch(
+        address token
+    ) internal view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         // We assume the accumulators are also oracles... the interfaces need to be refactored
         price = IPriceOracle(priceAccumulator).consultPrice(token, 0);
         (tokenLiquidity, quoteTokenLiquidity) = ILiquidityOracle(liquidityAccumulator).consultLiquidity(token, 0);

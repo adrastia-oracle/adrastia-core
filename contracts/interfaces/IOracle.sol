@@ -32,15 +32,9 @@ abstract contract IOracle is IUpdateable, IPriceOracle, ILiquidityOracle {
      * @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
      * @return quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
      */
-    function consult(address token)
-        public
-        view
-        virtual
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        );
+    function consult(
+        address token
+    ) public view virtual returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 
     /**
      * @notice Gets the price of a token in terms of the quote token along with the liquidity levels of the token and
@@ -53,13 +47,10 @@ abstract contract IOracle is IUpdateable, IPriceOracle, ILiquidityOracle {
      * @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
      * @return quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
      */
-    function consult(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        returns (
-            uint112 price,
-            uint112 tokenLiquidity,
-            uint112 quoteTokenLiquidity
-        );
+    function consult(
+        address token,
+        uint256 maxAge
+    ) public view virtual returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+
+    function liquidityDecimals() public view virtual returns (uint8);
 }

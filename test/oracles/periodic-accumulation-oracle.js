@@ -82,6 +82,37 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
     });
 });
 
+describe("PeriodicAccumulationOracle#liquidityDecimals", function () {
+    async function doTest(liquidityDecimals) {
+        const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        const la = await laFactory.deploy(USDC, 100, 100, 100);
+        await la.deployed();
+
+        await la.stubSetLiquidityDecimals(liquidityDecimals);
+
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
+        const oracle = await oracleFactory.deploy(la.address, AddressZero, USDC, 100);
+
+        expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
+    }
+
+    it("Should return 0 when the LA uses 0 liquidity decimals", async function () {
+        await doTest(0);
+    });
+
+    it("Should return 4 when the LA uses 4 liquidity decimals", async function () {
+        await doTest(4);
+    });
+
+    it("Should return 6 when the LA uses 6 liquidity decimals", async function () {
+        await doTest(6);
+    });
+
+    it("Should return 18 when the LA uses 18 liquidity decimals", async function () {
+        await doTest(18);
+    });
+});
+
 describe("PeriodicAccumulationOracle#needsUpdate", function () {
     var oracle;
 
@@ -1103,6 +1134,14 @@ describe("PeriodicAccumulationOracle#update", function () {
         curvePool = await poolFactory.deploy([token.address, quoteToken.address]);
         await curvePool.deployed();
 
+        await deployAdrastiaContracts();
+
+        expectedTokenLiquidity = BigNumber.from(0);
+        expectedQuoteTokenLiquidity = BigNumber.from(0);
+        expectedPrice = BigNumber.from(0);
+    });
+
+    async function deployAdrastiaContracts() {
         // Deploy liquidity accumulator
         const liquidityAccumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulatorStub");
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
@@ -1110,6 +1149,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             2,
             quoteToken.address,
             quoteToken.address,
+            0, // Liquidity decimals
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
             MAX_UPDATE_DELAY
@@ -1137,11 +1177,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             quoteToken.address,
             1
         );
-
-        expectedTokenLiquidity = BigNumber.from(0);
-        expectedQuoteTokenLiquidity = BigNumber.from(0);
-        expectedPrice = BigNumber.from(0);
-    });
+    }
 
     async function addLiquidity(tokenLiquidity, quoteTokenLiquidity) {
         await curvePool.stubSetBalance(token.address, tokenLiquidity);
@@ -1158,8 +1194,8 @@ describe("PeriodicAccumulationOracle#update", function () {
 
         await curvePool.stubSetRate(token.address, quoteToken.address, price);
 
-        expectedTokenLiquidity = tokenLiquidity;
-        expectedQuoteTokenLiquidity = quoteTokenLiquidity;
+        expectedTokenLiquidity = tokenLiquidity.div(BigNumber.from(10).pow(await token.decimals()));
+        expectedQuoteTokenLiquidity = quoteTokenLiquidity.div(BigNumber.from(10).pow(await quoteToken.decimals()));
         expectedPrice = price;
     }
 
@@ -1521,7 +1557,10 @@ describe("PeriodicAccumulationOracle#update", function () {
 
     it("Shouldn't update observation timestamp or emit Updated when there's no price", async function () {
         // Add liquidity
-        await addLiquidity(BigNumber.from(1000), BigNumber.from(1000));
+        await addLiquidity(
+            ethers.utils.parseUnits("1000", await token.decimals()),
+            ethers.utils.parseUnits("1000", await quoteToken.decimals())
+        );
 
         const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
@@ -1665,6 +1704,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         beforeEach(async () => {
             await token.setDecimals(18);
             await quoteToken.setDecimals(18);
+            await deployAdrastiaContracts();
         });
 
         describeSingleTokenTests();
@@ -1674,6 +1714,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         beforeEach(async () => {
             await token.setDecimals(18);
             await quoteToken.setDecimals(18);
+            await deployAdrastiaContracts();
         });
 
         describeSingleTokenTests();
@@ -1683,6 +1724,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         beforeEach(async () => {
             await token.setDecimals(18);
             await quoteToken.setDecimals(6);
+            await deployAdrastiaContracts();
         });
 
         describeSingleTokenTests();
@@ -1692,6 +1734,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         beforeEach(async () => {
             await token.setDecimals(18);
             await quoteToken.setDecimals(6);
+            await deployAdrastiaContracts();
         });
 
         describeSingleTokenTests();
