@@ -34,23 +34,15 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
     /// @inheritdoc PeriodicOracle
     function canUpdate(bytes memory data) public view virtual override returns (bool) {
+        uint256 gracePeriod = accumulatorUpdateDelayTolerance();
+
         if (
-            (IUpdateable(priceAccumulator).needsUpdate(data) &&
-                IUpdateable(priceAccumulator).timeSinceLastUpdate(data) >= period) ||
-            (IUpdateable(liquidityAccumulator).needsUpdate(data) &&
-                IUpdateable(liquidityAccumulator).timeSinceLastUpdate(data) >= period)
+            IUpdateable(priceAccumulator).timeSinceLastUpdate(data) >=
+            IAccumulator(priceAccumulator).heartbeat() + gracePeriod ||
+            IUpdateable(liquidityAccumulator).timeSinceLastUpdate(data) >=
+            IAccumulator(liquidityAccumulator).heartbeat() + gracePeriod
         ) {
             // Shouldn't update if the accumulators are not up-to-date
-            return false;
-        }
-
-        address token = abi.decode(data, (address));
-
-        if (
-            ILiquidityAccumulator(liquidityAccumulator).getLastAccumulation(token).timestamp == 0 ||
-            IPriceAccumulator(priceAccumulator).getLastAccumulation(token).timestamp == 0
-        ) {
-            // Can't update if the accumulators haven't been initialized
             return false;
         }
 
@@ -82,22 +74,33 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         return ILiquidityAccumulator(liquidityAccumulator).liquidityDecimals();
     }
 
+    /// @notice The grace period that we allow for the accumulators to be in need of a heartbeat update before we
+    ///   consider it to be out-of-date.
+    /// @return The grace period in seconds.
+    function accumulatorUpdateDelayTolerance() public view virtual returns (uint256) {
+        return 1800; // 30 minutes
+    }
+
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
-        // We require that the accumulators do not need updates, or if they do, that they've been updated within the
-        // last period (i.e. they are up-to-date).
+        // We require that the accumulators have a heartbeat update that is within the grace period (i.e. they are
+        // up-to-date).
         // If they are not up-to-date, the oracle will not update.
         // It is expected that oracle consumers will check the last update time before using the data as to avoid using
         // stale data.
-        require(
-            IUpdateable(priceAccumulator).timeSinceLastUpdate(data) < period ||
-                !IUpdateable(priceAccumulator).needsUpdate(data),
-            "PeriodicAccumulationOracle: PRICE_ACCUMULATOR_NEEDS_UPDATE"
-        );
-        require(
-            IUpdateable(liquidityAccumulator).timeSinceLastUpdate(data) < period ||
-                !IUpdateable(liquidityAccumulator).needsUpdate(data),
-            "PeriodicAccumulationOracle: LIQUIDITY_ACCUMULATOR_NEEDS_UPDATE"
-        );
+        {
+            uint256 gracePeriod = accumulatorUpdateDelayTolerance();
+
+            require(
+                IUpdateable(priceAccumulator).timeSinceLastUpdate(data) <
+                    IAccumulator(priceAccumulator).heartbeat() + gracePeriod,
+                "PeriodicAccumulationOracle: PRICE_ACCUMULATOR_NEEDS_UPDATE"
+            );
+            require(
+                IUpdateable(liquidityAccumulator).timeSinceLastUpdate(data) <
+                    IAccumulator(liquidityAccumulator).heartbeat() + gracePeriod,
+                "PeriodicAccumulationOracle: LIQUIDITY_ACCUMULATOR_NEEDS_UPDATE"
+            );
+        }
 
         address token = abi.decode(data, (address));
 

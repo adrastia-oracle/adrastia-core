@@ -180,12 +180,14 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
 
 describe("PeriodicAccumulationOracle#canUpdate", function () {
     const MIN_UPDATE_DELAY = 1;
-    const MAX_UPDATE_DELAY = 2;
+    const MAX_UPDATE_DELAY = 60;
     const TWO_PERCENT_CHANGE = 2000000;
 
     var priceAccumulator;
     var liquidityAccumulator;
     var oracle;
+
+    var accumulatorUpdateDelayTolerance;
 
     beforeEach(async () => {
         const paFactory = await ethers.getContractFactory("PriceAccumulatorStub");
@@ -199,59 +201,176 @@ describe("PeriodicAccumulationOracle#canUpdate", function () {
         await liquidityAccumulator.deployed();
 
         oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+
+        accumulatorUpdateDelayTolerance = await oracle.accumulatorUpdateDelayTolerance();
     });
 
     it("Can update when it needs an update and both of the accumulators have been initialized", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Can update when the price accumulator needs an update but it's been updated within the last period", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, true);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
 
-        await priceAccumulator.stubSetObservation(AddressZero, 1, await currentBlockTimestamp());
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Can update when the liquidity accumulator needs an update but it's been updated within the last period", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
 
-        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, await currentBlockTimestamp());
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
 
     it("Can update when both of the accumulators need an update but it's been updated within the last period", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, true);
         await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
 
-        await priceAccumulator.stubSetObservation(AddressZero, 1, await currentBlockTimestamp());
-        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, await currentBlockTimestamp());
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
+    });
+
+    it("Can update when both of the accumulators need an update but they're within their grace periods", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber() - 10;
+
+        await priceAccumulator.overrideNeedsUpdate(true, true);
+        await liquidityAccumulator.overrideNeedsUpdate(true, true);
+
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
+
+        await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
+
+        // Sanity check: both accumulators are in their grace periods
+        expect(checkAt).to.be.greaterThan(updatedAt + MAX_UPDATE_DELAY);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
+    });
+
+    it("Can update when both of the accumulators need an update but the price accumulator is in its grace period, and the liquidity accumulator was updated recently", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber() - 10;
+
+        await priceAccumulator.overrideNeedsUpdate(true, true);
+        await liquidityAccumulator.overrideNeedsUpdate(true, true);
+
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, checkAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, checkAt);
+
+        await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
+
+        // Sanity check: price accumulator is in its grace period
+        expect(checkAt).to.be.greaterThan(updatedAt + MAX_UPDATE_DELAY);
+
+        expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
+    });
+
+    it("Can update when both of the accumulators need an update but the liquidity accumulator is in its grace period, and the price accumulator was updated recently", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber() - 10;
+
+        await priceAccumulator.overrideNeedsUpdate(true, true);
+        await liquidityAccumulator.overrideNeedsUpdate(true, true);
+
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, checkAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, checkAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
+
+        await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
+
+        // Sanity check: liquidity accumulator is in its grace period
+        expect(checkAt).to.be.greaterThan(updatedAt + MAX_UPDATE_DELAY);
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(true);
     });
@@ -266,35 +385,64 @@ describe("PeriodicAccumulationOracle#canUpdate", function () {
     });
 
     it("Can't update when it needs an update but the price accumulator hasn't been initialized", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: liquidity accumulator is up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Can't update when it needs an update but the liquidity accumulator hasn't been initialized", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: price accumulator is up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Can't update when it doesn't needs an update and both of the accumulators have been initialized", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, false);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
@@ -309,59 +457,116 @@ describe("PeriodicAccumulationOracle#canUpdate", function () {
     });
 
     it("Can't update when it doesn't need an update and the price accumulator hasn't been initialized", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, false);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: liquidity accumulator is up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Can't update when it doesn't need an update and the liquidity accumulator hasn't been initialized", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, false);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: price accumulator is up-to-date
+        expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Can't update when the price accumulator needs an update and hasn't been updated within the last period", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber() + 10;
+
         await priceAccumulator.overrideNeedsUpdate(true, true);
         await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.greaterThanOrEqual(
+            updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber()
+        );
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
     it("Can't update when the liquidity accumulator needs an update and hasn't been updated within the last period", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber() + 10;
+
         await priceAccumulator.overrideNeedsUpdate(true, false);
         await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.greaterThanOrEqual(
+            updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber()
+        );
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
 
-    it("Can't update when the both of the accumulators need an update and hasn't been updated within the last period", async function () {
+    it("Can't update when the both of the accumulators need an update and haven't been updated within the last period", async function () {
+        const updatedAt = (await currentBlockTimestamp()) + 240;
+        const checkAt = updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber() + 10;
+
         await priceAccumulator.overrideNeedsUpdate(true, true);
         await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
-        await priceAccumulator.stubSetAccumulation(AddressZero, 1, 1);
-        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, 1);
+        await priceAccumulator.stubSetAccumulation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetAccumulation(AddressZero, 1, 1, updatedAt);
+
+        await priceAccumulator.stubSetObservation(AddressZero, 1, updatedAt);
+        await liquidityAccumulator.stubSetObservation(AddressZero, 1, 1, updatedAt);
 
         await oracle.overrideNeedsUpdate(true, true);
+
+        await hre.timeAndMine.setTime(checkAt);
+
+        // Sanity check: both accumulators are up-to-date
+        expect(checkAt).to.be.greaterThanOrEqual(
+            updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber()
+        );
 
         expect(await oracle.canUpdate(ethers.utils.hexZeroPad(AddressZero, 32))).to.equal(false);
     });
@@ -1104,7 +1309,7 @@ describe("PeriodicAccumulationOracle#update", function () {
     this.timeout(100000);
 
     const MIN_UPDATE_DELAY = 1;
-    const MAX_UPDATE_DELAY = 2;
+    const MAX_UPDATE_DELAY = 60;
     const TWO_PERCENT_CHANGE = 2000000;
 
     var quoteToken;
@@ -1114,6 +1319,8 @@ describe("PeriodicAccumulationOracle#update", function () {
     var liquidityAccumulator;
     var priceAccumulator;
     var oracle;
+
+    var accumulatorUpdateDelayTolerance;
 
     var expectedTokenLiquidity;
     var expectedQuoteTokenLiquidity;
@@ -1177,6 +1384,8 @@ describe("PeriodicAccumulationOracle#update", function () {
             quoteToken.address,
             1
         );
+
+        accumulatorUpdateDelayTolerance = await oracle.accumulatorUpdateDelayTolerance();
     }
 
     async function addLiquidity(tokenLiquidity, quoteTokenLiquidity) {
@@ -1233,12 +1442,23 @@ describe("PeriodicAccumulationOracle#update", function () {
             );
         });
 
-        it("Price accumulator needs an update", async function () {
+        it("Price accumulator is out-of-date", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt;
+
             await priceAccumulator.overrideNeedsUpdate(true, true);
             await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, updatedAt);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt);
+
             // Ensures the oracle will try and perform the update
             await oracle.overrideNeedsUpdate(true, true);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: liquidity accumulator is up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
@@ -1247,12 +1467,23 @@ describe("PeriodicAccumulationOracle#update", function () {
             );
         });
 
-        it("Liquidity accumulator needs an update", async function () {
+        it("Liquidity accumulator is out-of-date", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt;
+
             await priceAccumulator.overrideNeedsUpdate(true, false);
             await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
+            await priceAccumulator.stubSetAccumulation(token.address, 1, updatedAt);
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt);
+
             // Ensures the oracle will try and perform the update
             await oracle.overrideNeedsUpdate(true, true);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: price accumulator is up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
@@ -1261,7 +1492,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             );
         });
 
-        it("Price and liquidity accumulators need an update", async function () {
+        it("Price and liquidity accumulators are out-of-date", async function () {
             await priceAccumulator.overrideNeedsUpdate(true, true);
             await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
@@ -1311,6 +1542,9 @@ describe("PeriodicAccumulationOracle#update", function () {
         });
 
         it("Price accumulator needs an update but it's been updated within the last period", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt;
+
             await priceAccumulator.overrideNeedsUpdate(true, true);
             await liquidityAccumulator.overrideNeedsUpdate(true, false);
 
@@ -1319,15 +1553,21 @@ describe("PeriodicAccumulationOracle#update", function () {
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
-            await priceAccumulator.stubSetObservation(token.address, 1, await currentBlockTimestamp());
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt);
 
-            await priceAccumulator.stubSetObservation(token.address, 1, await currentBlockTimestamp());
-            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, await currentBlockTimestamp());
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             await expect(oracle.update(updateData)).to.not.be.reverted;
         });
 
         it("Liquidity accumulator needs an update but it's been updated within the last period", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt;
+
             await priceAccumulator.overrideNeedsUpdate(true, false);
             await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
@@ -1336,13 +1576,21 @@ describe("PeriodicAccumulationOracle#update", function () {
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
-            await priceAccumulator.stubSetObservation(token.address, 1, await currentBlockTimestamp());
-            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, await currentBlockTimestamp());
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             await expect(oracle.update(updateData)).to.not.be.reverted;
         });
 
         it("Price and liquidity accumulators need an update but they've been updated within the last period", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt;
+
             await priceAccumulator.overrideNeedsUpdate(true, true);
             await liquidityAccumulator.overrideNeedsUpdate(true, true);
 
@@ -1351,8 +1599,13 @@ describe("PeriodicAccumulationOracle#update", function () {
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
-            await priceAccumulator.stubSetObservation(token.address, 1, await currentBlockTimestamp());
-            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, await currentBlockTimestamp());
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             await expect(oracle.update(updateData)).to.not.be.reverted;
         });
@@ -1393,8 +1646,11 @@ describe("PeriodicAccumulationOracle#update", function () {
         });
 
         it("Should return false when both of the accumulations haven't changed", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt + 1;
+
             // Set the "last accumulation"
-            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, updatedAt);
 
             // Make the accumulators not need an update (i.e. up-to-date)
             await priceAccumulator.overrideNeedsUpdate(true, false);
@@ -1405,11 +1661,19 @@ describe("PeriodicAccumulationOracle#update", function () {
             await liquidityAccumulator.overrideCurrentAccumulation(true);
 
             // Set the "current accumulations"
-            await priceAccumulator.stubSetAccumulation(token.address, 1, 1);
-            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 1);
+            await priceAccumulator.stubSetAccumulation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, updatedAt);
+
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt);
 
             // Ensures the oracle will try and perform the update
             await oracle.overrideNeedsUpdate(true, true);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
@@ -1417,8 +1681,11 @@ describe("PeriodicAccumulationOracle#update", function () {
         });
 
         it("Should return true when the liquidity accumulation has been updated, but the price accumulation has not", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt + 2;
+
             // Set the "last accumulation"
-            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, updatedAt);
 
             // Make the accumulators not need an update (i.e. up-to-date)
             await priceAccumulator.overrideNeedsUpdate(true, false);
@@ -1429,11 +1696,19 @@ describe("PeriodicAccumulationOracle#update", function () {
             await liquidityAccumulator.overrideCurrentAccumulation(true);
 
             // Set the "current accumulations"
-            await priceAccumulator.stubSetAccumulation(token.address, 1, 1);
-            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 2);
+            await priceAccumulator.stubSetAccumulation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, updatedAt + 1);
+
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt + 1);
 
             // Ensures the oracle will try and perform the update
             await oracle.overrideNeedsUpdate(true, true);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
@@ -1441,8 +1716,11 @@ describe("PeriodicAccumulationOracle#update", function () {
         });
 
         it("Should return true when the price accumulation has been updated, but the liquidity accumulation has not", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt + 2;
+
             // Set the "last accumulation"
-            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, updatedAt);
 
             // Make the accumulators not need an update (i.e. up-to-date)
             await priceAccumulator.overrideNeedsUpdate(true, false);
@@ -1453,11 +1731,19 @@ describe("PeriodicAccumulationOracle#update", function () {
             await liquidityAccumulator.overrideCurrentAccumulation(true);
 
             // Set the "current accumulations"
-            await priceAccumulator.stubSetAccumulation(token.address, 1, 2);
-            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 1);
+            await priceAccumulator.stubSetAccumulation(token.address, 1, updatedAt + 1);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, updatedAt);
+
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt + 1);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt);
 
             // Ensures the oracle will try and perform the update
             await oracle.overrideNeedsUpdate(true, true);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
@@ -1465,8 +1751,11 @@ describe("PeriodicAccumulationOracle#update", function () {
         });
 
         it("Should return true when the both the price and the liquidity accumulations have been updated", async function () {
+            const updatedAt = (await currentBlockTimestamp()) + 240;
+            const checkAt = updatedAt + 2;
+
             // Set the "last accumulation"
-            await oracle.stubSetAccumulations(token.address, 1, 1, 1, 1);
+            await oracle.stubSetAccumulations(token.address, 1, 1, 1, updatedAt);
 
             // Make the accumulators not need an update (i.e. up-to-date)
             await priceAccumulator.overrideNeedsUpdate(true, false);
@@ -1477,11 +1766,19 @@ describe("PeriodicAccumulationOracle#update", function () {
             await liquidityAccumulator.overrideCurrentAccumulation(true);
 
             // Set the "current accumulations"
-            await priceAccumulator.stubSetAccumulation(token.address, 1, 2);
-            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, 2);
+            await priceAccumulator.stubSetAccumulation(token.address, 1, updatedAt + 1);
+            await liquidityAccumulator.stubSetAccumulation(token.address, 1, 1, updatedAt + 1);
+
+            await priceAccumulator.stubSetObservation(token.address, 1, updatedAt + 1);
+            await liquidityAccumulator.stubSetObservation(token.address, 1, 1, updatedAt + 1);
 
             // Ensures the oracle will try and perform the update
             await oracle.overrideNeedsUpdate(true, true);
+
+            await hre.timeAndMine.setTime(checkAt);
+
+            // Sanity check: both accumulators are up-to-date
+            expect(checkAt).to.be.lessThan(updatedAt + MAX_UPDATE_DELAY + accumulatorUpdateDelayTolerance.toNumber());
 
             const updateData = ethers.utils.hexZeroPad(token.address, 32);
 
