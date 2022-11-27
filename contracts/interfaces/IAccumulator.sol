@@ -15,6 +15,11 @@ abstract contract IAccumulator {
     /// @return A percentage scaled by the change precision.
     function updateThreshold() external view virtual returns (uint256);
 
+    /// @notice Gets the maximum delay (target) between updates to the cumulative value(s), without requiring a change
+    ///   past the update threshold.
+    /// @return The maximum delay (target) between updates to the cumulative value(s), in seconds.
+    function heartbeat() external view virtual returns (uint256);
+
     /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
     /// @dev Calculates the change from the stored observation to the current observation.
     /// @param token The token to check.

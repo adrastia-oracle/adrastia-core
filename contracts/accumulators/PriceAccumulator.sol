@@ -59,6 +59,11 @@ abstract contract PriceAccumulator is
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    /// @inheritdoc IAccumulator
+    function heartbeat() external view virtual override returns (uint256) {
+        return maxUpdateDelay;
+    }
+
     /// @inheritdoc IPriceAccumulator
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
@@ -82,13 +87,10 @@ abstract contract PriceAccumulator is
     /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
     ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
     /// @return surpassed True if the update threshold has been surpassed; false otherwise.
-    function changeThresholdSurpassed(address token, uint256 changeThreshold)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function changeThresholdSurpassed(
+        address token,
+        uint256 changeThreshold
+    ) public view virtual override returns (bool) {
         uint256 price = fetchPrice(token);
 
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
@@ -151,24 +153,16 @@ abstract contract PriceAccumulator is
     }
 
     /// @inheritdoc IPriceAccumulator
-    function getLastAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.PriceAccumulator memory)
-    {
+    function getLastAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.PriceAccumulator memory) {
         return accumulations[token];
     }
 
     /// @inheritdoc IPriceAccumulator
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.PriceAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.PriceAccumulator memory accumulation) {
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
         require(lastObservation.timestamp != 0, "PriceAccumulator: UNINITIALIZED");
 
@@ -189,13 +183,9 @@ abstract contract PriceAccumulator is
     }
 
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(IERC165, SimpleQuotationMetadata, AbstractAccumulator)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(IERC165, SimpleQuotationMetadata, AbstractAccumulator) returns (bool) {
         return
             interfaceId == type(IPriceAccumulator).interfaceId ||
             interfaceId == type(IPriceOracle).interfaceId ||
@@ -206,7 +196,7 @@ abstract contract PriceAccumulator is
 
     /// @inheritdoc IPriceOracle
     function consultPrice(address token) public view virtual override returns (uint112 price) {
-        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
+        if (token == quoteTokenAddress()) return uint112(10 ** quoteTokenDecimals());
 
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
@@ -218,7 +208,7 @@ abstract contract PriceAccumulator is
     /// @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time price.
     /// @inheritdoc IPriceOracle
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
-        if (token == quoteTokenAddress()) return uint112(10**quoteTokenDecimals());
+        if (token == quoteTokenAddress()) return uint112(10 ** quoteTokenDecimals());
 
         if (maxAge == 0) return fetchPrice(token);
 

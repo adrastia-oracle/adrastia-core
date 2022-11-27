@@ -62,6 +62,31 @@ function describePriceAccumulatorTests(
         }
     });
 
+    describe(contractName + "#heartbeat", function () {
+        const minUpdateDelay = 1;
+
+        var accumulatorFactory;
+
+        beforeEach(async () => {
+            accumulatorFactory = await ethers.getContractFactory(stubContractName);
+        });
+
+        const tests = [30, 1800, 86400];
+
+        for (const heartbeat of tests) {
+            it(`Return ${heartbeat} when set by the constructor`, async function () {
+                const liquidityAccumulator = await accumulatorFactory.deploy(
+                    USDC,
+                    TWO_PERCENT_CHANGE,
+                    minUpdateDelay,
+                    heartbeat
+                );
+
+                expect(await liquidityAccumulator.heartbeat()).to.equal(heartbeat);
+            });
+        }
+    });
+
     describe(contractName + "#getCurrentAccumulation", function () {
         const minUpdateDelay = 10000;
         const maxUpdateDelay = 30000;
