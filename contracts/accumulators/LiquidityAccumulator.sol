@@ -61,6 +61,11 @@ abstract contract LiquidityAccumulator is
         maxUpdateDelay = maxUpdateDelay_;
     }
 
+    /// @inheritdoc IAccumulator
+    function heartbeat() external view virtual override returns (uint256) {
+        return maxUpdateDelay;
+    }
+
     /// @inheritdoc ILiquidityAccumulator
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
@@ -88,13 +93,10 @@ abstract contract LiquidityAccumulator is
     /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
     ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
     /// @return surpassed True if the update threshold has been surpassed; false otherwise.
-    function changeThresholdSurpassed(address token, uint256 changeThreshold)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function changeThresholdSurpassed(
+        address token,
+        uint256 changeThreshold
+    ) public view virtual override returns (bool) {
         (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
 
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
@@ -159,24 +161,16 @@ abstract contract LiquidityAccumulator is
     }
 
     /// @inheritdoc ILiquidityAccumulator
-    function getLastAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.LiquidityAccumulator memory)
-    {
+    function getLastAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.LiquidityAccumulator memory) {
         return accumulations[token];
     }
 
     /// @inheritdoc ILiquidityAccumulator
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.LiquidityAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.LiquidityAccumulator memory accumulation) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
         require(lastObservation.timestamp != 0, "LiquidityAccumulator: UNINITIALIZED");
 
@@ -199,13 +193,9 @@ abstract contract LiquidityAccumulator is
     }
 
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(IERC165, SimpleQuotationMetadata, AbstractAccumulator)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(IERC165, SimpleQuotationMetadata, AbstractAccumulator) returns (bool) {
         return
             interfaceId == type(ILiquidityAccumulator).interfaceId ||
             interfaceId == type(ILiquidityOracle).interfaceId ||
@@ -215,13 +205,9 @@ abstract contract LiquidityAccumulator is
     }
 
     /// @inheritdoc ILiquidityOracle
-    function consultLiquidity(address token)
-        public
-        view
-        virtual
-        override
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function consultLiquidity(
+        address token
+    ) public view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (token == quoteTokenAddress()) return (0, 0);
 
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
@@ -234,13 +220,10 @@ abstract contract LiquidityAccumulator is
 
     /// @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time liquidity.
     /// @inheritdoc ILiquidityOracle
-    function consultLiquidity(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        override
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity)
-    {
+    function consultLiquidity(
+        address token,
+        uint256 maxAge
+    ) public view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (token == quoteTokenAddress()) return (0, 0);
 
         if (maxAge == 0) return fetchLiquidity(token);
@@ -352,9 +335,7 @@ abstract contract LiquidityAccumulator is
         return validated;
     }
 
-    function fetchLiquidity(address token)
-        internal
-        view
-        virtual
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+    function fetchLiquidity(
+        address token
+    ) internal view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 }
