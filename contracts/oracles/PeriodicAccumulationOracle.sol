@@ -81,6 +81,18 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         return 1800; // 30 minutes
     }
 
+    /// @notice The grace period that we allow for the oracle to be in need of an update before we discard the last
+    ///   accumulation. If this grace period is exceeded, it will take two updates to get a new observation.
+    /// @dev This is to prevent longer time-weighted averages than we desire. The maximum period is then the period of
+    ///   this oracle plus this grace period.
+    /// @return The grace period in seconds.
+    function updateDelayTolerance() public view virtual returns (uint256) {
+        // We tolerate two missed periods plus 5 minutes (to allow for some time to update the oracles).
+        // We trade off some freshness for greater reliability. Using too low of a tolerance reduces the cost of DoS
+        // attacks.
+        return (period * 2) + 5 minutes;
+    }
+
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
         // We require that the accumulators have a heartbeat update that is within the grace period (i.e. they are
         // up-to-date).
@@ -104,11 +116,12 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         address token = abi.decode(data, (address));
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = observations[token];
 
         bool updatedObservation;
         bool missingPrice;
         bool anythingUpdated;
+        bool observationExpired;
 
         /*
          * 1. Update price
@@ -125,13 +138,19 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 // Accumulator updated, so we update our observation
 
                 if (lastAccumulationTime != 0) {
-                    // We have two accumulations -> calculate price from them
-                    observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
-                        lastAccumulation,
-                        freshAccumulation
-                    );
+                    if (freshAccumulation.timestamp - lastAccumulationTime > period + updateDelayTolerance()) {
+                        // The accumulator is too far behind, so we discard the last accumulation and wait for the
+                        // next update.
+                        observationExpired = true;
+                    } else {
+                        // We have two accumulations -> calculate price from them
+                        observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
+                            lastAccumulation,
+                            freshAccumulation
+                        );
 
-                    updatedObservation = true;
+                        updatedObservation = true;
+                    }
                 } else {
                     // This is our first update (or rather, we have our first accumulation)
                     // Record that we're missing the price to later prevent the observation timestamp and event
@@ -162,12 +181,18 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 // Accumulator updated, so we update our observation
 
                 if (lastAccumulationTime != 0) {
-                    // We have two accumulations -> calculate liquidity from them
-                    (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
-                        liquidityAccumulator
-                    ).calculateLiquidity(lastAccumulation, freshAccumulation);
+                    if (freshAccumulation.timestamp - lastAccumulationTime > period + updateDelayTolerance()) {
+                        // The accumulator is too far behind, so we discard the last accumulation and wait for the
+                        // next update.
+                        observationExpired = true;
+                    } else {
+                        // We have two accumulations -> calculate liquidity from them
+                        (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                            liquidityAccumulator
+                        ).calculateLiquidity(lastAccumulation, freshAccumulation);
 
-                    updatedObservation = true;
+                        updatedObservation = true;
+                    }
                 }
 
                 lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
@@ -181,8 +206,13 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         // We only want to update the timestamp and emit an event when both the observation has been updated and we
         // have a price (even if the accumulator calculates a price of 0).
         // Note: We rely on consult reverting when the observation timestamp is 0.
-        if (updatedObservation && !missingPrice) {
-            observation.timestamp = block.timestamp.toUint32();
+        if (updatedObservation && !missingPrice && !observationExpired) {
+            ObservationLibrary.Observation storage storageObservation = observations[token];
+
+            storageObservation.price = observation.price;
+            storageObservation.tokenLiquidity = observation.tokenLiquidity;
+            storageObservation.quoteTokenLiquidity = observation.quoteTokenLiquidity;
+            storageObservation.timestamp = block.timestamp.toUint32();
 
             emit Updated(
                 token,

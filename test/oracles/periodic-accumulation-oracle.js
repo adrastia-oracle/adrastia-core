@@ -1852,6 +1852,284 @@ describe("PeriodicAccumulationOracle#update", function () {
         expect(cumulativeLiquidityTimestamp, "Liquidity accumulation timestamp").to.equal(fakeAccumulationTimestamp);
     });
 
+    it("Shouldn't update observation or emit Updated when both of the last accumulations are too old", async function () {
+        // Add liquidity
+        await addLiquidity(
+            ethers.utils.parseUnits("1000", await token.decimals()),
+            ethers.utils.parseUnits("1000", await quoteToken.decimals())
+        );
+
+        const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+        // Update accumulators to initialize the oracle
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        // First update of the oracle
+        await oracle.update(updateData);
+
+        const period = await oracle.period();
+
+        // Fast forwward to the next update
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + period.toNumber() + 1);
+
+        // Update everything
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+        await oracle.update(updateData);
+
+        // Change liquidity and price so that the next oracle update will report different values if the update
+        // is performed (it shouldn't be).
+        await addLiquidity(
+            ethers.utils.parseUnits("100000", await token.decimals()),
+            ethers.utils.parseUnits("10000000", await quoteToken.decimals())
+        );
+
+        // Fast forward past the minimum update delay
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + MIN_UPDATE_DELAY + 1);
+
+        // Update the accumulators to record the change
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        const updateDelayTolerance = await oracle.updateDelayTolerance();
+
+        // Fast forward past the update delay tolerance
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + updateDelayTolerance.toNumber() + 1);
+
+        // Update accumulators so that we know they won't prevent the oracle from updating
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        // Record old accumulations
+        const [oldCumulativePrice, oldCumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [oldCumulativeTokenLiquidity, oldCumulativeQuoteTokenLiquidity, oldCumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Record old observation
+        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.observations(
+            token.address
+        );
+
+        // Now we update the oracle. This should fail as the last price accumulation is too old
+        const updateTx = await oracle.update(updateData);
+
+        // Shouldn't emit Updated
+        await expect(updateTx).to.not.emit(oracle, "Updated");
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+
+        // Observation should not update
+        expect(oPrice, "Observation price").to.equal(oldPrice);
+        expect(oTokenLiquidity, "Observation token liquidity").to.equal(oldTokenLiquidity);
+        expect(oQuoteTokenLiquidity, "Observation quote token liquidity").to.equal(oldQuoteTokenLiquidity);
+        expect(oTimestamp, "Observation timestamp").to.equal(oldTimestamp);
+
+        const [cumulativePrice, cumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [cumulativeTokenLiquidity, cumulativeQuoteTokenLiquidity, cumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Accumulation should update
+        expect(cumulativePrice, "Cumulative price").to.not.equal(oldCumulativePrice);
+        expect(cumulativeTokenLiquidity, "Cumulative token liquidity").to.not.equal(oldCumulativeTokenLiquidity);
+        expect(cumulativeQuoteTokenLiquidity, "Cumulative quote token liquidity").to.not.equal(
+            oldCumulativeQuoteTokenLiquidity
+        );
+        expect(cumulativePriceTimestamp, "Price accumulation timestamp").to.not.equal(oldCumulativePriceTimestamp);
+        expect(cumulativeLiquidityTimestamp, "Liquidity accumulation timestamp").to.not.equal(
+            oldCumulativeLiquidityTimestamp
+        );
+    });
+
+    it("Shouldn't update observation or emit Updated when the last price accumulation is too old", async function () {
+        // Add liquidity
+        await addLiquidity(
+            ethers.utils.parseUnits("1000", await token.decimals()),
+            ethers.utils.parseUnits("1000", await quoteToken.decimals())
+        );
+
+        const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+        // Update accumulators to initialize the oracle
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        // First update of the oracle
+        await oracle.update(updateData);
+
+        const period = await oracle.period();
+
+        // Fast forwward to the next update
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + period.toNumber() + 1);
+
+        // Update everything
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+        await oracle.update(updateData);
+
+        // Change liquidity and price so that the next oracle update will report different values if the update
+        // is performed (it shouldn't be).
+        await addLiquidity(
+            ethers.utils.parseUnits("100000", await token.decimals()),
+            ethers.utils.parseUnits("10000000", await quoteToken.decimals())
+        );
+
+        // Fast forward past the minimum update delay
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + MIN_UPDATE_DELAY + 1);
+
+        // Update the accumulators to record the change
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        const updateDelayTolerance = await oracle.updateDelayTolerance();
+
+        // Fast forward past the update delay tolerance
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + updateDelayTolerance.toNumber() + 1);
+
+        // Update accumulators so that we know they won't prevent the oracle from updating
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        // Record old accumulations
+        const [oldCumulativePrice, oldCumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [oldCumulativeTokenLiquidity, oldCumulativeQuoteTokenLiquidity, oldCumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Record old observation
+        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.observations(
+            token.address
+        );
+
+        // Set the last liquidity accumulation to be fresh
+        await oracle.stubSetLiquidityAccumulation(
+            token.address,
+            oldCumulativeTokenLiquidity,
+            oldCumulativeQuoteTokenLiquidity,
+            (await currentBlockTimestamp()) - 1
+        );
+
+        // Now we update the oracle. This should fail as the last price accumulation is too old
+        const updateTx = await oracle.update(updateData);
+
+        // Shouldn't emit Updated
+        await expect(updateTx).to.not.emit(oracle, "Updated");
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+
+        // Observation should not update
+        expect(oPrice, "Observation price").to.equal(oldPrice);
+        expect(oTokenLiquidity, "Observation token liquidity").to.equal(oldTokenLiquidity);
+        expect(oQuoteTokenLiquidity, "Observation quote token liquidity").to.equal(oldQuoteTokenLiquidity);
+        expect(oTimestamp, "Observation timestamp").to.equal(oldTimestamp);
+
+        const [cumulativePrice, cumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [cumulativeTokenLiquidity, cumulativeQuoteTokenLiquidity, cumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Accumulation should update
+        expect(cumulativePrice, "Cumulative price").to.not.equal(oldCumulativePrice);
+        expect(cumulativeTokenLiquidity, "Cumulative token liquidity").to.not.equal(oldCumulativeTokenLiquidity);
+        expect(cumulativeQuoteTokenLiquidity, "Cumulative quote token liquidity").to.not.equal(
+            oldCumulativeQuoteTokenLiquidity
+        );
+        expect(cumulativePriceTimestamp, "Price accumulation timestamp").to.not.equal(oldCumulativePriceTimestamp);
+        expect(cumulativeLiquidityTimestamp, "Liquidity accumulation timestamp").to.not.equal(
+            oldCumulativeLiquidityTimestamp
+        );
+    });
+
+    it("Shouldn't update observation or emit Updated when the last liquidity accumulation is too old", async function () {
+        // Add liquidity
+        await addLiquidity(
+            ethers.utils.parseUnits("1000", await token.decimals()),
+            ethers.utils.parseUnits("1000", await quoteToken.decimals())
+        );
+
+        const updateData = ethers.utils.hexZeroPad(token.address, 32);
+
+        // Update accumulators to initialize the oracle
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        // First update of the oracle
+        await oracle.update(updateData);
+
+        const period = await oracle.period();
+
+        // Fast forwward to the next update
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + period.toNumber() + 1);
+
+        // Update everything
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+        await oracle.update(updateData);
+
+        // Change liquidity and price so that the next oracle update will report different values if the update
+        // is performed (it shouldn't be).
+        await addLiquidity(
+            ethers.utils.parseUnits("100000", await token.decimals()),
+            ethers.utils.parseUnits("10000000", await quoteToken.decimals())
+        );
+
+        // Fast forward past the minimum update delay
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + MIN_UPDATE_DELAY + 1);
+
+        // Update the accumulators to record the change
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        const updateDelayTolerance = await oracle.updateDelayTolerance();
+
+        // Fast forward past the update delay tolerance
+        await hre.timeAndMine.setTime((await currentBlockTimestamp()) + updateDelayTolerance.toNumber() + 1);
+
+        // Update accumulators so that we know they won't prevent the oracle from updating
+        await liquidityAccumulator.update(updateData);
+        await priceAccumulator.update(updateData);
+
+        // Record old accumulations
+        const [oldCumulativePrice, oldCumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [oldCumulativeTokenLiquidity, oldCumulativeQuoteTokenLiquidity, oldCumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Record old observation
+        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.observations(
+            token.address
+        );
+
+        // Set the last price accumulation to be fresh
+        await oracle.stubSetPriceAccumulation(token.address, oldCumulativePrice, (await currentBlockTimestamp()) - 1);
+
+        // Now we update the oracle. This should fail as the last price accumulation is too old
+        const updateTx = await oracle.update(updateData);
+
+        // Shouldn't emit Updated
+        await expect(updateTx).to.not.emit(oracle, "Updated");
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+
+        // Observation should not update
+        expect(oPrice, "Observation price").to.equal(oldPrice);
+        expect(oTokenLiquidity, "Observation token liquidity").to.equal(oldTokenLiquidity);
+        expect(oQuoteTokenLiquidity, "Observation quote token liquidity").to.equal(oldQuoteTokenLiquidity);
+        expect(oTimestamp, "Observation timestamp").to.equal(oldTimestamp);
+
+        const [cumulativePrice, cumulativePriceTimestamp] = await oracle.priceAccumulations(token.address);
+        const [cumulativeTokenLiquidity, cumulativeQuoteTokenLiquidity, cumulativeLiquidityTimestamp] =
+            await oracle.liquidityAccumulations(token.address);
+
+        // Accumulation should update
+        expect(cumulativePrice, "Cumulative price").to.not.equal(oldCumulativePrice);
+        expect(cumulativeTokenLiquidity, "Cumulative token liquidity").to.not.equal(oldCumulativeTokenLiquidity);
+        expect(cumulativeQuoteTokenLiquidity, "Cumulative quote token liquidity").to.not.equal(
+            oldCumulativeQuoteTokenLiquidity
+        );
+        expect(cumulativePriceTimestamp, "Price accumulation timestamp").to.not.equal(oldCumulativePriceTimestamp);
+        expect(cumulativeLiquidityTimestamp, "Liquidity accumulation timestamp").to.not.equal(
+            oldCumulativeLiquidityTimestamp
+        );
+    });
+
     it("Shouldn't update observation timestamp or emit Updated when there's no price", async function () {
         // Add liquidity
         await addLiquidity(
