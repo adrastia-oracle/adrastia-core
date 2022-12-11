@@ -78,7 +78,11 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     ///   consider it to be out-of-date.
     /// @return The grace period in seconds.
     function accumulatorUpdateDelayTolerance() public view virtual returns (uint256) {
-        return 1800; // 30 minutes
+        // We trade some freshness for greater reliability. Using too low of a tolerance reduces the cost of DoS.
+        // Furthermore, large price fluctuations can require tokens to be bridged by arbitrageurs to fix DEX prices,
+        // and this can take time. Price accumulators may not get updated during this time as we may require on-chain
+        // prices to closely match off-chain prices.
+        return 1 hours;
     }
 
     /// @notice The grace period that we allow for the oracle to be in need of an update before we discard the last
