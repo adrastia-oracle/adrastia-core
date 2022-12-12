@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.0.0
+### Oracles
+- Change PeriodicAccumulationOracle freshness metric to use accumulator heartbeats
+- Add IOracle#liquidityDecimals
+- Make AggregatedOracle's minimum liquidity values operate with respect to its liquidity decimals
+- Bug fix: Make PeriodicAccumulationOracle discard old accumulations when updating to prevent older than desired time-weighted averages from being stored in oracle observations
+
+### Accumulators
+- Promote cumulative prices to uint224 from uint112
+- Parameterize and standardize liquidity decimals
+  - Rather than liquidity using the same number of decimals as the respective token, liquidity now uses the number of decimals specified in the constructor. Both the queried token and the quote token now always use the same number of decimal places.
+- Introduce geometric and harmonic time-weighted averages
+- Bug fix: time-weighted values are now calculated outside of unchecked blocks as overflow is not desired
+- Add IAccumulator#heartbeat
+
 ## v1.0.0
 ### Oracles
 - Require accumulators to be up-to-date when updating PeriodicAccumulationOracle
