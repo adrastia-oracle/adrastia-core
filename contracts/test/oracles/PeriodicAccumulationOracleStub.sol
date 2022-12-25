@@ -15,8 +15,9 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         address liquidityAccumulator_,
         address priceAccumulator_,
         address quoteToken_,
-        uint256 period_
-    ) PeriodicAccumulationOracle(liquidityAccumulator_, priceAccumulator_, quoteToken_, period_) {}
+        uint256 period_,
+        uint256 granularity_
+    ) PeriodicAccumulationOracle(liquidityAccumulator_, priceAccumulator_, quoteToken_, period_, granularity_) {}
 
     function stubSetObservation(
         address token,
@@ -40,7 +41,7 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint112 cumulativeQuoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
+        /*AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
         AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
 
         priceAccumulation.cumulativePrice = cumulativePrice;
@@ -48,14 +49,14 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
 
         liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
         liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
-        liquidityAccumulation.timestamp = timestamp;
+        liquidityAccumulation.timestamp = timestamp;*/
     }
 
     function stubSetPriceAccumulation(address token, uint112 cumulativePrice, uint32 timestamp) public {
-        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+        /*AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
 
         priceAccumulation.cumulativePrice = cumulativePrice;
-        priceAccumulation.timestamp = timestamp;
+        priceAccumulation.timestamp = timestamp;*/
     }
 
     function stubSetLiquidityAccumulation(
@@ -64,11 +65,11 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint112 cumulativeQuoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
+        /*AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
 
         liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
         liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
-        liquidityAccumulation.timestamp = timestamp;
+        liquidityAccumulation.timestamp = timestamp;*/
     }
 
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {

@@ -16,18 +16,27 @@ import "../libraries/ObservationLibrary.sol";
 contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator, IHasPriceAccumulator {
     using SafeCast for uint256;
 
+    struct BufferMetadata {
+        uint8 start;
+        uint8 end;
+        uint8 size;
+    }
+
     address public immutable override liquidityAccumulator;
     address public immutable override priceAccumulator;
 
-    mapping(address => AccumulationLibrary.PriceAccumulator) public priceAccumulations;
-    mapping(address => AccumulationLibrary.LiquidityAccumulator) public liquidityAccumulations;
+    mapping(address => BufferMetadata) public accumulationBufferMetadata;
+
+    mapping(address => AccumulationLibrary.PriceAccumulator[]) public priceAccumulationBuffers;
+    mapping(address => AccumulationLibrary.LiquidityAccumulator[]) public liquidityAccumulationBuffers;
 
     constructor(
         address liquidityAccumulator_,
         address priceAccumulator_,
         address quoteToken_,
-        uint256 period_
-    ) PeriodicOracle(quoteToken_, period_) {
+        uint256 period_,
+        uint256 granularity_
+    ) PeriodicOracle(quoteToken_, period_, granularity_) {
         liquidityAccumulator = liquidityAccumulator_;
         priceAccumulator = priceAccumulator_;
     }
@@ -53,10 +62,15 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
         address token = abi.decode(data, (address));
 
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        // Return 0 if there are no observations (never updated)
+        if (meta.size == 0) return 0;
+
         // Note: We ignore the last observation timestamp because it always updates when the accumulation timestamps
         // update.
-        uint256 lastPriceAccumulationTimestamp = priceAccumulations[token].timestamp;
-        uint256 lastLiquidityAccumulationTimestamp = liquidityAccumulations[token].timestamp;
+        uint256 lastPriceAccumulationTimestamp = priceAccumulationBuffers[token][meta.end].timestamp;
+        uint256 lastLiquidityAccumulationTimestamp = liquidityAccumulationBuffers[token][meta.end].timestamp;
 
         return Math.max(lastPriceAccumulationTimestamp, lastLiquidityAccumulationTimestamp);
     }
@@ -97,6 +111,86 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         return (period * 2) + 5 minutes;
     }
 
+    function initializeBuffers(address token) internal virtual {
+        require(
+            priceAccumulationBuffers[token].length == 0 && liquidityAccumulationBuffers[token].length == 0,
+            "PeriodicAccumulationOracle: ALREADY_INITIALIZED"
+        );
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        // Initialize the buffers
+        AccumulationLibrary.PriceAccumulator[] storage priceAccumulationBuffer = priceAccumulationBuffers[token];
+        AccumulationLibrary.LiquidityAccumulator[] storage liquidityAccumulationBuffer = liquidityAccumulationBuffers[
+            token
+        ];
+
+        for (uint256 i = 0; i < granularity; ++i) {
+            priceAccumulationBuffer.push();
+            liquidityAccumulationBuffer.push();
+        }
+
+        // Initialize the metadata
+        meta.start = 0;
+        meta.end = 0;
+        meta.size = 0;
+    }
+
+    function push(
+        address token,
+        AccumulationLibrary.PriceAccumulator memory priceAccumulation,
+        AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation
+    ) internal virtual {
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        if (meta.size == 0) {
+            // Initialize the buffers
+            initializeBuffers(token);
+        } else {
+            // We have multiple accumulations now
+
+            uint256 firstAccumulationTime = priceAccumulationBuffers[token][meta.start].timestamp;
+            uint256 periodTimeElapsed = priceAccumulation.timestamp - firstAccumulationTime;
+
+            if (
+                periodTimeElapsed <= period + updateDelayTolerance() &&
+                meta.size == granularity &&
+                periodTimeElapsed >= period
+            ) {
+                ObservationLibrary.Observation storage observation = observations[token];
+
+                observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
+                    priceAccumulationBuffers[token][meta.start],
+                    priceAccumulation
+                );
+                (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                    liquidityAccumulator
+                ).calculateLiquidity(liquidityAccumulationBuffers[token][meta.start], liquidityAccumulation);
+                observation.timestamp = block.timestamp.toUint32();
+
+                emit Updated(
+                    token,
+                    observation.price,
+                    observation.tokenLiquidity,
+                    observation.quoteTokenLiquidity,
+                    observation.timestamp
+                );
+            }
+
+            meta.end = (meta.end + 1) % uint8(granularity);
+        }
+
+        priceAccumulationBuffers[token][meta.end] = priceAccumulation;
+        liquidityAccumulationBuffers[token][meta.end] = liquidityAccumulation;
+
+        if (meta.size < granularity) {
+            meta.size++;
+        } else {
+            // start was just overwritten
+            meta.start = (meta.start + 1) % uint8(granularity);
+        }
+    }
+
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
         // We require that the accumulators have a heartbeat update that is within the grace period (i.e. they are
         // up-to-date).
@@ -120,114 +214,19 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
         address token = abi.decode(data, (address));
 
-        ObservationLibrary.Observation memory observation = observations[token];
+        AccumulationLibrary.PriceAccumulator memory priceAccumulation = IPriceAccumulator(priceAccumulator)
+            .getCurrentAccumulation(token);
+        AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation = ILiquidityAccumulator(
+            liquidityAccumulator
+        ).getCurrentAccumulation(token);
 
-        bool updatedObservation;
-        bool missingPrice;
-        bool anythingUpdated;
-        bool observationExpired;
+        if (priceAccumulation.timestamp != 0 && liquidityAccumulation.timestamp != 0) {
+            push(token, priceAccumulation, liquidityAccumulation);
 
-        /*
-         * 1. Update price
-         */
-        {
-            AccumulationLibrary.PriceAccumulator memory freshAccumulation = IPriceAccumulator(priceAccumulator)
-                .getCurrentAccumulation(token);
-
-            AccumulationLibrary.PriceAccumulator storage lastAccumulation = priceAccumulations[token];
-
-            uint256 lastAccumulationTime = priceAccumulations[token].timestamp;
-
-            if (freshAccumulation.timestamp > lastAccumulationTime) {
-                // Accumulator updated, so we update our observation
-
-                if (lastAccumulationTime != 0) {
-                    if (freshAccumulation.timestamp - lastAccumulationTime > period + updateDelayTolerance()) {
-                        // The accumulator is too far behind, so we discard the last accumulation and wait for the
-                        // next update.
-                        observationExpired = true;
-                    } else {
-                        // We have two accumulations -> calculate price from them
-                        observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
-                            lastAccumulation,
-                            freshAccumulation
-                        );
-
-                        updatedObservation = true;
-                    }
-                } else {
-                    // This is our first update (or rather, we have our first accumulation)
-                    // Record that we're missing the price to later prevent the observation timestamp and event
-                    // from being emitted (no timestamp = missing observation and consult reverts).
-                    missingPrice = true;
-                }
-
-                lastAccumulation.cumulativePrice = freshAccumulation.cumulativePrice;
-                lastAccumulation.timestamp = freshAccumulation.timestamp;
-
-                anythingUpdated = true;
-            }
+            return true;
         }
 
-        /*
-         * 2. Update liquidity
-         */
-        {
-            AccumulationLibrary.LiquidityAccumulator memory freshAccumulation = ILiquidityAccumulator(
-                liquidityAccumulator
-            ).getCurrentAccumulation(token);
-
-            AccumulationLibrary.LiquidityAccumulator storage lastAccumulation = liquidityAccumulations[token];
-
-            uint256 lastAccumulationTime = liquidityAccumulations[token].timestamp;
-
-            if (freshAccumulation.timestamp > lastAccumulationTime) {
-                // Accumulator updated, so we update our observation
-
-                if (lastAccumulationTime != 0) {
-                    if (freshAccumulation.timestamp - lastAccumulationTime > period + updateDelayTolerance()) {
-                        // The accumulator is too far behind, so we discard the last accumulation and wait for the
-                        // next update.
-                        observationExpired = true;
-                    } else {
-                        // We have two accumulations -> calculate liquidity from them
-                        (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
-                            liquidityAccumulator
-                        ).calculateLiquidity(lastAccumulation, freshAccumulation);
-
-                        updatedObservation = true;
-                    }
-                }
-
-                lastAccumulation.cumulativeTokenLiquidity = freshAccumulation.cumulativeTokenLiquidity;
-                lastAccumulation.cumulativeQuoteTokenLiquidity = freshAccumulation.cumulativeQuoteTokenLiquidity;
-                lastAccumulation.timestamp = freshAccumulation.timestamp;
-
-                anythingUpdated = true;
-            }
-        }
-
-        // We only want to update the timestamp and emit an event when both the observation has been updated and we
-        // have a price (even if the accumulator calculates a price of 0).
-        // Note: We rely on consult reverting when the observation timestamp is 0.
-        if (updatedObservation && !missingPrice && !observationExpired) {
-            ObservationLibrary.Observation storage storageObservation = observations[token];
-
-            storageObservation.price = observation.price;
-            storageObservation.tokenLiquidity = observation.tokenLiquidity;
-            storageObservation.quoteTokenLiquidity = observation.quoteTokenLiquidity;
-            storageObservation.timestamp = block.timestamp.toUint32();
-
-            emit Updated(
-                token,
-                observation.price,
-                observation.tokenLiquidity,
-                observation.quoteTokenLiquidity,
-                block.timestamp
-            );
-        }
-
-        return anythingUpdated;
+        return false;
     }
 
     /// @inheritdoc AbstractOracle

@@ -10,4 +10,8 @@ interface IPeriodic {
     /// @notice Gets the period, in seconds.
     /// @return periodSeconds The period, in seconds.
     function period() external view returns (uint256 periodSeconds);
+
+    // @notice Gets the number of observations made every period.
+    // @return granularity The number of observations made every period.
+    function granularity() external view returns (uint256 granularity);
 }

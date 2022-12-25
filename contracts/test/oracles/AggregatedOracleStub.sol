@@ -32,6 +32,7 @@ contract AggregatedOracleStub is AggregatedOracle {
         address[] memory oracles_,
         AggregatedOracle.TokenSpecificOracle[] memory _tokenSpecificOracles,
         uint256 period_,
+        uint256 granularity_,
         uint256 minimumTokenLiquidityValue_,
         uint256 minimumQuoteTokenLiquidity_
     )
@@ -44,6 +45,7 @@ contract AggregatedOracleStub is AggregatedOracle {
             oracles_,
             _tokenSpecificOracles,
             period_,
+            granularity_,
             minimumTokenLiquidityValue_,
             minimumQuoteTokenLiquidity_
         )

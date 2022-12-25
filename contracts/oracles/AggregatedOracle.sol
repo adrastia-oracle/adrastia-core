@@ -72,10 +72,11 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         address[] memory oracles_,
         TokenSpecificOracle[] memory tokenSpecificOracles_,
         uint256 period_,
+        uint256 granularity_,
         uint256 minimumTokenLiquidityValue_,
         uint256 minimumQuoteTokenLiquidity_
     )
-        PeriodicOracle(quoteTokenAddress_, period_)
+        PeriodicOracle(quoteTokenAddress_, period_, granularity_)
         ExplicitQuotationMetadata(quoteTokenName_, quoteTokenAddress_, quoteTokenSymbol_, quoteTokenDecimals_)
     {
         require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");

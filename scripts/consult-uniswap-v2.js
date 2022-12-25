@@ -32,7 +32,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, liquidityDecimals) {
+async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, granularity, liquidityDecimals) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
@@ -63,7 +63,8 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, 
         liquidityAccumulator.address,
         priceAccumulator.address,
         quoteToken,
-        period
+        period,
+        granularity
     );
 
     return {
@@ -81,10 +82,18 @@ async function main() {
     const quoteToken = usdcAddress;
 
     const period = 10; // 10 seconds
+    const granularity = 1;
 
     const liquidityDecimals = 4;
 
-    const uniswapV2 = await createUniswapV2Oracle(factoryAddress, initCodeHash, quoteToken, period, liquidityDecimals);
+    const uniswapV2 = await createUniswapV2Oracle(
+        factoryAddress,
+        initCodeHash,
+        quoteToken,
+        period,
+        granularity,
+        liquidityDecimals
+    );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
     const quoteTokenContract = await ethers.getContractAt("ERC20", quoteToken);
@@ -149,28 +158,32 @@ async function main() {
                 );
             }
 
-            const consultation = await uniswapV2.oracle["consult(address)"](token);
+            try {
+                const consultation = await uniswapV2.oracle["consult(address)"](token);
 
-            const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
+                const priceStr = ethers.utils.commify(
+                    ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals)
+                );
 
-            console.log(
-                "\u001b[" + 32 + "m" + "Price(%s) = %s %s" + "\u001b[0m",
-                tokenSymbol,
-                priceStr,
-                quoteTokenSymbol
-            );
+                console.log(
+                    "\u001b[" + 32 + "m" + "Price(%s) = %s %s" + "\u001b[0m",
+                    tokenSymbol,
+                    priceStr,
+                    quoteTokenSymbol
+                );
 
-            const tokenLiquidityStr = ethers.utils.commify(consultation["tokenLiquidity"]);
+                const tokenLiquidityStr = ethers.utils.commify(consultation["tokenLiquidity"]);
 
-            const quoteTokenLiquidityStr = ethers.utils.commify(consultation["quoteTokenLiquidity"]);
+                const quoteTokenLiquidityStr = ethers.utils.commify(consultation["quoteTokenLiquidity"]);
 
-            console.log(
-                "\u001b[" + 31 + "m" + "Liquidity(%s) = %s, Liquidity(%s) = %s" + "\u001b[0m",
-                tokenSymbol,
-                tokenLiquidityStr,
-                quoteTokenSymbol,
-                quoteTokenLiquidityStr
-            );
+                console.log(
+                    "\u001b[" + 31 + "m" + "Liquidity(%s) = %s, Liquidity(%s) = %s" + "\u001b[0m",
+                    tokenSymbol,
+                    tokenLiquidityStr,
+                    quoteTokenSymbol,
+                    quoteTokenLiquidityStr
+                );
+            } catch (e) {}
         } catch (e) {
             console.log(e);
         }

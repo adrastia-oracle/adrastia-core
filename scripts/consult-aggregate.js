@@ -39,7 +39,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidityDecimals, period) {
+async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidityDecimals, period, granularity) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
@@ -70,7 +70,8 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidit
         liquidityAccumulator.address,
         priceAccumulator.address,
         quoteToken,
-        period
+        period,
+        granularity
     );
 
     return {
@@ -80,7 +81,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, liquidit
     };
 }
 
-async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, liquidityDecimals, period) {
+async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, liquidityDecimals, period, granularity) {
     const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -115,7 +116,8 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, liquidit
         liquidityAccumulator.address,
         priceAccumulator.address,
         quoteToken,
-        period
+        period,
+        granularity
     );
 
     return {
@@ -132,6 +134,7 @@ async function createAggregatedOracle(
     quoteTokenDecimals,
     liquidityDecimals,
     period,
+    granularity,
     oracles,
     tokenSpecificOracles
 ) {
@@ -145,6 +148,7 @@ async function createAggregatedOracle(
         oracles,
         tokenSpecificOracles,
         period,
+        granularity,
         1,
         10 ** quoteTokenDecimals // minimum is one whole token
     );
@@ -156,6 +160,7 @@ async function main() {
 
     const underlyingPeriodSeconds = 10;
     const periodSeconds = 10;
+    const granularity = 1;
 
     const liquidityDecimals = 4;
 
@@ -164,21 +169,24 @@ async function main() {
         uniswapV2InitCodeHash,
         quoteToken,
         liquidityDecimals,
-        underlyingPeriodSeconds
+        underlyingPeriodSeconds,
+        granularity
     );
     const sushiswap = await createUniswapV2Oracle(
         sushiswapFactoryAddress,
         sushiswapInitCodeHash,
         quoteToken,
         liquidityDecimals,
-        underlyingPeriodSeconds
+        underlyingPeriodSeconds,
+        granularity
     );
     const uniswapV3 = await createUniswapV3Oracle(
         uniswapV3FactoryAddress,
         uniswapV3InitCodeHash,
         quoteToken,
         liquidityDecimals,
-        underlyingPeriodSeconds
+        underlyingPeriodSeconds,
+        granularity
     );
 
     const oracles = [uniswapV2.oracle.address, sushiswap.oracle.address, uniswapV3.oracle.address];
@@ -192,6 +200,7 @@ async function main() {
         6,
         liquidityDecimals,
         periodSeconds,
+        granularity,
         oracles,
         tokenSpecificOracles
     );
