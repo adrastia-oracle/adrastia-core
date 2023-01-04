@@ -108,7 +108,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         // We tolerate two missed periods plus 5 minutes (to allow for some time to update the oracles).
         // We trade off some freshness for greater reliability. Using too low of a tolerance reduces the cost of DoS
         // attacks.
-        return (period * 2) + 5 minutes;
+        return (_updateEvery * 2) + 5 minutes;
     }
 
     function initializeBuffers(address token) internal virtual {
