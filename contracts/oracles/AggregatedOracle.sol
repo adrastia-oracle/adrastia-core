@@ -10,8 +10,6 @@ import "../libraries/SafeCastExt.sol";
 import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
 
-import "hardhat/console.sol";
-
 /// @dev Limitation: Supports up to 16 underlying oracles.
 contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotationMetadata {
     using SafeCast for uint256;
@@ -32,6 +30,17 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         uint8 liquidityDecimals;
     }
 
+    struct BufferMetadata {
+        uint8 start;
+        uint8 end;
+        uint8 size;
+        uint8 maxSize;
+    }
+
+    mapping(address => BufferMetadata) public observationBufferMetadata;
+
+    mapping(address => ObservationLibrary.Observation[]) public observationBuffers;
+
     /// @notice The minimum quote token denominated value of the token liquidity, scaled by this oracle's liquidity
     /// decimals, required for all underlying oracles to be considered valid and thus included in the aggregation.
     uint256 public immutable minimumTokenLiquidityValue;
@@ -44,6 +53,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
     uint256 internal immutable _quoteTokenWholeUnit;
 
     uint8 internal immutable _liquidityDecimals;
+
+    uint8 internal immutable _initialCardinality;
 
     /*
      * Internal variables
@@ -120,6 +131,8 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
                 })
             );
         }
+
+        _initialCardinality = 1;
     }
 
     /*
@@ -250,6 +263,70 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
      * Internal functions
      */
 
+    function getLatestObservation(
+        address token
+    ) public view virtual override returns (ObservationLibrary.Observation memory observation) {
+        BufferMetadata storage meta = observationBufferMetadata[token];
+
+        if (meta.size == 0) {
+            // If the buffer is empty, return the default observation
+            return ObservationLibrary.Observation({price: 0, tokenLiquidity: 0, quoteTokenLiquidity: 0, timestamp: 0});
+        }
+
+        return observationBuffers[token][meta.end];
+    }
+
+    function initializeBuffers(address token) internal virtual {
+        require(
+            observationBuffers[token].length == 0 && observationBuffers[token].length == 0,
+            "AggregatedOracle: ALREADY_INITIALIZED"
+        );
+
+        BufferMetadata storage meta = observationBufferMetadata[token];
+
+        // Initialize the buffers
+        ObservationLibrary.Observation[] storage observationBuffer = observationBuffers[token];
+
+        for (uint256 i = 0; i < _initialCardinality; ++i) {
+            observationBuffer.push();
+        }
+
+        // Initialize the metadata
+        meta.start = 0;
+        meta.end = 0;
+        meta.size = 0;
+        meta.maxSize = _initialCardinality;
+    }
+
+    function push(address token, ObservationLibrary.Observation memory observation) internal virtual {
+        BufferMetadata storage meta = observationBufferMetadata[token];
+
+        if (meta.size == 0) {
+            // Initialize the buffers
+            initializeBuffers(token);
+        } else {
+            meta.end = (meta.end + 1) % meta.maxSize;
+        }
+
+        observationBuffers[token][meta.end] = observation;
+
+        emit Updated(
+            token,
+            observation.price,
+            observation.tokenLiquidity,
+            observation.quoteTokenLiquidity,
+            block.timestamp
+        );
+
+        if (meta.size < meta.maxSize && meta.end == meta.size) {
+            // We are at the end of the array and we have not yet filled it
+            meta.size++;
+        } else {
+            // start was just overwritten
+            meta.start = (meta.start + 1) % meta.maxSize;
+        }
+    }
+
     function performUpdate(bytes memory data) internal override returns (bool) {
         bool underlyingUpdated;
         address token = abi.decode(data, (address));
@@ -287,14 +364,14 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         if (quoteTokenLiquidity > type(uint112).max) quoteTokenLiquidity = type(uint112).max;
 
         if (validResponses >= minimumResponses()) {
-            ObservationLibrary.Observation storage observation = observations[token];
+            ObservationLibrary.Observation memory observation;
 
             observation.price = price.toUint112(); // Should never (realistically) overflow
             observation.tokenLiquidity = uint112(tokenLiquidity); // Will never overflow
             observation.quoteTokenLiquidity = uint112(quoteTokenLiquidity); // Will never overflow
             observation.timestamp = block.timestamp.toUint32();
 
-            emit Updated(token, price, tokenLiquidity, quoteTokenLiquidity, block.timestamp);
+            push(token, observation);
 
             return true;
         } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
@@ -486,8 +563,6 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
         // Reverts if none of the underlying oracles report anything
         require(validResponses > 0, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
-
-        console.log("AggregatedOracle: instantFetch: bigPrice", bigPrice);
 
         // This revert should realistically never occur, but we use it to prevent an invalid price from being returned
         require(bigPrice <= type(uint112).max, "AggregatedOracle: PRICE_TOO_HIGH");
