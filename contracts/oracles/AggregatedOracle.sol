@@ -6,12 +6,13 @@ import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./PeriodicOracle.sol";
 import "../interfaces/IAggregatedOracle.sol";
+import "../interfaces/IHistoricalOracle.sol";
 import "../libraries/SafeCastExt.sol";
 import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
 
 /// @dev Limitation: Supports up to 16 underlying oracles.
-contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotationMetadata {
+contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracle, ExplicitQuotationMetadata {
     using SafeCast for uint256;
     using SafeCastExt for uint256;
 
@@ -69,6 +70,13 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
 
     mapping(address => bool) private oracleExists;
     mapping(address => mapping(address => bool)) private oracleForExists;
+
+    /// @notice Event emitted when an observation buffer's capacity is increased past the initial capacity.
+    /// @dev Buffer initialization does not emit an event.
+    /// @param token The token for which the observation buffer's capacity was increased.
+    /// @param oldCapacity The previous capacity of the observation buffer.
+    /// @param newCapacity The new capacity of the observation buffer.
+    event ObservationCapacityIncreased(address indexed token, uint256 oldCapacity, uint256 newCapacity);
 
     /*
      * Constructors
@@ -166,6 +174,86 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             allOracles[_oracles.length + i] = _tokenSpecificOracles[i].oracle;
 
         return allOracles;
+    }
+
+    /// @inheritdoc IHistoricalOracle
+    function getObservationAt(
+        address token,
+        uint256 index
+    ) external view virtual override returns (ObservationLibrary.Observation memory) {
+        BufferMetadata memory meta = observationBufferMetadata[token];
+
+        require(index < meta.size, "AggregatedOracle: INVALID_INDEX");
+
+        uint256 bufferIndex = uint256((int256(uint256(meta.end)) - int256(index)) % int256(uint256(meta.size)));
+
+        return observationBuffers[token][bufferIndex];
+    }
+
+    /// @inheritdoc IHistoricalOracle
+    function getObservations(
+        address token,
+        uint256 amount
+    ) external view virtual override returns (ObservationLibrary.Observation[] memory) {
+        if (amount == 0) return new ObservationLibrary.Observation[](0);
+
+        BufferMetadata memory meta = observationBufferMetadata[token];
+        require(meta.size >= amount, "AggregatedOracle: INSUFFICIENT_DATA");
+
+        ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](amount);
+
+        uint256 count = 0;
+
+        for (uint256 i = meta.end; count < amount; i = (i == 0) ? meta.size - 1 : i - 1) {
+            observations[count++] = observationBuffers[token][i];
+        }
+
+        return observations;
+    }
+
+    /// @inheritdoc IHistoricalOracle
+    function getObservationsCount(address token) external view override returns (uint256) {
+        return observationBufferMetadata[token].size;
+    }
+
+    /// @inheritdoc IHistoricalOracle
+    function getObservationsCapacity(address token) external view virtual override returns (uint256) {
+        uint256 maxSize = observationBufferMetadata[token].maxSize;
+        if (maxSize == 0) return _initialCardinality;
+
+        return maxSize;
+    }
+
+    /// @inheritdoc IHistoricalOracle
+    /// @param amount The new capacity of observations for the token. Must be greater than the current capacity, but
+    ///   less than 256.
+    function setObservationsCapacity(address token, uint256 amount) external virtual override {
+        BufferMetadata storage meta = observationBufferMetadata[token];
+        if (meta.maxSize == 0) {
+            // Buffer is not initialized yet
+            initializeBuffers(token);
+        }
+
+        require(amount >= meta.maxSize, "AggregatedOracle: CAPACITY_CANNOT_BE_DECREASED");
+        require(amount <= type(uint8).max, "AggregatedOracle: CAPACITY_TOO_LARGE");
+
+        ObservationLibrary.Observation[] storage observationBuffer = observationBuffers[token];
+
+        // Add new slots to the buffer
+        uint256 capacityToAdd = amount - meta.maxSize;
+        for (uint256 i = 0; i < capacityToAdd; ++i) {
+            // Push a dummy observation with non-zero values to put most of the gas cost on the caller
+            observationBuffer.push(
+                ObservationLibrary.Observation({price: 1, tokenLiquidity: 1, quoteTokenLiquidity: 1, timestamp: 1})
+            );
+        }
+
+        if (meta.maxSize != amount) {
+            emit ObservationCapacityIncreased(token, meta.maxSize, amount);
+
+            // Update the metadata
+            meta.maxSize = uint8(amount);
+        }
     }
 
     /*
@@ -302,8 +390,10 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
         BufferMetadata storage meta = observationBufferMetadata[token];
 
         if (meta.size == 0) {
-            // Initialize the buffers
-            initializeBuffers(token);
+            if (meta.maxSize == 0) {
+                // Initialize the buffers
+                initializeBuffers(token);
+            }
         } else {
             meta.end = (meta.end + 1) % meta.maxSize;
         }
@@ -323,7 +413,7 @@ contract AggregatedOracle is IAggregatedOracle, PeriodicOracle, ExplicitQuotatio
             meta.size++;
         } else {
             // start was just overwritten
-            meta.start = (meta.start + 1) % meta.maxSize;
+            meta.start = (meta.start + 1) % meta.size;
         }
     }
 
