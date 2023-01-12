@@ -185,7 +185,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
 
         require(index < meta.size, "AggregatedOracle: INVALID_INDEX");
 
-        uint256 bufferIndex = uint256((int256(uint256(meta.end)) - int256(index)) % int256(uint256(meta.size)));
+        uint256 bufferIndex = meta.end < index ? meta.end + meta.size - index : meta.end - index;
 
         return observationBuffers[token][bufferIndex];
     }
