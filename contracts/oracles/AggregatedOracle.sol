@@ -32,10 +32,10 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     }
 
     struct BufferMetadata {
-        uint8 start;
-        uint8 end;
-        uint8 size;
-        uint8 maxSize;
+        uint16 start;
+        uint16 end;
+        uint16 size;
+        uint16 maxSize;
     }
 
     mapping(address => BufferMetadata) public observationBufferMetadata;
@@ -55,7 +55,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
 
     uint8 internal immutable _liquidityDecimals;
 
-    uint8 internal immutable _initialCardinality;
+    uint16 internal immutable _initialCardinality;
 
     /*
      * Internal variables
@@ -223,7 +223,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
 
     /// @inheritdoc IHistoricalOracle
     /// @param amount The new capacity of observations for the token. Must be greater than the current capacity, but
-    ///   less than 256.
+    ///   less than 65536.
     function setObservationsCapacity(address token, uint256 amount) external virtual override {
         BufferMetadata storage meta = observationBufferMetadata[token];
         if (meta.maxSize == 0) {
@@ -232,7 +232,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         }
 
         require(amount >= meta.maxSize, "AggregatedOracle: CAPACITY_CANNOT_BE_DECREASED");
-        require(amount <= type(uint8).max, "AggregatedOracle: CAPACITY_TOO_LARGE");
+        require(amount <= type(uint16).max, "AggregatedOracle: CAPACITY_TOO_LARGE");
 
         ObservationLibrary.Observation[] storage observationBuffer = observationBuffers[token];
 
@@ -249,7 +249,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
             emit ObservationCapacityIncreased(token, meta.maxSize, amount);
 
             // Update the metadata
-            meta.maxSize = uint8(amount);
+            meta.maxSize = uint16(amount);
         }
     }
 
