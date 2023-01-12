@@ -195,20 +195,17 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         address token,
         uint256 amount
     ) external view virtual override returns (ObservationLibrary.Observation[] memory) {
-        if (amount == 0) return new ObservationLibrary.Observation[](0);
+        return getObservationsInternal(token, amount, 0, 1);
+    }
 
-        BufferMetadata memory meta = observationBufferMetadata[token];
-        require(meta.size >= amount, "AggregatedOracle: INSUFFICIENT_DATA");
-
-        ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](amount);
-
-        uint256 count = 0;
-
-        for (uint256 i = meta.end; count < amount; i = (i == 0) ? meta.size - 1 : i - 1) {
-            observations[count++] = observationBuffers[token][i];
-        }
-
-        return observations;
+    /// @inheritdoc IHistoricalOracle
+    function getObservations(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) external view virtual returns (ObservationLibrary.Observation[] memory) {
+        return getObservationsInternal(token, amount, offset, increment);
     }
 
     /// @inheritdoc IHistoricalOracle
@@ -362,6 +359,32 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         }
 
         return observationBuffers[token][meta.end];
+    }
+
+    function getObservationsInternal(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) internal view virtual returns (ObservationLibrary.Observation[] memory) {
+        if (amount == 0) return new ObservationLibrary.Observation[](0);
+
+        BufferMetadata memory meta = observationBufferMetadata[token];
+        require(meta.size > (amount - 1) * increment + offset, "AggregatedOracle: INSUFFICIENT_DATA");
+
+        ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](amount);
+
+        uint256 count = 0;
+
+        for (
+            uint256 i = meta.end < offset ? meta.end + meta.size - offset : meta.end - offset;
+            count < amount;
+            i = (i < increment) ? (i + meta.size) - increment : i - increment
+        ) {
+            observations[count++] = observationBuffers[token][i];
+        }
+
+        return observations;
     }
 
     function initializeBuffers(address token) internal virtual {

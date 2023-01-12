@@ -27,6 +27,19 @@ interface IHistoricalOracle {
         uint256 amount
     ) external view returns (ObservationLibrary.Observation[] memory);
 
+    /// @notice Gets the latest observations for a token.
+    /// @param token The address of the token to get the observations for.
+    /// @param amount The number of observations to get.
+    /// @param offset The index of the first observation to get (default: 0).
+    /// @param increment The increment between observations to get (default: 1).
+    /// @return observations The latest observations for the token, in reverse chronological order, from newest to oldest.
+    function getObservations(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) external view returns (ObservationLibrary.Observation[] memory);
+
     /// @notice Gets the number of observations for a token.
     /// @param token The address of the token to get the number of observations for.
     /// @return count The number of observations for the token.
