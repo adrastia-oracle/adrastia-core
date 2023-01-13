@@ -160,9 +160,11 @@ async function main() {
 
     const underlyingPeriodSeconds = 10;
     const periodSeconds = 10;
-    const granularity = 1;
+    const granularity = 2;
 
     const liquidityDecimals = 4;
+
+    const increaseObservationsCapacityTo = 10;
 
     const uniswapV2 = await createUniswapV2Oracle(
         uniswapV2FactoryAddress,
@@ -358,40 +360,103 @@ async function main() {
                 );
             }
 
-            const consultGas = await oracle.estimateGas["consult(address)"](token);
+            const observationCount = await oracle["getObservationsCount(address)"](token);
+            const observationCapacity = await oracle["getObservationsCapacity(address)"](token);
 
-            if (!consultGas.eq(lastConsultGas)) {
-                console.log("\u001b[" + 93 + "m" + "Consult gas used = " + consultGas + "\u001b[0m");
+            console.log("Observations count = %s, capacity = %s", observationCount, observationCapacity);
 
-                lastConsultGas = consultGas;
+            if (observationCapacity < increaseObservationsCapacityTo) {
+                const capacityTx = await oracle["setObservationsCapacity(address,uint256)"](
+                    token,
+                    increaseObservationsCapacityTo
+                );
+                const capacityReceipt = await capacityTx.wait();
+
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Oracle capacity updated. Gas used = " +
+                        capacityReceipt["gasUsed"] +
+                        "\u001b[0m"
+                );
             }
 
-            const consultation = await oracle["consult(address)"](token);
+            if (observationCount > 0) {
+                const consultGas = await oracle.estimateGas["consult(address)"](token);
 
-            const priceStr = ethers.utils.commify(ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals));
+                if (!consultGas.eq(lastConsultGas)) {
+                    console.log("\u001b[" + 93 + "m" + "Consult gas used = " + consultGas + "\u001b[0m");
 
-            console.log(
-                "\u001b[" + 32 + "m" + "Price(%s) = %s %s" + "\u001b[0m",
-                tokenSymbol,
-                priceStr,
-                quoteTokenSymbol
-            );
+                    lastConsultGas = consultGas;
+                }
 
-            const tokenLiquidityStr = ethers.utils.commify(
-                ethers.utils.formatUnits(consultation["tokenLiquidity"], liquidityDecimals)
-            );
+                const consultation = await oracle["consult(address)"](token);
 
-            const quoteTokenLiquidityStr = ethers.utils.commify(
-                ethers.utils.formatUnits(consultation["quoteTokenLiquidity"], liquidityDecimals)
-            );
+                const priceStr = ethers.utils.commify(
+                    ethers.utils.formatUnits(consultation["price"], quoteTokenDecimals)
+                );
 
-            console.log(
-                "\u001b[" + 31 + "m" + "Liquidity(%s) = %s, Liquidity(%s) = %s" + "\u001b[0m",
-                tokenSymbol,
-                tokenLiquidityStr,
-                quoteTokenSymbol,
-                quoteTokenLiquidityStr
-            );
+                console.log(
+                    "\u001b[" + 32 + "m" + "Price(%s) = %s %s" + "\u001b[0m",
+                    tokenSymbol,
+                    priceStr,
+                    quoteTokenSymbol
+                );
+
+                const tokenLiquidityStr = ethers.utils.commify(
+                    ethers.utils.formatUnits(consultation["tokenLiquidity"], liquidityDecimals)
+                );
+
+                const quoteTokenLiquidityStr = ethers.utils.commify(
+                    ethers.utils.formatUnits(consultation["quoteTokenLiquidity"], liquidityDecimals)
+                );
+
+                console.log(
+                    "\u001b[" + 31 + "m" + "Liquidity(%s) = %s, Liquidity(%s) = %s" + "\u001b[0m",
+                    tokenSymbol,
+                    tokenLiquidityStr,
+                    quoteTokenSymbol,
+                    quoteTokenLiquidityStr
+                );
+
+                const observationAt0 = await oracle["getObservationAt(address,uint256)"](token, 0);
+                console.log("Observation at 0 = %s", observationAt0.toString());
+
+                if (observationCount > granularity) {
+                    const observationAt2 = await oracle["getObservationAt(address,uint256)"](token, granularity);
+                    console.log("Observation at %s = %s", granularity.toString(), observationAt2.toString());
+                }
+
+                const numObservationsToGet = ethers.BigNumber.from(observationCount).div(granularity);
+                const offset = 0;
+
+                const observationsGas = await oracle.estimateGas["getObservations(address,uint256)"](
+                    token,
+                    observationCount
+                );
+                const observations = await oracle["getObservations(address,uint256,uint256,uint256)"](
+                    token,
+                    numObservationsToGet,
+                    offset,
+                    granularity
+                );
+
+                console.log("Observations gas used = %s", observationsGas.toNumber());
+                // Print the observations, expanding each observation into its own line
+                console.log(
+                    "\u001b[" +
+                        93 +
+                        "m" +
+                        "Observations(%s, %s, %s, %s) = " +
+                        observations.map((o) => o.toString()).join(", ") +
+                        "\u001b[0m",
+                    tokenSymbol,
+                    numObservationsToGet.toString(),
+                    offset.toString(),
+                    granularity.toString()
+                );
+            }
         } catch (e) {
             console.log(e);
         }
