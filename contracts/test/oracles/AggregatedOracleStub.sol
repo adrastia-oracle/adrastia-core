@@ -70,12 +70,14 @@ contract AggregatedOracleStub is AggregatedOracle {
         uint112 quoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation;
 
         observation.price = price;
         observation.tokenLiquidity = tokenLiquidity;
         observation.quoteTokenLiquidity = quoteTokenLiquidity;
         observation.timestamp = timestamp;
+
+        push(token, observation);
     }
 
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {

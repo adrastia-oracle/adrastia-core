@@ -15,10 +15,18 @@ contract MockOracle is AbstractOracle {
 
     uint8 _liquidityDecimals;
 
+    mapping(address => ObservationLibrary.Observation) public observations;
+
     mapping(address => ObservationLibrary.Observation) instantRates;
 
     constructor(address quoteToken_) AbstractOracle(quoteToken_) {
         _liquidityDecimals = 0;
+    }
+
+    function getLatestObservation(
+        address token
+    ) public view virtual override returns (ObservationLibrary.Observation memory observation) {
+        return observations[token];
     }
 
     function stubSetObservation(

@@ -9,8 +9,6 @@ import "../libraries/ObservationLibrary.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
 abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
-    mapping(address => ObservationLibrary.Observation) public observations;
-
     constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -27,9 +25,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
 
     function getLatestObservation(
         address token
-    ) public view virtual returns (ObservationLibrary.Observation memory observation) {
-        return observations[token];
-    }
+    ) public view virtual returns (ObservationLibrary.Observation memory observation);
 
     /// @param data The encoded address of the token for which the update relates to.
     /// @inheritdoc IUpdateable

@@ -30,6 +30,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     mapping(address => AccumulationLibrary.PriceAccumulator[]) public priceAccumulationBuffers;
     mapping(address => AccumulationLibrary.LiquidityAccumulator[]) public liquidityAccumulationBuffers;
 
+    mapping(address => ObservationLibrary.Observation) internal observations;
+
     constructor(
         address liquidityAccumulator_,
         address priceAccumulator_,
@@ -39,6 +41,12 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     ) PeriodicOracle(quoteToken_, period_, granularity_) {
         liquidityAccumulator = liquidityAccumulator_;
         priceAccumulator = priceAccumulator_;
+    }
+
+    function getLatestObservation(
+        address token
+    ) public view virtual override returns (ObservationLibrary.Observation memory observation) {
+        return observations[token];
     }
 
     /// @inheritdoc PeriodicOracle
