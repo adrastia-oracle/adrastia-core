@@ -9,6 +9,7 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 const BAT = "0x0D8775F648430679A709E98d2b0Cb6250d2887EF";
 
 const PERIOD = 100;
+const GRANULARITY = 1;
 const MINIMUM_TOKEN_LIQUIDITY_VALUE = BigNumber.from(0);
 const MINIMUM_QUOTE_TOKEN_LIQUIDITY = BigNumber.from(0);
 
@@ -86,6 +87,7 @@ describe("AggregatedOracle#constructor", async function () {
         const oracles = [oracle1.address];
         const tokenSpecificOracles = [grtOracle];
         const period = 30;
+        const granularity = 5;
         const minimumTokenLiquidityValue = BigNumber.from(1);
         const minimumQuoteTokenLiquidity = BigNumber.from(2);
 
@@ -98,6 +100,7 @@ describe("AggregatedOracle#constructor", async function () {
             oracles,
             tokenSpecificOracles,
             period,
+            granularity,
             minimumTokenLiquidityValue,
             minimumQuoteTokenLiquidity
         );
@@ -109,6 +112,7 @@ describe("AggregatedOracle#constructor", async function () {
         expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
         expect(await oracle.getOracles()).to.eql(oracles); // eql = deep equality
         expect(await oracle.period()).to.equal(period);
+        expect(await oracle.granularity()).to.equal(granularity);
         expect(await oracle.minimumTokenLiquidityValue()).to.equal(minimumTokenLiquidityValue);
         expect(await oracle.minimumQuoteTokenLiquidity()).to.equal(minimumQuoteTokenLiquidity);
 
@@ -128,6 +132,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [],
                 [],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -148,6 +153,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [oracle1.address, oracle1.address],
                 [],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -173,6 +179,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [],
                 [oracle1Config, oracle1Config],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -198,6 +205,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [oracle1.address],
                 [oracle1Config],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -224,6 +232,7 @@ describe("AggregatedOracle#needsUpdate", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -306,6 +315,7 @@ describe("AggregatedOracle#canUpdate", function () {
             [underlyingOracle1.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -388,6 +398,7 @@ describe("AggregatedOracle#consultPrice(token)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -442,6 +453,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -479,6 +491,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -636,6 +649,7 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -694,6 +708,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -765,6 +780,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -942,6 +958,7 @@ describe("AggregatedOracle#consult(token)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1004,6 +1021,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1042,6 +1060,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1076,6 +1095,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1111,6 +1131,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1146,6 +1167,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1248,6 +1270,7 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1377,6 +1400,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1406,7 +1430,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1440,7 +1464,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1472,7 +1496,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1504,7 +1528,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1537,7 +1561,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(expectedTokenLiquidity);
@@ -1570,7 +1594,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(expectedTokenLiquidity);
@@ -1584,7 +1608,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
         const timestamp = (await currentBlockTimestamp()) + PERIOD * 2 + 1;
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await underlyingOracle.stubSetObservation(
             token,
@@ -1607,7 +1633,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1621,7 +1647,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await underlyingOracle.stubSetObservation(
             token,
@@ -1656,7 +1684,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1690,7 +1718,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
                 "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
             );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1720,7 +1748,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(underlyingOracle.address, token, "REASON");
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1731,7 +1759,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
     it("Shouldn't update when there aren't any valid consultations", async () => {
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1743,7 +1773,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1765,7 +1795,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1777,7 +1809,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1799,7 +1831,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1811,7 +1845,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1833,7 +1867,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1845,7 +1881,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1885,6 +1921,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1930,7 +1967,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice, "Observation price").to.equal(price);
         expect(oTokenLiquidity, "Observation token liquidity").to.equal(totalTokenLiquidity);
@@ -1976,7 +2013,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2030,7 +2067,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2075,6 +2112,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
                 },
             ],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2118,7 +2156,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2163,7 +2201,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
             BigNumber.from(0)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2203,6 +2241,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             minimumTokenLiquidityValue,
             minimumQuoteTokenLiquidity
         );
@@ -2226,7 +2265,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -2238,7 +2279,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -2270,7 +2311,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2310,6 +2351,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             minimumTokenLiquidityValue,
             minimumQuoteTokenLiquidity
         );
@@ -2333,7 +2375,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -2345,7 +2389,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -2377,7 +2421,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2414,6 +2458,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2438,7 +2483,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -2450,7 +2497,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -2483,7 +2530,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2516,7 +2563,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2557,6 +2604,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2608,7 +2656,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2658,6 +2706,7 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                     [underlyingOracle.address],
                     [],
                     PERIOD,
+                    GRANULARITY,
                     MINIMUM_TOKEN_LIQUIDITY_VALUE,
                     minimumQuoteTokenLiquidity
                 );
@@ -2775,6 +2824,7 @@ describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
                                     [underlyingOracle.address],
                                     [],
                                     PERIOD,
+                                    GRANULARITY,
                                     minimumTokenLiquidityValue,
                                     MINIMUM_QUOTE_TOKEN_LIQUIDITY
                                 );
@@ -2843,6 +2893,7 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2956,6 +3007,7 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -3042,6 +3094,7 @@ describe("AggregatedOracle#calculateMaxAge", function () {
             [underlyingOracle.address],
             [],
             1, // period
+            GRANULARITY,
             0,
             0
         );
@@ -3062,6 +3115,7 @@ describe("AggregatedOracle#calculateMaxAge", function () {
                 [underlyingOracle.address],
                 [],
                 period, // period
+                GRANULARITY,
                 0,
                 0
             );
@@ -3092,6 +3146,7 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -3130,6 +3185,11 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
 
     it("Should support IUpdateable", async () => {
         const interfaceId = await interfaceIds.iUpdateable();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHistoricalOracle", async () => {
+        const interfaceId = await interfaceIds.iHistoricalOracle();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 });

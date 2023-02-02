@@ -307,6 +307,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     ) public view virtual override(PeriodicOracle, ExplicitQuotationMetadata) returns (bool) {
         return
             interfaceId == type(IAggregatedOracle).interfaceId ||
+            interfaceId == type(IHistoricalOracle).interfaceId ||
             ExplicitQuotationMetadata.supportsInterface(interfaceId) ||
             PeriodicOracle.supportsInterface(interfaceId);
     }

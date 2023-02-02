@@ -8,6 +8,8 @@ const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 const PERIOD = 100;
 
+const GRANULARITY = 1;
+
 // Credits: https://stackoverflow.com/questions/53311809/all-possible-combinations-of-a-2d-array-in-javascript
 function combos(list, n = 0, result = [], current = []) {
     if (n === list.length) result.push(current);
@@ -34,7 +36,8 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
         [AddressZero, USDC], // liquidityAccumulator
         [AddressZero, USDC], // priceAccumulator
         [AddressZero, USDC], // quoteToken
-        [(BigNumber.from(1), BigNumber.from(100))], // period
+        [(BigNumber.from(10), BigNumber.from(100))], // period
+        [1, 2], // granularity
     ];
 
     for (const combo of combos(testPermutations)) {
@@ -44,6 +47,7 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
                 priceAccumulator: combo[1],
                 quoteToken: combo[2],
                 period: combo[3],
+                granularity: combo[4],
             },
         });
     }
@@ -58,7 +62,8 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
                 args["liquidityAccumulator"],
                 args["priceAccumulator"],
                 args["quoteToken"],
-                args["period"]
+                args["period"],
+                args["granularity"]
             );
 
             expect(await oracle.liquidityAccumulator()).to.equal(args["liquidityAccumulator"]);
@@ -66,6 +71,7 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
             expect(await oracle.quoteToken()).to.equal(args["quoteToken"]);
             expect(await oracle.quoteTokenAddress()).to.equal(args["quoteToken"]);
             expect(await oracle.period()).to.equal(args["period"]);
+            expect(await oracle.granularity()).to.equal(args["granularity"]);
 
             if (args["quoteToken"] === USDC) {
                 expect(await oracle.quoteTokenName()).to.equal("USD Coin");
@@ -76,8 +82,26 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
     });
 
     it("Should revert if the period is zero", async function () {
-        await expect(oracleFactory.deploy(AddressZero, AddressZero, USDC, 0)).to.be.revertedWith(
+        await expect(oracleFactory.deploy(AddressZero, AddressZero, USDC, 0, GRANULARITY)).to.be.revertedWith(
             "PeriodicOracle: INVALID_PERIOD"
+        );
+    });
+
+    it("Should revert if the granularity is zero", async function () {
+        await expect(oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, 0)).to.be.revertedWith(
+            "PeriodicOracle: INVALID_GRANULARITY"
+        );
+    });
+
+    it("Should revert if the period is not divisible by the granularity", async function () {
+        const period = 5;
+        const granularity = 2;
+
+        // Assert that the period is not divisible by the granularity
+        expect(period % granularity).to.not.equal(0);
+
+        await expect(oracleFactory.deploy(AddressZero, AddressZero, USDC, period, granularity)).to.be.revertedWith(
+            "PeriodicOracle: INVALID_PERIOD_GRANULARITY"
         );
     });
 });
@@ -91,7 +115,7 @@ describe("PeriodicAccumulationOracle#liquidityDecimals", function () {
         await la.stubSetLiquidityDecimals(liquidityDecimals);
 
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
-        const oracle = await oracleFactory.deploy(la.address, AddressZero, USDC, 100);
+        const oracle = await oracleFactory.deploy(la.address, AddressZero, USDC, PERIOD, GRANULARITY);
 
         expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
     }
@@ -119,7 +143,7 @@ describe("PeriodicAccumulationOracle#needsUpdate", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD, GRANULARITY);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -200,7 +224,13 @@ describe("PeriodicAccumulationOracle#canUpdate", function () {
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
 
-        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(
+            liquidityAccumulator.address,
+            priceAccumulator.address,
+            USDC,
+            PERIOD,
+            GRANULARITY
+        );
 
         accumulatorUpdateDelayTolerance = await oracle.accumulatorUpdateDelayTolerance();
     });
@@ -578,7 +608,7 @@ describe("PeriodicAccumulationOracle#consultPrice(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, GRANULARITY);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -632,7 +662,13 @@ describe("PeriodicAccumulationOracle#consultPrice(token, maxAge = 0)", function 
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
 
-        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(
+            liquidityAccumulator.address,
+            priceAccumulator.address,
+            USDC,
+            PERIOD,
+            GRANULARITY
+        );
     });
 
     it("Should get the set price (=1)", async () => {
@@ -655,7 +691,7 @@ describe("PeriodicAccumulationOracle#consultPrice(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, GRANULARITY);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -785,7 +821,7 @@ describe("PeriodicAccumulationOracle#consultLiquidity(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, GRANULARITY);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -841,7 +877,13 @@ describe("PeriodicAccumulationOracle#consultLiquidity(token, maxAge = 0)", funct
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
 
-        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(
+            liquidityAccumulator.address,
+            priceAccumulator.address,
+            USDC,
+            PERIOD,
+            GRANULARITY
+        );
     });
 
     it("Should get the set liquidities (2,3)", async () => {
@@ -898,7 +940,7 @@ describe("PeriodicAccumulationOracle#consultLiquidity(token, maxAge)", function 
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, GRANULARITY);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -1060,7 +1102,7 @@ describe("PeriodicAccumulationOracle#consult(token)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, GRANULARITY);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -1118,7 +1160,13 @@ describe("PeriodicAccumulationOracle#consult(token, maxAge = 0)", function () {
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
 
-        oracle = await oracleFactory.deploy(liquidityAccumulator.address, priceAccumulator.address, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(
+            liquidityAccumulator.address,
+            priceAccumulator.address,
+            USDC,
+            PERIOD,
+            GRANULARITY
+        );
     });
 
     it("Should get the set price (1) and liquidities (2,3)", async () => {
@@ -1204,7 +1252,7 @@ describe("PeriodicAccumulationOracle#consult(token, maxAge)", function () {
     beforeEach(async () => {
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, USDC, PERIOD, GRANULARITY);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -1382,7 +1430,8 @@ describe("PeriodicAccumulationOracle#update", function () {
             liquidityAccumulator.address,
             priceAccumulator.address,
             quoteToken.address,
-            1
+            1,
+            GRANULARITY
         );
 
         accumulatorUpdateDelayTolerance = await oracle.accumulatorUpdateDelayTolerance();
@@ -1438,7 +1487,8 @@ describe("PeriodicAccumulationOracle#update", function () {
                 liquidityAccumulator.address,
                 priceAccumulator.address,
                 quoteToken.address,
-                1
+                1,
+                GRANULARITY
             );
         });
 
@@ -1537,7 +1587,8 @@ describe("PeriodicAccumulationOracle#update", function () {
                 liquidityAccumulator.address,
                 priceAccumulator.address,
                 quoteToken.address,
-                600 // 10 minutes
+                600, // 10 minutes
+                GRANULARITY
             );
         });
 
@@ -1641,7 +1692,8 @@ describe("PeriodicAccumulationOracle#update", function () {
                 liquidityAccumulator.address,
                 priceAccumulator.address,
                 quoteToken.address,
-                1
+                1,
+                GRANULARITY
             );
         });
 
@@ -1834,7 +1886,9 @@ describe("PeriodicAccumulationOracle#update", function () {
 
         await expect(updateTx).to.not.emit(oracle, "Updated");
 
-        const [oPrice, oTokenLiqudity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+        const [oPrice, oTokenLiqudity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(
+            token.address
+        );
 
         expect(oPrice, "Observation price").to.equal(fakePrice);
         expect(oTokenLiqudity, "Observation token liquidity").to.equal(fakeTokenLiquidity);
@@ -1907,7 +1961,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             await oracle.liquidityAccumulations(token.address);
 
         // Record old observation
-        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.observations(
+        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.getLatestObservation(
             token.address
         );
 
@@ -1917,7 +1971,9 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Shouldn't emit Updated
         await expect(updateTx).to.not.emit(oracle, "Updated");
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(
+            token.address
+        );
 
         // Observation should not update
         expect(oPrice, "Observation price").to.equal(oldPrice);
@@ -1996,7 +2052,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             await oracle.liquidityAccumulations(token.address);
 
         // Record old observation
-        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.observations(
+        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.getLatestObservation(
             token.address
         );
 
@@ -2014,7 +2070,9 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Shouldn't emit Updated
         await expect(updateTx).to.not.emit(oracle, "Updated");
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(
+            token.address
+        );
 
         // Observation should not update
         expect(oPrice, "Observation price").to.equal(oldPrice);
@@ -2093,7 +2151,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             await oracle.liquidityAccumulations(token.address);
 
         // Record old observation
-        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.observations(
+        const [oldPrice, oldTokenLiquidity, oldQuoteTokenLiquidity, oldTimestamp] = await oracle.getLatestObservation(
             token.address
         );
 
@@ -2106,7 +2164,9 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Shouldn't emit Updated
         await expect(updateTx).to.not.emit(oracle, "Updated");
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token.address);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(
+            token.address
+        );
 
         // Observation should not update
         expect(oPrice, "Observation price").to.equal(oldPrice);
@@ -2148,7 +2208,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Shouldn't emite Updated since the oracle doesn't have enough info to calculate price
         await expect(updateTx).to.not.emit(oracle, "Updated");
 
-        const [, , , oTimestamp] = await oracle.observations(token.address);
+        const [, , , oTimestamp] = await oracle.getLatestObservation(token.address);
 
         // Observation timestamp should not update since the oracle doesn't have enough info to calculate price
         expect(oTimestamp, "Observation timestamp").to.equal(0);
@@ -2178,13 +2238,15 @@ describe("PeriodicAccumulationOracle#update", function () {
 
         expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(token.address, 32))).to.equal(false);
 
-        const [pPrice, pTokenLiqudity, pQuoteTokenLiquidity, pTimestamp] = await oracle.observations(token.address);
+        const [pPrice, pTokenLiqudity, pQuoteTokenLiquidity, pTimestamp] = await oracle.getLatestObservation(
+            token.address
+        );
 
         const updateTxPromise = oracle.update(ethers.utils.hexZeroPad(token.address, 32));
 
         await expect(updateTxPromise).to.not.emit(oracle, "Updated");
 
-        const [price, tokenLiqudity, quoteTokenLiquidity, timestamp] = await oracle.observations(token.address);
+        const [price, tokenLiqudity, quoteTokenLiquidity, timestamp] = await oracle.getLatestObservation(token.address);
 
         // Verify the current observation hasn't changed
         expect(price).to.equal(pPrice);
@@ -2228,7 +2290,7 @@ describe("PeriodicAccumulationOracle#update", function () {
 
         const updateReceipt = await oracle.update(ethers.utils.hexZeroPad(token.address, 32));
 
-        [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.observations(token.address);
+        [price, tokenLiquidity, quoteTokenLiquidity, timestamp] = await oracle.getLatestObservation(token.address);
 
         // Verify that the observation matches what's expected
         {
@@ -2324,7 +2386,7 @@ describe("PeriodicAccumulationOracle#supportsInterface(interfaceId)", function (
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
         const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
 
-        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD);
+        oracle = await oracleFactory.deploy(AddressZero, AddressZero, AddressZero, PERIOD, GRANULARITY);
         interfaceIds = await interfaceIdsFactory.deploy();
     });
 

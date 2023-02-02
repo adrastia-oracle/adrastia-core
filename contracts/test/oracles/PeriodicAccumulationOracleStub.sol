@@ -19,6 +19,16 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint256 granularity_
     ) PeriodicAccumulationOracle(liquidityAccumulator_, priceAccumulator_, quoteToken_, period_, granularity_) {}
 
+    function priceAccumulations(address token) public view returns (AccumulationLibrary.PriceAccumulator memory) {
+        return priceAccumulationBuffers[token][accumulationBufferMetadata[token].end];
+    }
+
+    function liquidityAccumulations(
+        address token
+    ) public view returns (AccumulationLibrary.LiquidityAccumulator memory) {
+        return liquidityAccumulationBuffers[token][accumulationBufferMetadata[token].end];
+    }
+
     function stubSetObservation(
         address token,
         uint112 price,
@@ -41,22 +51,32 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint112 cumulativeQuoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        /*AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
-        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+        ensureBuffersInitialized(token);
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulationBuffers[token][meta.end];
+        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulationBuffers[token][
+            meta.end
+        ];
 
         priceAccumulation.cumulativePrice = cumulativePrice;
         priceAccumulation.timestamp = timestamp;
 
         liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
         liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
-        liquidityAccumulation.timestamp = timestamp;*/
+        liquidityAccumulation.timestamp = timestamp;
     }
 
     function stubSetPriceAccumulation(address token, uint112 cumulativePrice, uint32 timestamp) public {
-        /*AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+        ensureBuffersInitialized(token);
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulationBuffers[token][meta.end];
 
         priceAccumulation.cumulativePrice = cumulativePrice;
-        priceAccumulation.timestamp = timestamp;*/
+        priceAccumulation.timestamp = timestamp;
     }
 
     function stubSetLiquidityAccumulation(
@@ -65,11 +85,17 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint112 cumulativeQuoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        /*AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
+        ensureBuffersInitialized(token);
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulationBuffers[token][
+            meta.end
+        ];
 
         liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
         liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
-        liquidityAccumulation.timestamp = timestamp;*/
+        liquidityAccumulation.timestamp = timestamp;
     }
 
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {
@@ -96,5 +122,16 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         ) {}
 
         return super.performUpdate(data);
+    }
+
+    function ensureBuffersInitialized(address token) internal virtual {
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        if (meta.size == 0) {
+            AccumulationLibrary.PriceAccumulator memory priceAccumulation;
+            AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation;
+
+            push(token, priceAccumulation, liquidityAccumulation);
+        }
     }
 }

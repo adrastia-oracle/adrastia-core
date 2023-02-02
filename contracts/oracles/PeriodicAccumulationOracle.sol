@@ -148,7 +148,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         address token,
         AccumulationLibrary.PriceAccumulator memory priceAccumulation,
         AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation
-    ) internal virtual {
+    ) internal virtual returns (bool) {
         BufferMetadata storage meta = accumulationBufferMetadata[token];
 
         if (meta.size == 0) {
@@ -157,13 +157,20 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         } else {
             // We have multiple accumulations now
 
-            uint256 firstAccumulationTime = priceAccumulationBuffers[token][meta.start].timestamp;
-            uint256 periodTimeElapsed = priceAccumulation.timestamp - firstAccumulationTime;
+            uint256 firstPriceAccumulationTime = priceAccumulationBuffers[token][meta.start].timestamp;
+            uint256 pricePeriodTimeElapsed = priceAccumulation.timestamp - firstPriceAccumulationTime;
+
+            uint256 firstLiquidityAccumulationTime = liquidityAccumulationBuffers[token][meta.start].timestamp;
+            uint256 liquidityPeriodTimeElapsed = liquidityAccumulation.timestamp - firstLiquidityAccumulationTime;
+
+            uint256 maxUpdateGap = period + updateDelayTolerance();
 
             if (
-                periodTimeElapsed <= period + updateDelayTolerance() &&
                 meta.size == granularity &&
-                periodTimeElapsed >= period
+                pricePeriodTimeElapsed <= maxUpdateGap &&
+                pricePeriodTimeElapsed >= period &&
+                liquidityPeriodTimeElapsed <= maxUpdateGap &&
+                liquidityPeriodTimeElapsed >= period
             ) {
                 ObservationLibrary.Observation storage observation = observations[token];
 
@@ -183,6 +190,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                     observation.quoteTokenLiquidity,
                     observation.timestamp
                 );
+            } else if (pricePeriodTimeElapsed == 0 && liquidityPeriodTimeElapsed == 0) {
+                // Both accumulations haven't changed, so we don't need to update
+                return false;
             }
 
             meta.end = (meta.end + 1) % uint8(granularity);
@@ -197,6 +207,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             // start was just overwritten
             meta.start = (meta.start + 1) % uint8(granularity);
         }
+
+        return true;
     }
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
@@ -228,13 +240,10 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             liquidityAccumulator
         ).getCurrentAccumulation(token);
 
-        if (priceAccumulation.timestamp != 0 && liquidityAccumulation.timestamp != 0) {
+        return
+            priceAccumulation.timestamp != 0 &&
+            liquidityAccumulation.timestamp != 0 &&
             push(token, priceAccumulation, liquidityAccumulation);
-
-            return true;
-        }
-
-        return false;
     }
 
     /// @inheritdoc AbstractOracle
