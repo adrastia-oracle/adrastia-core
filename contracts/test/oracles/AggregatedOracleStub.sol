@@ -53,6 +53,31 @@ contract AggregatedOracleStub is AggregatedOracle {
         overrideValidateUnderlyingConsultation(true, true); // Skip validation by default
     }
 
+    function stubPush(
+        address token,
+        uint112 price,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        ObservationLibrary.Observation memory observation;
+
+        observation.price = price;
+        observation.tokenLiquidity = tokenLiquidity;
+        observation.quoteTokenLiquidity = quoteTokenLiquidity;
+        observation.timestamp = timestamp;
+
+        push(token, observation);
+    }
+
+    function stubInitializeBuffers(address token) public {
+        initializeBuffers(token);
+    }
+
+    function stubInitialCardinality() public view returns (uint256) {
+        return _initialCardinality;
+    }
+
     function stubSetLiquidityDecimals(uint8 decimals) public {
         config.liquidityDecimalsOverridden = true;
         config.liquidityDecimals = decimals;
