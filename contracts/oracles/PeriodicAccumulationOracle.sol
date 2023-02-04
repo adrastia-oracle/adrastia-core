@@ -159,44 +159,56 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 initializeBuffers(token);
             }
         } else {
-            // We have multiple accumulations now
+            // Check that at least one accumulation is newer than the last one
+            {
+                uint256 lastPriceAccumulationTimestamp = priceAccumulationBuffers[token][meta.end].timestamp;
+                uint256 lastLiquidityAccumulationTimestamp = liquidityAccumulationBuffers[token][meta.end].timestamp;
 
-            uint256 firstPriceAccumulationTime = priceAccumulationBuffers[token][meta.start].timestamp;
-            uint256 pricePeriodTimeElapsed = priceAccumulation.timestamp - firstPriceAccumulationTime;
+                // Note: Reverts if the new accumulations are older than the last ones
+                uint256 lastPriceAccumulationTimeElapsed = priceAccumulation.timestamp - lastPriceAccumulationTimestamp;
+                uint256 lastLiquidityAccumulationTimeElapsed = liquidityAccumulation.timestamp -
+                    lastLiquidityAccumulationTimestamp;
 
-            uint256 firstLiquidityAccumulationTime = liquidityAccumulationBuffers[token][meta.start].timestamp;
-            uint256 liquidityPeriodTimeElapsed = liquidityAccumulation.timestamp - firstLiquidityAccumulationTime;
+                if (lastPriceAccumulationTimeElapsed == 0 && lastLiquidityAccumulationTimeElapsed == 0) {
+                    // Both accumulations haven't changed, so we don't need to update
+                    return false;
+                }
+            }
 
-            uint256 maxUpdateGap = period + updateDelayTolerance();
+            if (meta.size >= granularity) {
+                uint256 firstPriceAccumulationTime = priceAccumulationBuffers[token][meta.start].timestamp;
+                uint256 pricePeriodTimeElapsed = priceAccumulation.timestamp - firstPriceAccumulationTime;
 
-            if (
-                meta.size == granularity &&
-                pricePeriodTimeElapsed <= maxUpdateGap &&
-                pricePeriodTimeElapsed >= period &&
-                liquidityPeriodTimeElapsed <= maxUpdateGap &&
-                liquidityPeriodTimeElapsed >= period
-            ) {
-                ObservationLibrary.Observation storage observation = observations[token];
+                uint256 firstLiquidityAccumulationTime = liquidityAccumulationBuffers[token][meta.start].timestamp;
+                uint256 liquidityPeriodTimeElapsed = liquidityAccumulation.timestamp - firstLiquidityAccumulationTime;
 
-                observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
-                    priceAccumulationBuffers[token][meta.start],
-                    priceAccumulation
-                );
-                (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
-                    liquidityAccumulator
-                ).calculateLiquidity(liquidityAccumulationBuffers[token][meta.start], liquidityAccumulation);
-                observation.timestamp = block.timestamp.toUint32();
+                uint256 maxUpdateGap = period + updateDelayTolerance();
 
-                emit Updated(
-                    token,
-                    observation.price,
-                    observation.tokenLiquidity,
-                    observation.quoteTokenLiquidity,
-                    observation.timestamp
-                );
-            } else if (pricePeriodTimeElapsed == 0 && liquidityPeriodTimeElapsed == 0) {
-                // Both accumulations haven't changed, so we don't need to update
-                return false;
+                if (
+                    pricePeriodTimeElapsed <= maxUpdateGap &&
+                    pricePeriodTimeElapsed >= period &&
+                    liquidityPeriodTimeElapsed <= maxUpdateGap &&
+                    liquidityPeriodTimeElapsed >= period
+                ) {
+                    ObservationLibrary.Observation storage observation = observations[token];
+
+                    observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
+                        priceAccumulationBuffers[token][meta.start],
+                        priceAccumulation
+                    );
+                    (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
+                        liquidityAccumulator
+                    ).calculateLiquidity(liquidityAccumulationBuffers[token][meta.start], liquidityAccumulation);
+                    observation.timestamp = block.timestamp.toUint32();
+
+                    emit Updated(
+                        token,
+                        observation.price,
+                        observation.tokenLiquidity,
+                        observation.quoteTokenLiquidity,
+                        observation.timestamp
+                    );
+                }
             }
 
             meta.end = (meta.end + 1) % meta.maxSize;
