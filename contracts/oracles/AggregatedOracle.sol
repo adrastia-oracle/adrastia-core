@@ -38,9 +38,9 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         uint16 maxSize;
     }
 
-    mapping(address => BufferMetadata) public observationBufferMetadata;
+    mapping(address => BufferMetadata) internal observationBufferMetadata;
 
-    mapping(address => ObservationLibrary.Observation[]) public observationBuffers;
+    mapping(address => ObservationLibrary.Observation[]) internal observationBuffers;
 
     /// @notice The minimum quote token denominated value of the token liquidity, scaled by this oracle's liquidity
     /// decimals, required for all underlying oracles to be considered valid and thus included in the aggregation.
