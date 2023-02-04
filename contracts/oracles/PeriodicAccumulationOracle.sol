@@ -20,6 +20,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         uint16 start;
         uint16 end;
         uint16 size;
+        uint16 maxSize;
     }
 
     address public immutable override liquidityAccumulator;
@@ -142,6 +143,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         meta.start = 0;
         meta.end = 0;
         meta.size = 0;
+        meta.maxSize = uint16(granularity);
     }
 
     function push(
@@ -152,8 +154,10 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         BufferMetadata storage meta = accumulationBufferMetadata[token];
 
         if (meta.size == 0) {
-            // Initialize the buffers
-            initializeBuffers(token);
+            if (meta.maxSize == 0) {
+                // Initialize the buffers
+                initializeBuffers(token);
+            }
         } else {
             // We have multiple accumulations now
 
@@ -195,17 +199,18 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 return false;
             }
 
-            meta.end = (meta.end + 1) % uint16(granularity);
+            meta.end = (meta.end + 1) % meta.maxSize;
         }
 
         priceAccumulationBuffers[token][meta.end] = priceAccumulation;
         liquidityAccumulationBuffers[token][meta.end] = liquidityAccumulation;
 
-        if (meta.size < granularity) {
+        if (meta.size < meta.maxSize && meta.end == meta.size) {
+            // We are at the end of the array and we have not yet filled it
             meta.size++;
         } else {
             // start was just overwritten
-            meta.start = (meta.start + 1) % uint16(granularity);
+            meta.start = (meta.start + 1) % meta.size;
         }
 
         return true;
