@@ -17,9 +17,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     using SafeCast for uint256;
 
     struct BufferMetadata {
-        uint8 start;
-        uint8 end;
-        uint8 size;
+        uint16 start;
+        uint16 end;
+        uint16 size;
     }
 
     address public immutable override liquidityAccumulator;
@@ -195,7 +195,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 return false;
             }
 
-            meta.end = (meta.end + 1) % uint8(granularity);
+            meta.end = (meta.end + 1) % uint16(granularity);
         }
 
         priceAccumulationBuffers[token][meta.end] = priceAccumulation;
@@ -205,7 +205,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
             meta.size++;
         } else {
             // start was just overwritten
-            meta.start = (meta.start + 1) % uint8(granularity);
+            meta.start = (meta.start + 1) % uint16(granularity);
         }
 
         return true;
