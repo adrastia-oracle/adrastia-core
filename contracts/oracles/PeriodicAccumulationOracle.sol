@@ -175,12 +175,21 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                 }
             }
 
+            // Check if we have enough accumulations for a new observation
             if (meta.size >= granularity) {
-                uint256 firstPriceAccumulationTime = priceAccumulationBuffers[token][meta.start].timestamp;
-                uint256 pricePeriodTimeElapsed = priceAccumulation.timestamp - firstPriceAccumulationTime;
+                uint256 startIndex = meta.end < granularity
+                    ? meta.end + meta.size - granularity
+                    : meta.end - granularity;
 
-                uint256 firstLiquidityAccumulationTime = liquidityAccumulationBuffers[token][meta.start].timestamp;
-                uint256 liquidityPeriodTimeElapsed = liquidityAccumulation.timestamp - firstLiquidityAccumulationTime;
+                AccumulationLibrary.PriceAccumulator memory firstPriceAccumulation = priceAccumulationBuffers[token][
+                    startIndex
+                ];
+                AccumulationLibrary.LiquidityAccumulator
+                    memory firstLiquidityAccumulation = liquidityAccumulationBuffers[token][startIndex];
+
+                uint256 pricePeriodTimeElapsed = priceAccumulation.timestamp - firstPriceAccumulation.timestamp;
+                uint256 liquidityPeriodTimeElapsed = liquidityAccumulation.timestamp -
+                    firstLiquidityAccumulation.timestamp;
 
                 uint256 maxUpdateGap = period + updateDelayTolerance();
 
@@ -193,12 +202,12 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
                     ObservationLibrary.Observation storage observation = observations[token];
 
                     observation.price = IPriceAccumulator(priceAccumulator).calculatePrice(
-                        priceAccumulationBuffers[token][meta.start],
+                        firstPriceAccumulation,
                         priceAccumulation
                     );
                     (observation.tokenLiquidity, observation.quoteTokenLiquidity) = ILiquidityAccumulator(
                         liquidityAccumulator
-                    ).calculateLiquidity(liquidityAccumulationBuffers[token][meta.start], liquidityAccumulation);
+                    ).calculateLiquidity(firstLiquidityAccumulation, liquidityAccumulation);
                     observation.timestamp = block.timestamp.toUint32();
 
                     emit Updated(
