@@ -108,8 +108,9 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         return 1 hours;
     }
 
-    /// @notice The grace period that we allow for the oracle to be in need of an update before we discard the last
-    ///   accumulation. If this grace period is exceeded, it will take two updates to get a new observation.
+    /// @notice The grace period that we allow for the oracle to be in need of an update (as the sum of all update
+    ///   delays in a period) before we discard the last accumulation. If this grace period is exceeded, it will take
+    ///   more updates to get a new observation.
     /// @dev This is to prevent longer time-weighted averages than we desire. The maximum period is then the period of
     ///   this oracle plus this grace period.
     /// @return The grace period in seconds.
@@ -117,7 +118,7 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         // We tolerate two missed periods plus 5 minutes (to allow for some time to update the oracles).
         // We trade off some freshness for greater reliability. Using too low of a tolerance reduces the cost of DoS
         // attacks.
-        return (_updateEvery * 2) + 5 minutes;
+        return (period * 2) + 5 minutes;
     }
 
     function initializeBuffers(address token) internal virtual {
