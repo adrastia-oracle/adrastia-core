@@ -9,11 +9,19 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../interfaces/IHasLiquidityAccumulator.sol";
 import "../interfaces/IPriceAccumulator.sol";
 import "../interfaces/IHasPriceAccumulator.sol";
+import "../interfaces/IHistoricalPriceAccumulationOracle.sol";
+import "../interfaces/IHistoricalLiquidityAccumulationOracle.sol";
 
 import "../libraries/AccumulationLibrary.sol";
 import "../libraries/ObservationLibrary.sol";
 
-contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator, IHasPriceAccumulator {
+contract PeriodicAccumulationOracle is
+    IHistoricalPriceAccumulationOracle,
+    IHistoricalLiquidityAccumulationOracle,
+    PeriodicOracle,
+    IHasLiquidityAccumulator,
+    IHasPriceAccumulator
+{
     using SafeCast for uint256;
 
     struct BufferMetadata {
@@ -33,6 +41,13 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
 
     mapping(address => ObservationLibrary.Observation) internal observations;
 
+    /// @notice Event emitted when an accumulation buffer's capacity is increased past the initial capacity.
+    /// @dev Buffer initialization does not emit an event.
+    /// @param token The token for which the accumulation buffer's capacity was increased.
+    /// @param oldCapacity The previous capacity of the observation buffer.
+    /// @param newCapacity The new capacity of the observation buffer.
+    event AccumulationCapacityIncreased(address indexed token, uint256 oldCapacity, uint256 newCapacity);
+
     constructor(
         address liquidityAccumulator_,
         address priceAccumulator_,
@@ -42,6 +57,110 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
     ) PeriodicOracle(quoteToken_, period_, granularity_) {
         liquidityAccumulator = liquidityAccumulator_;
         priceAccumulator = priceAccumulator_;
+    }
+
+    /// @inheritdoc IHistoricalPriceAccumulationOracle
+    function getPriceAccumulationAt(
+        address token,
+        uint256 index
+    ) external view virtual override returns (AccumulationLibrary.PriceAccumulator memory) {
+        BufferMetadata memory meta = accumulationBufferMetadata[token];
+
+        require(index < meta.size, "PeriodicAccumulationOracle: INVALID_INDEX");
+
+        uint256 bufferIndex = meta.end < index ? meta.end + meta.size - index : meta.end - index;
+
+        return priceAccumulationBuffers[token][bufferIndex];
+    }
+
+    /// @inheritdoc IHistoricalPriceAccumulationOracle
+    function getPriceAccumulations(
+        address token,
+        uint256 amount
+    ) external view virtual override returns (AccumulationLibrary.PriceAccumulator[] memory) {
+        return getPriceAccumulationsInternal(token, amount, 0, 1);
+    }
+
+    /// @inheritdoc IHistoricalPriceAccumulationOracle
+    function getPriceAccumulations(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) external view virtual returns (AccumulationLibrary.PriceAccumulator[] memory) {
+        return getPriceAccumulationsInternal(token, amount, offset, increment);
+    }
+
+    /// @inheritdoc IHistoricalPriceAccumulationOracle
+    function getPriceAccumulationsCount(address token) external view override returns (uint256) {
+        return accumulationBufferMetadata[token].size;
+    }
+
+    /// @inheritdoc IHistoricalPriceAccumulationOracle
+    function getPriceAccumulationsCapacity(address token) external view virtual override returns (uint256) {
+        uint256 maxSize = accumulationBufferMetadata[token].maxSize;
+        if (maxSize == 0) return granularity;
+
+        return maxSize;
+    }
+
+    /// @inheritdoc IHistoricalPriceAccumulationOracle
+    /// @param amount The new capacity of accumulations for the token. Must be greater than the current capacity, but
+    ///   less than 65536.
+    function setPriceAccumulationsCapacity(address token, uint256 amount) external virtual override {
+        setAccumulationsCapacityInternal(token, amount);
+    }
+
+    /// @inheritdoc IHistoricalLiquidityAccumulationOracle
+    function getLiquidityAccumulationAt(
+        address token,
+        uint256 index
+    ) external view virtual override returns (AccumulationLibrary.LiquidityAccumulator memory) {
+        BufferMetadata memory meta = accumulationBufferMetadata[token];
+
+        require(index < meta.size, "PeriodicAccumulationOracle: INVALID_INDEX");
+
+        uint256 bufferIndex = meta.end < index ? meta.end + meta.size - index : meta.end - index;
+
+        return liquidityAccumulationBuffers[token][bufferIndex];
+    }
+
+    /// @inheritdoc IHistoricalLiquidityAccumulationOracle
+    function getLiquidityAccumulations(
+        address token,
+        uint256 amount
+    ) external view virtual override returns (AccumulationLibrary.LiquidityAccumulator[] memory) {
+        return getLiquidityAccumulationsInternal(token, amount, 0, 1);
+    }
+
+    /// @inheritdoc IHistoricalLiquidityAccumulationOracle
+    function getLiquidityAccumulations(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) external view virtual returns (AccumulationLibrary.LiquidityAccumulator[] memory) {
+        return getLiquidityAccumulationsInternal(token, amount, offset, increment);
+    }
+
+    /// @inheritdoc IHistoricalLiquidityAccumulationOracle
+    function getLiquidityAccumulationsCount(address token) external view override returns (uint256) {
+        return accumulationBufferMetadata[token].size;
+    }
+
+    /// @inheritdoc IHistoricalLiquidityAccumulationOracle
+    function getLiquidityAccumulationsCapacity(address token) external view virtual override returns (uint256) {
+        uint256 maxSize = accumulationBufferMetadata[token].maxSize;
+        if (maxSize == 0) return granularity;
+
+        return maxSize;
+    }
+
+    /// @inheritdoc IHistoricalLiquidityAccumulationOracle
+    /// @param amount The new capacity of accumulations for the token. Must be greater than the current capacity, but
+    ///   less than 65536.
+    function setLiquidityAccumulationsCapacity(address token, uint256 amount) external virtual override {
+        setAccumulationsCapacityInternal(token, amount);
     }
 
     function getLatestObservation(
@@ -89,6 +208,8 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         return
             interfaceId == type(IHasLiquidityAccumulator).interfaceId ||
             interfaceId == type(IHasPriceAccumulator).interfaceId ||
+            interfaceId == type(IHistoricalPriceAccumulationOracle).interfaceId ||
+            interfaceId == type(IHistoricalLiquidityAccumulationOracle).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -119,6 +240,98 @@ contract PeriodicAccumulationOracle is PeriodicOracle, IHasLiquidityAccumulator,
         // We trade off some freshness for greater reliability. Using too low of a tolerance reduces the cost of DoS
         // attacks.
         return (period * 2) + 5 minutes;
+    }
+
+    function setAccumulationsCapacityInternal(address token, uint256 amount) internal virtual {
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+        if (meta.maxSize == 0) {
+            // Buffer is not initialized yet
+            initializeBuffers(token);
+        }
+
+        require(amount >= meta.maxSize, "PeriodicAccumulationOracle: CAPACITY_CANNOT_BE_DECREASED");
+        require(amount <= type(uint16).max, "PeriodicAccumulationOracle: CAPACITY_TOO_LARGE");
+
+        AccumulationLibrary.PriceAccumulator[] storage priceAccumulationBuffer = priceAccumulationBuffers[token];
+        AccumulationLibrary.LiquidityAccumulator[] storage liquidityAccumulationBuffer = liquidityAccumulationBuffers[
+            token
+        ];
+
+        // Add new slots to the buffer
+        uint256 capacityToAdd = amount - meta.maxSize;
+        for (uint256 i = 0; i < capacityToAdd; ++i) {
+            // Push dummy accumulations with non-zero values to put most of the gas cost on the caller
+            priceAccumulationBuffer.push(AccumulationLibrary.PriceAccumulator({cumulativePrice: 1, timestamp: 1}));
+            liquidityAccumulationBuffer.push(
+                AccumulationLibrary.LiquidityAccumulator({
+                    cumulativeTokenLiquidity: 1,
+                    cumulativeQuoteTokenLiquidity: 1,
+                    timestamp: 1
+                })
+            );
+        }
+
+        if (meta.maxSize != amount) {
+            emit AccumulationCapacityIncreased(token, meta.maxSize, amount);
+
+            // Update the metadata
+            meta.maxSize = uint16(amount);
+        }
+    }
+
+    function getPriceAccumulationsInternal(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) internal view virtual returns (AccumulationLibrary.PriceAccumulator[] memory) {
+        if (amount == 0) return new AccumulationLibrary.PriceAccumulator[](0);
+
+        BufferMetadata memory meta = accumulationBufferMetadata[token];
+        require(meta.size > (amount - 1) * increment + offset, "PeriodicAccumulationOracle: INSUFFICIENT_DATA");
+
+        AccumulationLibrary.PriceAccumulator[] memory accumulations = new AccumulationLibrary.PriceAccumulator[](
+            amount
+        );
+
+        uint256 count = 0;
+
+        for (
+            uint256 i = meta.end < offset ? meta.end + meta.size - offset : meta.end - offset;
+            count < amount;
+            i = (i < increment) ? (i + meta.size) - increment : i - increment
+        ) {
+            accumulations[count++] = priceAccumulationBuffers[token][i];
+        }
+
+        return accumulations;
+    }
+
+    function getLiquidityAccumulationsInternal(
+        address token,
+        uint256 amount,
+        uint256 offset,
+        uint256 increment
+    ) internal view virtual returns (AccumulationLibrary.LiquidityAccumulator[] memory) {
+        if (amount == 0) return new AccumulationLibrary.LiquidityAccumulator[](0);
+
+        BufferMetadata memory meta = accumulationBufferMetadata[token];
+        require(meta.size > (amount - 1) * increment + offset, "PeriodicAccumulationOracle: INSUFFICIENT_DATA");
+
+        AccumulationLibrary.LiquidityAccumulator[]
+            memory accumulations = new AccumulationLibrary.LiquidityAccumulator[](amount);
+
+        uint256 count = 0;
+
+        for (
+            uint256 i = meta.end < offset ? meta.end + meta.size - offset : meta.end - offset;
+            count < amount;
+            i = (i < increment) ? (i + meta.size) - increment : i - increment
+        ) {
+            accumulations[count++] = liquidityAccumulationBuffers[token][i];
+        }
+
+        return accumulations;
     }
 
     function initializeBuffers(address token) internal virtual {
