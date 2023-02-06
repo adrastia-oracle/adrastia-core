@@ -389,6 +389,8 @@ contract PeriodicAccumulationOracle is
                 }
             }
 
+            meta.end = (meta.end + 1) % meta.maxSize;
+
             // Check if we have enough accumulations for a new observation
             if (meta.size >= granularity) {
                 uint256 startIndex = meta.end < granularity
@@ -433,8 +435,6 @@ contract PeriodicAccumulationOracle is
                     );
                 }
             }
-
-            meta.end = (meta.end + 1) % meta.maxSize;
         }
 
         priceAccumulationBuffers[token][meta.end] = priceAccumulation;
