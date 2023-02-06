@@ -3630,6 +3630,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
                 await oracle.stubPush(GRT, i, i, i, i);
             }
 
+            // Sanity check the count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(Math.min(observationsToPush, capacity));
+
             const observations = await oracle["getObservations(address,uint256,uint256,uint256)"](
                 GRT,
                 amountToGet,
@@ -3787,6 +3790,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
                 await oracle.stubPush(GRT, i, i, i, i);
             }
 
+            // Sanity check the count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(Math.min(observationsToPush, capacity));
+
             const observations = await oracle["getObservations(address,uint256)"](GRT, amountToGet);
 
             expect(observations.length).to.equal(amountToGet);
@@ -3816,11 +3822,17 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
     describe("AggregatedOracle#getObservationAt", function () {
         it("Should revert if the buffer is uninitialized", async function () {
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(0);
+
             await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
         });
 
         it("Should revert if the buffer is initialized but empty", async function () {
             await oracle.stubInitializeBuffers(GRT);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(0);
 
             await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
         });
@@ -3835,6 +3847,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
                 await oracle.stubPush(GRT, 1, 1, 1, 1);
             }
 
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(capacity);
+
             await expect(oracle.getObservationAt(GRT, capacity)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
         });
 
@@ -3848,6 +3863,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
                 await oracle.stubPush(GRT, 1, 1, 1, 1);
             }
 
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(capacity - 1);
+
             await expect(oracle.getObservationAt(GRT, capacity - 1)).to.be.revertedWith(
                 "AggregatedOracle: INVALID_INDEX"
             );
@@ -3859,6 +3877,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             // Push capacity observations
             await oracle.stubPush(GRT, 1, 1, 1, 1);
             await oracle.stubPush(GRT, 2, 2, 2, 2);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
 
             const observation = await oracle.getObservationAt(GRT, 0);
 
@@ -3876,6 +3897,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             await oracle.stubPush(GRT, 2, 2, 2, 2);
             await oracle.stubPush(GRT, 3, 3, 3, 3);
 
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
             const observation = await oracle.getObservationAt(GRT, 0);
 
             expect(observation.price).to.equal(3);
@@ -3892,6 +3916,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             await oracle.stubPush(GRT, 2, 2, 2, 2);
             await oracle.stubPush(GRT, 3, 3, 3, 3);
 
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
             const observation = await oracle.getObservationAt(GRT, 1);
 
             expect(observation.price).to.equal(2);
@@ -3906,6 +3933,9 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             // Push capacity observations
             await oracle.stubPush(GRT, 1, 1, 1, 1);
             await oracle.stubPush(GRT, 2, 2, 2, 2);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
 
             const observation = await oracle.getObservationAt(GRT, 1);
 
