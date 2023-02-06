@@ -19,6 +19,31 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint256 granularity_
     ) PeriodicAccumulationOracle(liquidityAccumulator_, priceAccumulator_, quoteToken_, period_, granularity_) {}
 
+    function stubPush(
+        address token,
+        uint224 cumulativePrice,
+        uint32 priceTimestamp,
+        uint112 cumulativeTokenLiquidity,
+        uint112 cumulativeQuoteTokenLiquidity,
+        uint32 liquidityTimestamp
+    ) public {
+        AccumulationLibrary.PriceAccumulator memory priceAccumulation;
+        AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation;
+
+        priceAccumulation.cumulativePrice = cumulativePrice;
+        priceAccumulation.timestamp = priceTimestamp;
+
+        liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
+        liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
+        liquidityAccumulation.timestamp = liquidityTimestamp;
+
+        push(token, priceAccumulation, liquidityAccumulation);
+    }
+
+    function stubInitializeBuffers(address token) public {
+        initializeBuffers(token);
+    }
+
     function priceAccumulations(address token) public view returns (AccumulationLibrary.PriceAccumulator memory) {
         return priceAccumulationBuffers[token][accumulationBufferMetadata[token].end];
     }

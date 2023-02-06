@@ -5,6 +5,7 @@ const AddressZero = ethers.constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 
 const PERIOD = 100;
 
@@ -2429,4 +2430,778 @@ describe("PeriodicAccumulationOracle#supportsInterface(interfaceId)", function (
         const interfaceId = await interfaceIds.iHasPriceAccumulator();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
+
+    it("Should support IHistoricalPriceAccumulationOracle", async () => {
+        const interfaceId = await interfaceIds.iHistoricalPriceAccumulationOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHistoricalLiquidityAccumulationOracle", async () => {
+        const interfaceId = await interfaceIds.iHistoricalLiquidityAccumulationOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });
+
+function describeHistoricalAccumulationOracleTests(type) {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 60;
+    const TWO_PERCENT_CHANGE = 2000000;
+
+    describe("PeriodicAccumulationOracle - IHistorical" + type + "AccumulationOracle implementation", function () {
+        var priceAccumulator;
+        var liquidityAccumulator;
+        var oracle;
+
+        beforeEach(async () => {
+            // Deploy liquidity accumulator
+            const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+            liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+                USDC,
+                TWO_PERCENT_CHANGE,
+                MIN_UPDATE_DELAY,
+                MAX_UPDATE_DELAY
+            );
+            await liquidityAccumulator.deployed();
+
+            // Deploy price accumulator
+            const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+            priceAccumulator = await priceAccumulatorFactory.deploy(
+                USDC,
+                TWO_PERCENT_CHANGE,
+                MIN_UPDATE_DELAY,
+                MAX_UPDATE_DELAY
+            );
+            await priceAccumulator.deployed();
+
+            // Deploy oracle
+            const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
+            oracle = await oracleFactory.deploy(
+                liquidityAccumulator.address,
+                priceAccumulator.address,
+                USDC,
+                1,
+                GRANULARITY
+            );
+        });
+
+        describe("PeriodicAccumulationOracle#initializeBuffers", function () {
+            it("Can't be called twice", async function () {
+                await oracle.stubInitializeBuffers(GRT);
+
+                await expect(oracle.stubInitializeBuffers(GRT)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: ALREADY_INITIALIZED"
+                );
+            });
+        });
+
+        const setCapacityFunctionName = "set" + type + "AccumulationsCapacity";
+        const getCapacityFunctionName = "get" + type + "AccumulationsCapacity";
+        const getCountFunctionName = "get" + type + "AccumulationsCount";
+        const getFunctionName2Params = "get" + type + "Accumulations(address,uint256)";
+        const getFunctionName4Params = "get" + type + "Accumulations(address,uint256,uint256,uint256)";
+        const getAtFunctionName = "get" + type + "AccumulationAt";
+
+        describe("PeriodicAccumulationOracle#" + setCapacityFunctionName, function () {
+            it("Should revert if the amount is less than the existing capacity", async function () {
+                await oracle[setCapacityFunctionName](GRT, 4);
+
+                await expect(oracle[setCapacityFunctionName](GRT, 2)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: CAPACITY_CANNOT_BE_DECREASED"
+                );
+            });
+
+            it("Should revert if the amount is 0", async function () {
+                await expect(oracle[setCapacityFunctionName](GRT, 0)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: CAPACITY_CANNOT_BE_DECREASED"
+                );
+            });
+
+            it("Should revert if the amount is larger than the maximum capacity", async function () {
+                await expect(oracle[setCapacityFunctionName](GRT, 65536)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: CAPACITY_TOO_LARGE"
+                );
+            });
+
+            it("Should emit an event when the capacity is changed", async function () {
+                const amount = 20;
+
+                const initialAmount = await oracle[getCapacityFunctionName](GRT);
+
+                // Sanity check that the new amount is greater than the initial amount
+                expect(amount).to.be.greaterThan(initialAmount.toNumber());
+
+                await expect(oracle[setCapacityFunctionName](GRT, amount))
+                    .to.emit(oracle, "AccumulationCapacityIncreased")
+                    .withArgs(GRT, initialAmount, amount);
+            });
+
+            it("Should not emit an event when the capacity is not changed (with default capacity)", async function () {
+                const initialAmount = await oracle[getCapacityFunctionName](GRT);
+
+                await expect(oracle[setCapacityFunctionName](GRT, initialAmount)).to.not.emit(
+                    oracle,
+                    "AccumulationCapacityIncreased"
+                );
+            });
+
+            it("Should not emit an event when the capacity is not changed (with non-default capacity)", async function () {
+                const initialAmount = await oracle[getCapacityFunctionName](GRT);
+                const amount = 20;
+
+                // Sanity check that the new amount is greater than the initial amount
+                expect(amount).to.be.greaterThan(initialAmount.toNumber());
+
+                await oracle[setCapacityFunctionName](GRT, amount);
+
+                // Sanity check that the capacity is now the new amount
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(amount);
+
+                // Try again to set it to the same amount
+                await expect(oracle[setCapacityFunctionName](GRT, amount)).to.not.emit(
+                    oracle,
+                    "AccumulationCapacityIncreased"
+                );
+            });
+
+            it("Should update the capacity", async function () {
+                const amount = 20;
+
+                // Sanity check that the new amount is greater than the initial amount
+                expect(amount).to.be.greaterThan((await oracle[getCapacityFunctionName](GRT)).toNumber());
+
+                await oracle[setCapacityFunctionName](GRT, amount);
+
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(amount);
+            });
+
+            it("Added capacity should not be filled until our latest accumulation is beside an uninitialized accumulation", async function () {
+                const workingCapacity = 6;
+
+                var totalPushed = 0;
+
+                // Set the capacity to the working capacity
+                await oracle[setCapacityFunctionName](GRT, workingCapacity);
+
+                // Push workingCapacity + 1 accumulations so that the buffer is full and the latest accumulation is at the start of the buffer
+                for (let i = 0; i < workingCapacity + 1; ++i) {
+                    ++totalPushed;
+                    await oracle.stubPush(GRT, totalPushed, totalPushed, totalPushed, totalPushed, totalPushed);
+                }
+
+                // Sanity check that the buffer is full
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(workingCapacity);
+
+                // Increase the capacity by 1
+                await oracle[setCapacityFunctionName](GRT, workingCapacity + 1);
+
+                // We should need to push workingCapacity accumulations before the new capacity is filled
+                for (let i = 0; i < workingCapacity - 1; ++i) {
+                    ++totalPushed;
+                    await oracle.stubPush(GRT, totalPushed, totalPushed, totalPushed, totalPushed, totalPushed);
+
+                    // Sanity check that the buffer is still not full
+                    expect(await oracle[getCountFunctionName](GRT)).to.equal(workingCapacity);
+                }
+
+                // Push one more accumulation. This should fill the new capacity
+                ++totalPushed;
+                await oracle.stubPush(GRT, totalPushed, totalPushed, totalPushed, totalPushed, totalPushed);
+
+                // Check that the buffer is now full
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(workingCapacity + 1);
+            });
+        });
+
+        describe("PeriodicAccumulationOracle#" + getCapacityFunctionName, function () {
+            it("Should return the default capacity when the buffer is uninitialized", async function () {
+                const initialCapacity = await oracle.granularity();
+
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(initialCapacity);
+            });
+
+            it("Should return the capacity when the buffer is initialized", async function () {
+                await oracle.stubInitializeBuffers(GRT);
+
+                const initialCapacity = await oracle.granularity();
+
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(initialCapacity);
+            });
+
+            it("Should return the capacity after the buffer has been resized", async function () {
+                const amount = 20;
+
+                // Sanity check that the new amount is greater than the initial amount
+                expect(amount).to.be.greaterThan((await oracle[getCapacityFunctionName](GRT)).toNumber());
+
+                await oracle[setCapacityFunctionName](GRT, amount);
+
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(amount);
+            });
+        });
+
+        describe("PeriodicAccumulationOracle#" + getCountFunctionName, function () {
+            it("Should return 0 when the buffer is uninitialized", async function () {
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(0);
+            });
+
+            it("Should return 0 when the buffer is initialized but empty", async function () {
+                await oracle.stubInitializeBuffers(GRT);
+
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(0);
+            });
+
+            it("Increasing capacity should not change the accumulations count", async function () {
+                const initialAmount = 4;
+
+                await oracle[setCapacityFunctionName](GRT, initialAmount);
+
+                // Push 2 accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                // Sanity check that the accumulations count is 2
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(2);
+
+                // Increase the capacity by 1
+                await oracle[setCapacityFunctionName](GRT, initialAmount + 1);
+
+                // The accumulations count should still be 2
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(2);
+            });
+
+            it("Should be limited by the capacity", async function () {
+                const capacity = 6;
+
+                var totalPushed = 0;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Push capacity + 1 accumulations
+                for (let i = 0; i < capacity + 1; ++i) {
+                    ++totalPushed;
+                    await oracle.stubPush(GRT, totalPushed, totalPushed, totalPushed, totalPushed, totalPushed);
+                }
+
+                // The accumulations count should be limited by the capacity
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(capacity);
+            });
+        });
+
+        describe("PeriodicAccumulationOracle#" + getFunctionName4Params, function () {
+            it("Should return an empty array when amount is 0", async function () {
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+
+                const accumulations = await oracle[getFunctionName4Params](GRT, 0, 0, 1);
+
+                expect(accumulations.length).to.equal(0);
+            });
+
+            it("Should revert if the offset equals the number of accumulations", async function () {
+                // Push 1 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+
+                await expect(oracle[getFunctionName4Params](GRT, 1, 1, 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the offset equals the number of accumulations but is less than the capacity", async function () {
+                const capacity = 6;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 1 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+
+                await expect(oracle[getFunctionName4Params](GRT, 1, 1, 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the amount exceeds the number of accumulations", async function () {
+                // Push 1 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+
+                await expect(oracle[getFunctionName4Params](GRT, 2, 0, 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the amount exceeds the number of accumulations but is less than the capacity", async function () {
+                const capacity = 6;
+                const amountToGet = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 1 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+
+                // Sanity check that the amount to get is less than the capacity
+                expect(amountToGet).to.be.lessThan(capacity);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, 0, 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the amount and offset exceed the number of accumulations", async function () {
+                const capacity = 2;
+                const amountToGet = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 2 accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, 1, 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the amount and offset exceed the number of accumulations but is less than the capacity", async function () {
+                const capacity = 6;
+                const amountToGet = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 2 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, 1, 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the increment and amount exceeds the number of accumulations", async function () {
+                const capacity = 2;
+                const amountToGet = 2;
+                const offset = 0;
+                const increment = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 2 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, offset, increment)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the increment and amount exceeds the number of accumulations but is less than the capacity", async function () {
+                const capacity = 6;
+                const amountToGet = 2;
+                const offset = 0;
+                const increment = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 2 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, offset, increment)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the increment, amount, and offset exceeds the number of accumulations", async function () {
+                const capacity = 2;
+                const amountToGet = 2;
+                const offset = 1;
+                const increment = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 3 accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+                await oracle.stubPush(GRT, 3, 3, 3, 3, 3);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, offset, increment)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should revert if the increment, amount, and offset exceeds the number of accumulations but is less than the capacity", async function () {
+                const capacity = 6;
+                const amountToGet = 2;
+                const offset = 1;
+                const increment = 2;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 3 accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+                await oracle.stubPush(GRT, 3, 3, 3, 3, 3);
+
+                await expect(oracle[getFunctionName4Params](GRT, amountToGet, offset, increment)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INSUFFICIENT_DATA"
+                );
+            });
+
+            it("Should return the latest accumulation many times when increment is 0", async function () {
+                const capacity = 2;
+                const amountToGet = 2;
+                const offset = 0;
+                const increment = 0;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                // Push 2 accumulation
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                const accumulations = await oracle[getFunctionName4Params](GRT, amountToGet, offset, increment);
+
+                expect(accumulations.length).to.equal(amountToGet);
+
+                for (let i = 0; i < amountToGet; ++i) {
+                    expect(accumulations[i].timestamp).to.equal(2);
+                }
+            });
+
+            async function pushAndCheck(capacity, amountToGet, offset, increment, amountToPush) {
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                for (let i = 0; i < amountToPush; i++) {
+                    await oracle.stubPush(GRT, i + 1, i + 1, i + 1, i + 1, i + 1);
+                }
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(Math.min(amountToPush, capacity));
+
+                const accumulations = await oracle[getFunctionName4Params](GRT, amountToGet, offset, increment);
+
+                expect(accumulations.length).to.equal(amountToGet);
+
+                for (let i = 0; i < amountToGet; ++i) {
+                    // The latest accumulation is at index 0 and will have the highest expected values
+                    // The following accumulations will have the expected values decrementing by 1
+                    const expected = amountToPush - i * increment - 1 - offset + 1;
+
+                    expect(accumulations[i].timestamp).to.equal(expected);
+                }
+            }
+
+            describe("An increment of 1", function () {
+                describe("An offset of 0", function () {
+                    describe("The latest accumulation is at index 0", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 6;
+                            const offset = 0;
+                            const increment = 1;
+
+                            // Push capacity + 1 accumulations so that the latest accumulation is at index 0
+                            const amountToPush = capacity + 1;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+
+                    describe("The latest accumulation is at index n-1", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 6;
+                            const offset = 0;
+                            const increment = 1;
+
+                            // Push capacity accumulations so that the latest accumulation is at index n-1
+                            const amountToPush = capacity;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+                });
+
+                describe("An offset of 1", function () {
+                    describe("The latest accumulation is at index 0", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 5;
+                            const offset = 1;
+                            const increment = 1;
+
+                            // Push capacity + 1 accumulations so that the latest accumulation is at index 0
+                            const amountToPush = capacity + 1;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+
+                    describe("The latest accumulation is at index n-1", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 5;
+                            const offset = 1;
+                            const increment = 1;
+
+                            // Push capacity accumulations so that the latest accumulation is at index n-1
+                            const amountToPush = capacity;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+                });
+            });
+
+            describe("An increment of 2", function () {
+                describe("An offset of 0", function () {
+                    describe("The latest accumulation is at index 0", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 3;
+                            const offset = 0;
+                            const increment = 2;
+
+                            // Push capacity + 1 accumulations so that the latest accumulation is at index 0
+                            const amountToPush = capacity + 1;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+
+                    describe("The latest accumulation is at index n-1", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 3;
+                            const offset = 0;
+                            const increment = 2;
+
+                            // Push capacity accumulations so that the latest accumulation is at index n-1
+                            const amountToPush = capacity;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+                });
+
+                describe("An offset of 1", function () {
+                    describe("The latest accumulation is at index 0", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 2;
+                            const offset = 1;
+                            const increment = 2;
+
+                            // Push capacity + 1 accumulations so that the latest accumulation is at index 0
+                            const amountToPush = capacity + 1;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+
+                    describe("The latest accumulation is at index n-1", function () {
+                        it("Should return the accumulations in order", async function () {
+                            const capacity = 6;
+                            const amountToGet = 2;
+                            const offset = 1;
+                            const increment = 2;
+
+                            // Push capacity accumulations so that the latest accumulation is at index n-1
+                            const amountToPush = capacity;
+
+                            await pushAndCheck(capacity, amountToGet, offset, increment, amountToPush);
+                        });
+                    });
+                });
+            });
+        });
+
+        describe("PeriodicAccumulationOracle#" + getFunctionName2Params, function () {
+            async function pushAndCheck(capacity, amountToGet, offset, increment, amountToPush) {
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Sanity check the capacity
+                expect(await oracle[getCapacityFunctionName](GRT)).to.equal(capacity);
+
+                for (let i = 0; i < amountToPush; i++) {
+                    await oracle.stubPush(GRT, i + 1, i + 1, i + 1, i + 1, i + 1);
+                }
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(Math.min(amountToPush, capacity));
+
+                const accumulations = await oracle[getFunctionName2Params](GRT, amountToGet);
+
+                expect(accumulations.length).to.equal(amountToGet);
+
+                for (let i = 0; i < amountToGet; ++i) {
+                    // The latest accumulation is at index 0 and will have the highest expected values
+                    // The following accumulations will have the expected values decrementing by 1
+                    const expected = amountToPush - i * increment - 1 - offset + 1;
+
+                    expect(accumulations[i].timestamp).to.equal(expected);
+                }
+            }
+
+            it("Default offset is 0 and increment is 1", async function () {
+                const capacity = 6;
+                const amountToGet = 6;
+
+                // Push capacity accumulations so that the latest accumulation is at index n-1
+                const amountToPush = capacity;
+
+                await pushAndCheck(capacity, amountToGet, 0, 1, amountToPush);
+            });
+        });
+
+        describe("PeriodicAccumulationOracle#" + getAtFunctionName, function () {
+            it("Should revert if the buffer is uninitialized", async function () {
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(0);
+
+                await expect(oracle[getAtFunctionName](GRT, 0)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INVALID_INDEX"
+                );
+            });
+
+            it("Should revert if the buffer is initialized but empty", async function () {
+                await oracle.stubInitializeBuffers(GRT);
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(0);
+
+                await expect(oracle[getAtFunctionName](GRT, 0)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INVALID_INDEX"
+                );
+            });
+
+            it("Should revert if the index exceeds the number of accumulations with a full buffer", async function () {
+                const capacity = 6;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Push capacity accumulations
+                for (let i = 0; i < capacity; ++i) {
+                    await oracle.stubPush(GRT, i + 1, i + 1, i + 1, i + 1, i + 1);
+                }
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(capacity);
+
+                await expect(oracle[getAtFunctionName](GRT, capacity)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INVALID_INDEX"
+                );
+            });
+
+            it("Should revert if the index exceeds the number of accumulations but is within the capacity", async function () {
+                const capacity = 6;
+
+                await oracle[setCapacityFunctionName](GRT, capacity);
+
+                // Push capacity - 1 accumulations
+                for (let i = 0; i < capacity - 1; ++i) {
+                    await oracle.stubPush(GRT, i + 1, i + 1, i + 1, i + 1, i + 1);
+                }
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(capacity - 1);
+
+                await expect(oracle[getAtFunctionName](GRT, capacity - 1)).to.be.revertedWith(
+                    "PeriodicAccumulationOracle: INVALID_INDEX"
+                );
+            });
+
+            it("Should return the latest accumulation when index = 0", async function () {
+                await oracle[setCapacityFunctionName](GRT, 2);
+
+                // Push capacity accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(2);
+
+                const accumulation = await oracle[getAtFunctionName](GRT, 0);
+
+                expect(accumulation.timestamp).to.equal(2);
+            });
+
+            it("Should return the latest accumulation when index = 0 and the start was just overwritten", async function () {
+                await oracle[setCapacityFunctionName](GRT, 2);
+
+                // Push capacity + 1 accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+                await oracle.stubPush(GRT, 3, 3, 3, 3, 3);
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(2);
+
+                const accumulation = await oracle[getAtFunctionName](GRT, 0);
+
+                expect(accumulation.timestamp).to.equal(3);
+            });
+
+            it("Should return the correct accumulation when index = 1 and the latest accumulation is at the start of the buffer", async function () {
+                await oracle[setCapacityFunctionName](GRT, 2);
+
+                // Push capacity + 1 accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+                await oracle.stubPush(GRT, 3, 3, 3, 3, 3);
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(2);
+
+                const accumulation = await oracle[getAtFunctionName](GRT, 1);
+
+                expect(accumulation.timestamp).to.equal(2);
+            });
+
+            it("Should return the correct accumulation when index = 1 and the latest accumulation is at the end of the buffer", async function () {
+                await oracle[setCapacityFunctionName](GRT, 2);
+
+                // Push capacity accumulations
+                await oracle.stubPush(GRT, 1, 1, 1, 1, 1);
+                await oracle.stubPush(GRT, 2, 2, 2, 2, 2);
+
+                // Sanity check the count
+                expect(await oracle[getCountFunctionName](GRT)).to.equal(2);
+
+                const accumulation = await oracle[getAtFunctionName](GRT, 1);
+
+                expect(accumulation.timestamp).to.equal(1);
+            });
+        });
+    });
+}
+
+describeHistoricalAccumulationOracleTests("Price");
+describeHistoricalAccumulationOracleTests("Liquidity");
