@@ -53,6 +53,22 @@ contract PeriodicAccumulationOracle is
     /// @param capacity The capacity of the accumulation buffer.
     event AccumulationCapacityInitialized(address indexed token, uint256 capacity);
 
+    /// @notice Event emitted when an accumulation is pushed to the buffer.
+    /// @param token The token for which the accumulation was pushed.
+    /// @param priceCumulative The cumulative price of the token.
+    /// @param priceTimestamp The timestamp of the cumulative price.
+    /// @param tokenLiquidityCumulative The cumulative token liquidity of the token.
+    /// @param quoteTokenLiquidityCumulative The cumulative quote token liquidity of the token.
+    /// @param liquidityTimestamp The timestamp of the cumulative liquidity.
+    event AccumulationPushed(
+        address indexed token,
+        uint256 priceCumulative,
+        uint256 priceTimestamp,
+        uint256 tokenLiquidityCumulative,
+        uint256 quoteTokenLiquidityCumulative,
+        uint256 liquidityTimestamp
+    );
+
     constructor(
         address liquidityAccumulator_,
         address priceAccumulator_,
@@ -446,6 +462,15 @@ contract PeriodicAccumulationOracle is
 
         priceAccumulationBuffers[token][meta.end] = priceAccumulation;
         liquidityAccumulationBuffers[token][meta.end] = liquidityAccumulation;
+
+        emit AccumulationPushed(
+            token,
+            priceAccumulation.cumulativePrice,
+            priceAccumulation.timestamp,
+            liquidityAccumulation.cumulativeTokenLiquidity,
+            liquidityAccumulation.cumulativeQuoteTokenLiquidity,
+            liquidityAccumulation.timestamp
+        );
 
         if (meta.size < meta.maxSize && meta.end == meta.size) {
             // We are at the end of the array and we have not yet filled it
