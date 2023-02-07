@@ -2628,6 +2628,10 @@ describe("PeriodicAccumulationOracle#push w/ higher granularity", function () {
 });
 
 function describeHistoricalAccumulationOracleTests(type) {
+    const MIN_UPDATE_DELAY = 1;
+    const MAX_UPDATE_DELAY = 60;
+    const TWO_PERCENT_CHANGE = 2000000;
+
     describe("PeriodicAccumulationOracle - IHistorical" + type + "AccumulationOracle implementation", function () {
         var priceAccumulator;
         var liquidityAccumulator;
