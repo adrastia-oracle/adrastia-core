@@ -2526,7 +2526,19 @@ describe("PeriodicAccumulationOracle#push w/ higher granularity", function () {
         // Push OUR_GRANULARITY times
         for (var i = 0; i < OUR_GRANULARITY; ++i) {
             ++totalPushed;
-            await oracle.stubPush(GRT, totalPushed ** 2, totalPushed, totalPushed ** 2, totalPushed ** 2, totalPushed);
+            const pushReceipt = await oracle.stubPush(
+                GRT,
+                totalPushed ** 2,
+                totalPushed,
+                totalPushed ** 2,
+                totalPushed ** 2,
+                totalPushed
+            );
+
+            // Check that the event params match the latest accumulation
+            await expect(pushReceipt)
+                .to.emit(oracle, "AccumulationPushed")
+                .withArgs(GRT, totalPushed ** 2, totalPushed, totalPushed ** 2, totalPushed ** 2, totalPushed);
         }
 
         // Sanity check that we have OUR_GRANULARITY accumulations
@@ -2571,6 +2583,11 @@ describe("PeriodicAccumulationOracle#push w/ higher granularity", function () {
                     observation.quoteTokenLiquidity,
                     observation.timestamp
                 );
+
+            // Check that the event params match the latest accumulation
+            await expect(pushReceipt)
+                .to.emit(oracle, "AccumulationPushed")
+                .withArgs(GRT, totalPushed ** 2, totalPushed, totalPushed ** 2, totalPushed ** 2, totalPushed);
         }
     }
 
