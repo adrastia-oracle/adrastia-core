@@ -2442,11 +2442,192 @@ describe("PeriodicAccumulationOracle#supportsInterface(interfaceId)", function (
     });
 });
 
-function describeHistoricalAccumulationOracleTests(type) {
+describe("PeriodicAccumulationOracle#push w/ higher granularity", function () {
     const MIN_UPDATE_DELAY = 1;
     const MAX_UPDATE_DELAY = 60;
     const TWO_PERCENT_CHANGE = 2000000;
 
+    const OUR_PERIOD = 4;
+    const OUR_GRANULARITY = 4;
+
+    var priceAccumulator;
+    var liquidityAccumulator;
+    var oracle;
+
+    beforeEach(async () => {
+        // Deploy liquidity accumulator
+        const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
+        liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        await liquidityAccumulator.deployed();
+
+        // Deploy price accumulator
+        const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
+        priceAccumulator = await priceAccumulatorFactory.deploy(
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        await priceAccumulator.deployed();
+
+        // Deploy oracle
+        const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
+        oracle = await oracleFactory.deploy(
+            liquidityAccumulator.address,
+            priceAccumulator.address,
+            USDC,
+            OUR_PERIOD,
+            OUR_GRANULARITY
+        );
+    });
+
+    it("Doesn't update the observation until we have at least 'granularity' number of accumulations already in the buffer", async () => {
+        var totalPushed = 0;
+
+        // Push OUR_GRANULARITY times
+        for (var i = 0; i < OUR_GRANULARITY; ++i) {
+            ++totalPushed;
+            await expect(
+                await oracle.stubPush(GRT, totalPushed, totalPushed, totalPushed, totalPushed, totalPushed)
+            ).to.not.emit(oracle, "Updated");
+        }
+
+        // Sanity check that we have OUR_GRANULARITY accumulations
+        expect(await oracle.getPriceAccumulationsCount(GRT)).to.equal(OUR_GRANULARITY);
+        expect(await oracle.getLiquidityAccumulationsCount(GRT)).to.equal(OUR_GRANULARITY);
+
+        // Sanity check that we don't have any observations
+        var observation = await oracle.getLatestObservation(GRT);
+        expect(observation.timestamp).to.equal(0);
+
+        // Push one more time. This should trigger an observation.
+        ++totalPushed;
+        await expect(
+            await oracle.stubPush(GRT, totalPushed, totalPushed, totalPushed, totalPushed, totalPushed)
+        ).to.emit(oracle, "Updated");
+
+        // Sanity check that we have OUR_GRANULARITY accumulations
+        expect(await oracle.getPriceAccumulationsCount(GRT)).to.equal(OUR_GRANULARITY);
+        expect(await oracle.getLiquidityAccumulationsCount(GRT)).to.equal(OUR_GRANULARITY);
+
+        // Sanity check that we have an observation
+        observation = await oracle.getLatestObservation(GRT);
+        expect(observation.timestamp).to.not.equal(0);
+    });
+
+    async function verifyObservationCorrectness() {
+        var totalPushed = 0;
+
+        // Push OUR_GRANULARITY times
+        for (var i = 0; i < OUR_GRANULARITY; ++i) {
+            ++totalPushed;
+            await oracle.stubPush(GRT, totalPushed ** 2, totalPushed, totalPushed ** 2, totalPushed ** 2, totalPushed);
+        }
+
+        // Sanity check that we have OUR_GRANULARITY accumulations
+        expect(await oracle.getPriceAccumulationsCount(GRT)).to.equal(OUR_GRANULARITY);
+        expect(await oracle.getLiquidityAccumulationsCount(GRT)).to.equal(OUR_GRANULARITY);
+
+        // We should start generating observations at the next push. We now push 4x our capacity.
+        const capacity = await oracle.getPriceAccumulationsCapacity(GRT);
+
+        var totalObservations = 0;
+
+        for (var i = 0; i < capacity * 4; ++i) {
+            ++totalPushed;
+            const pushReceipt = await oracle.stubPush(
+                GRT,
+                totalPushed ** 2,
+                totalPushed,
+                totalPushed ** 2,
+                totalPushed ** 2,
+                totalPushed
+            );
+            ++totalObservations;
+
+            const observation = await oracle.getLatestObservation(GRT);
+
+            // Note: manually verified that this formula is correct
+            const expectedValue = OUR_GRANULARITY + totalObservations * 2;
+
+            // Check that the observation is correct
+            expect(observation.price).to.equal(expectedValue);
+            expect(observation.tokenLiquidity).to.equal(expectedValue);
+            expect(observation.quoteTokenLiquidity).to.equal(expectedValue);
+            expect(observation.timestamp).to.equal(await blockTimestamp(pushReceipt.blockNum));
+
+            // Check that the event params match the observation
+            await expect(pushReceipt)
+                .to.emit(oracle, "Updated")
+                .withArgs(
+                    GRT,
+                    observation.price,
+                    observation.tokenLiquidity,
+                    observation.quoteTokenLiquidity,
+                    observation.timestamp
+                );
+        }
+    }
+
+    it("Uses the correct accumulations to calculate the observation when the accumulation buffers use the default capacity", async () => {
+        await verifyObservationCorrectness();
+    });
+
+    it("Uses the correct accumulations to calculate the observation when the accumulation buffers are 1.5x larger than the default capacity", async () => {
+        const newCapacity = Math.trunc(OUR_GRANULARITY * 1.5);
+
+        // Sanity check that newCapacity is larger than the default
+        expect(newCapacity).to.be.greaterThan(OUR_GRANULARITY);
+
+        // Set the new capacity
+        await oracle.setPriceAccumulationsCapacity(GRT, newCapacity);
+
+        // Sanity check that the new capacity is set
+        expect(await oracle.getPriceAccumulationsCapacity(GRT)).to.equal(newCapacity);
+        expect(await oracle.getLiquidityAccumulationsCapacity(GRT)).to.equal(newCapacity);
+
+        await verifyObservationCorrectness();
+    });
+
+    it("Uses the correct accumulations to calculate the observation when the accumulation buffers are 2x larger than the default capacity", async () => {
+        const newCapacity = OUR_GRANULARITY * 2;
+
+        // Sanity check that newCapacity is larger than the default
+        expect(newCapacity).to.be.greaterThan(OUR_GRANULARITY);
+
+        // Set the new capacity
+        await oracle.setPriceAccumulationsCapacity(GRT, newCapacity);
+
+        // Sanity check that the new capacity is set
+        expect(await oracle.getPriceAccumulationsCapacity(GRT)).to.equal(newCapacity);
+        expect(await oracle.getLiquidityAccumulationsCapacity(GRT)).to.equal(newCapacity);
+
+        await verifyObservationCorrectness();
+    });
+
+    it("Uses the correct accumulations to calculate the observation when the accumulation buffers are 4x larger than the default capacity", async () => {
+        const newCapacity = OUR_GRANULARITY * 4;
+
+        // Sanity check that newCapacity is larger than the default
+        expect(newCapacity).to.be.greaterThan(OUR_GRANULARITY);
+
+        // Set the new capacity
+        await oracle.setPriceAccumulationsCapacity(GRT, newCapacity);
+
+        // Sanity check that the new capacity is set
+        expect(await oracle.getPriceAccumulationsCapacity(GRT)).to.equal(newCapacity);
+        expect(await oracle.getLiquidityAccumulationsCapacity(GRT)).to.equal(newCapacity);
+
+        await verifyObservationCorrectness();
+    });
+});
+
+function describeHistoricalAccumulationOracleTests(type) {
     describe("PeriodicAccumulationOracle - IHistorical" + type + "AccumulationOracle implementation", function () {
         var priceAccumulator;
         var liquidityAccumulator;
