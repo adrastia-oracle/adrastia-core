@@ -3226,6 +3226,12 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(oracle.stubInitializeBuffers(GRT)).to.be.revertedWith("AggregatedOracle: ALREADY_INITIALIZED");
         });
+
+        it("Emits the correct event", async function () {
+            await expect(oracle.stubInitializeBuffers(GRT))
+                .to.emit(oracle, "ObservationCapacityInitialized")
+                .withArgs(GRT, GRANULARITY);
+        });
     });
 
     describe("AggregatedOracle#setObservationCapacity", function () {

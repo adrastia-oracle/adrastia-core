@@ -2677,6 +2677,12 @@ function describeHistoricalAccumulationOracleTests(type) {
                     "PeriodicAccumulationOracle: ALREADY_INITIALIZED"
                 );
             });
+
+            it("Emits the correct event", async function () {
+                await expect(oracle.stubInitializeBuffers(GRT))
+                    .to.emit(oracle, "AccumulationCapacityInitialized")
+                    .withArgs(GRT, GRANULARITY);
+            });
         });
 
         const setCapacityFunctionName = "set" + type + "AccumulationsCapacity";
