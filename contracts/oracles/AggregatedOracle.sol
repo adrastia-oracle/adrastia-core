@@ -78,6 +78,11 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     /// @param newCapacity The new capacity of the observation buffer.
     event ObservationCapacityIncreased(address indexed token, uint256 oldCapacity, uint256 newCapacity);
 
+    /// @notice Event emitted when an observation buffer's capacity is initialized.
+    /// @param token The token for which the observation buffer's capacity was initialized.
+    /// @param capacity The capacity of the observation buffer.
+    event ObservationCapacityInitialized(address indexed token, uint256 capacity);
+
     /*
      * Constructors
      */
@@ -408,6 +413,8 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         meta.end = 0;
         meta.size = 0;
         meta.maxSize = _initialCardinality;
+
+        emit ObservationCapacityInitialized(token, meta.maxSize);
     }
 
     function push(address token, ObservationLibrary.Observation memory observation) internal virtual {

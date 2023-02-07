@@ -34,19 +34,24 @@ contract PeriodicAccumulationOracle is
     address public immutable override liquidityAccumulator;
     address public immutable override priceAccumulator;
 
-    mapping(address => BufferMetadata) public accumulationBufferMetadata;
+    mapping(address => BufferMetadata) internal accumulationBufferMetadata;
 
-    mapping(address => AccumulationLibrary.PriceAccumulator[]) public priceAccumulationBuffers;
-    mapping(address => AccumulationLibrary.LiquidityAccumulator[]) public liquidityAccumulationBuffers;
+    mapping(address => AccumulationLibrary.PriceAccumulator[]) internal priceAccumulationBuffers;
+    mapping(address => AccumulationLibrary.LiquidityAccumulator[]) internal liquidityAccumulationBuffers;
 
     mapping(address => ObservationLibrary.Observation) internal observations;
 
     /// @notice Event emitted when an accumulation buffer's capacity is increased past the initial capacity.
     /// @dev Buffer initialization does not emit an event.
     /// @param token The token for which the accumulation buffer's capacity was increased.
-    /// @param oldCapacity The previous capacity of the observation buffer.
-    /// @param newCapacity The new capacity of the observation buffer.
+    /// @param oldCapacity The previous capacity of the accumulation buffer.
+    /// @param newCapacity The new capacity of the accumulation buffer.
     event AccumulationCapacityIncreased(address indexed token, uint256 oldCapacity, uint256 newCapacity);
+
+    /// @notice Event emitted when an accumulation buffer's capacity is initialized.
+    /// @param token The token for which the accumulation buffer's capacity was initialized.
+    /// @param capacity The capacity of the accumulation buffer.
+    event AccumulationCapacityInitialized(address indexed token, uint256 capacity);
 
     constructor(
         address liquidityAccumulator_,
@@ -358,6 +363,8 @@ contract PeriodicAccumulationOracle is
         meta.end = 0;
         meta.size = 0;
         meta.maxSize = uint16(granularity);
+
+        emit AccumulationCapacityInitialized(token, meta.maxSize);
     }
 
     function push(
