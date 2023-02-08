@@ -9,6 +9,7 @@ const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 const BAT = "0x0D8775F648430679A709E98d2b0Cb6250d2887EF";
 
 const PERIOD = 100;
+const GRANULARITY = 1;
 const MINIMUM_TOKEN_LIQUIDITY_VALUE = BigNumber.from(0);
 const MINIMUM_QUOTE_TOKEN_LIQUIDITY = BigNumber.from(0);
 
@@ -86,6 +87,7 @@ describe("AggregatedOracle#constructor", async function () {
         const oracles = [oracle1.address];
         const tokenSpecificOracles = [grtOracle];
         const period = 30;
+        const granularity = 5;
         const minimumTokenLiquidityValue = BigNumber.from(1);
         const minimumQuoteTokenLiquidity = BigNumber.from(2);
 
@@ -98,6 +100,7 @@ describe("AggregatedOracle#constructor", async function () {
             oracles,
             tokenSpecificOracles,
             period,
+            granularity,
             minimumTokenLiquidityValue,
             minimumQuoteTokenLiquidity
         );
@@ -109,6 +112,7 @@ describe("AggregatedOracle#constructor", async function () {
         expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
         expect(await oracle.getOracles()).to.eql(oracles); // eql = deep equality
         expect(await oracle.period()).to.equal(period);
+        expect(await oracle.granularity()).to.equal(granularity);
         expect(await oracle.minimumTokenLiquidityValue()).to.equal(minimumTokenLiquidityValue);
         expect(await oracle.minimumQuoteTokenLiquidity()).to.equal(minimumQuoteTokenLiquidity);
 
@@ -128,6 +132,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [],
                 [],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -148,6 +153,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [oracle1.address, oracle1.address],
                 [],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -173,6 +179,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [],
                 [oracle1Config, oracle1Config],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -198,6 +205,7 @@ describe("AggregatedOracle#constructor", async function () {
                 [oracle1.address],
                 [oracle1Config],
                 PERIOD,
+                GRANULARITY,
                 MINIMUM_TOKEN_LIQUIDITY_VALUE,
                 MINIMUM_QUOTE_TOKEN_LIQUIDITY
             )
@@ -224,6 +232,7 @@ describe("AggregatedOracle#needsUpdate", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -306,6 +315,7 @@ describe("AggregatedOracle#canUpdate", function () {
             [underlyingOracle1.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -388,6 +398,7 @@ describe("AggregatedOracle#consultPrice(token)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -442,6 +453,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -479,6 +491,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -636,6 +649,7 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -694,6 +708,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -765,6 +780,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -942,6 +958,7 @@ describe("AggregatedOracle#consult(token)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1004,6 +1021,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1042,6 +1060,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1076,6 +1095,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1111,6 +1131,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1146,6 +1167,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
             [underlyingOracle.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1248,6 +1270,7 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1377,6 +1400,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1406,7 +1430,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1440,7 +1464,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1472,7 +1496,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1504,7 +1528,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1537,7 +1561,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(expectedTokenLiquidity);
@@ -1570,7 +1594,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(expectedTokenLiquidity);
@@ -1584,7 +1608,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
         const timestamp = (await currentBlockTimestamp()) + PERIOD * 2 + 1;
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await underlyingOracle.stubSetObservation(
             token,
@@ -1607,7 +1633,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1621,7 +1647,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await underlyingOracle.stubSetObservation(
             token,
@@ -1656,7 +1684,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1690,7 +1718,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
                 "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
             );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1720,7 +1748,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "UpdateErrorWithReason")
             .withArgs(underlyingOracle.address, token, "REASON");
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -1731,7 +1759,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
     it("Shouldn't update when there aren't any valid consultations", async () => {
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1743,7 +1773,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1765,7 +1795,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1777,7 +1809,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1799,7 +1831,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1811,7 +1845,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1833,7 +1867,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -1845,7 +1881,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -1885,6 +1921,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -1930,7 +1967,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice, "Observation price").to.equal(price);
         expect(oTokenLiquidity, "Observation token liquidity").to.equal(totalTokenLiquidity);
@@ -1976,7 +2013,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2030,7 +2067,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(expectedPrice);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2075,6 +2112,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
                 },
             ],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2118,7 +2156,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2163,7 +2201,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
             BigNumber.from(0)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2203,6 +2241,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             minimumTokenLiquidityValue,
             minimumQuoteTokenLiquidity
         );
@@ -2226,7 +2265,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -2238,7 +2279,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -2270,7 +2311,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2310,6 +2351,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             minimumTokenLiquidityValue,
             minimumQuoteTokenLiquidity
         );
@@ -2333,7 +2375,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -2345,7 +2389,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -2377,7 +2421,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2414,6 +2458,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2438,7 +2483,9 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             await currentBlockTimestamp()
         );
 
-        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.observations(token);
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
@@ -2450,7 +2497,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(poPrice);
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
@@ -2483,7 +2530,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2516,7 +2563,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
@@ -2557,6 +2604,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
             [underlyingOracle1.address, underlyingOracle2.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2608,7 +2656,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
             BigNumber.from(1)
         );
 
-        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.observations(token);
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
@@ -2658,6 +2706,7 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                     [underlyingOracle.address],
                     [],
                     PERIOD,
+                    GRANULARITY,
                     MINIMUM_TOKEN_LIQUIDITY_VALUE,
                     minimumQuoteTokenLiquidity
                 );
@@ -2775,6 +2824,7 @@ describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
                                     [underlyingOracle.address],
                                     [],
                                     PERIOD,
+                                    GRANULARITY,
                                     minimumTokenLiquidityValue,
                                     MINIMUM_QUOTE_TOKEN_LIQUIDITY
                                 );
@@ -2843,6 +2893,7 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -2956,6 +3007,7 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -3042,6 +3094,7 @@ describe("AggregatedOracle#calculateMaxAge", function () {
             [underlyingOracle.address],
             [],
             1, // period
+            GRANULARITY,
             0,
             0
         );
@@ -3062,6 +3115,7 @@ describe("AggregatedOracle#calculateMaxAge", function () {
                 [underlyingOracle.address],
                 [],
                 period, // period
+                GRANULARITY,
                 0,
                 0
             );
@@ -3092,6 +3146,7 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
             [underlyingOracle.address],
             [],
             PERIOD,
+            GRANULARITY,
             MINIMUM_TOKEN_LIQUIDITY_VALUE,
             MINIMUM_QUOTE_TOKEN_LIQUIDITY
         );
@@ -3131,5 +3186,769 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
     it("Should support IUpdateable", async () => {
         const interfaceId = await interfaceIds.iUpdateable();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IHistoricalOracle", async () => {
+        const interfaceId = await interfaceIds.iHistoricalOracle();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
+
+describe("AggregatedOracle - IHistoricalOracle implementation", function () {
+    var oracle;
+    var underlyingOracle;
+
+    beforeEach(async () => {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        oracle = await oracleFactory.deploy(
+            "USD Coin",
+            USDC,
+            "USDC",
+            6, // quote token decimals
+            0, // liquidity decimals
+            [underlyingOracle.address],
+            [],
+            PERIOD,
+            GRANULARITY,
+            MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            MINIMUM_QUOTE_TOKEN_LIQUIDITY
+        );
+    });
+
+    describe("AggregatedOracle#initializeBuffers", function () {
+        it("Can't be called twice", async function () {
+            await oracle.stubInitializeBuffers(GRT);
+
+            await expect(oracle.stubInitializeBuffers(GRT)).to.be.revertedWith("AggregatedOracle: ALREADY_INITIALIZED");
+        });
+
+        it("Emits the correct event", async function () {
+            await expect(oracle.stubInitializeBuffers(GRT))
+                .to.emit(oracle, "ObservationCapacityInitialized")
+                .withArgs(GRT, GRANULARITY);
+        });
+    });
+
+    describe("AggregatedOracle#setObservationCapacity", function () {
+        it("Should revert if the amount is less than the existing capacity", async function () {
+            await oracle.setObservationsCapacity(GRT, 4);
+
+            await expect(oracle.setObservationsCapacity(GRT, 2)).to.be.revertedWith(
+                "AggregatedOracle: CAPACITY_CANNOT_BE_DECREASED"
+            );
+        });
+
+        it("Should revert if the amount is 0", async function () {
+            await expect(oracle.setObservationsCapacity(GRT, 0)).to.be.revertedWith(
+                "AggregatedOracle: CAPACITY_CANNOT_BE_DECREASED"
+            );
+        });
+
+        it("Should revert if the amount is larger than the maximum capacity", async function () {
+            await expect(oracle.setObservationsCapacity(GRT, 65536)).to.be.revertedWith(
+                "AggregatedOracle: CAPACITY_TOO_LARGE"
+            );
+        });
+
+        it("Should emit an event when the capacity is changed", async function () {
+            const amount = 20;
+
+            const initialAmount = await oracle.getObservationsCapacity(GRT);
+
+            // Sanity check that the new amount is greater than the initial amount
+            expect(amount).to.be.greaterThan(initialAmount.toNumber());
+
+            await expect(oracle.setObservationsCapacity(GRT, amount))
+                .to.emit(oracle, "ObservationCapacityIncreased")
+                .withArgs(GRT, initialAmount, amount);
+        });
+
+        it("Should not emit an event when the capacity is not changed (with default capacity)", async function () {
+            const initialAmount = await oracle.getObservationsCapacity(GRT);
+
+            await expect(oracle.setObservationsCapacity(GRT, initialAmount)).to.not.emit(
+                oracle,
+                "ObservationCapacityIncreased"
+            );
+        });
+
+        it("Should not emit an event when the capacity is not changed (with non-default capacity)", async function () {
+            const initialAmount = await oracle.getObservationsCapacity(GRT);
+            const amount = 20;
+
+            // Sanity check that the new amount is greater than the initial amount
+            expect(amount).to.be.greaterThan(initialAmount.toNumber());
+
+            await oracle.setObservationsCapacity(GRT, amount);
+
+            // Sanity check that the capacity is now the new amount
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(amount);
+
+            // Try again to set it to the same amount
+            await expect(oracle.setObservationsCapacity(GRT, amount)).to.not.emit(
+                oracle,
+                "ObservationCapacityIncreased"
+            );
+        });
+
+        it("Should update the capacity", async function () {
+            const amount = 20;
+
+            // Sanity check that the new amount is greater than the initial amount
+            expect(amount).to.be.greaterThan((await oracle.getObservationsCapacity(GRT)).toNumber());
+
+            await oracle.setObservationsCapacity(GRT, amount);
+
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(amount);
+        });
+
+        it("Added capacity should not be filled until our latest observation is beside an uninitialized observation", async function () {
+            const workingCapacity = 6;
+
+            // Set the capacity to the working capacity
+            await oracle.setObservationsCapacity(GRT, workingCapacity);
+
+            // Push workingCapacity + 1 observations so that the buffer is full and the latest observation is at the start of the buffer
+            for (let i = 0; i < workingCapacity + 1; ++i) {
+                await oracle.stubPush(GRT, 1, 1, 1, 1);
+            }
+
+            // Sanity check that the buffer is full
+            expect(await oracle.getObservationsCount(GRT)).to.equal(workingCapacity);
+
+            // Increase the capacity by 1
+            await oracle.setObservationsCapacity(GRT, workingCapacity + 1);
+
+            // We should need to push workingCapacity observations before the new capacity is filled
+            for (let i = 0; i < workingCapacity - 1; ++i) {
+                await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+                // Sanity check that the buffer is still not full
+                expect(await oracle.getObservationsCount(GRT)).to.equal(workingCapacity);
+            }
+
+            // Push one more observation. This should fill the new capacity
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            // Check that the buffer is now full
+            expect(await oracle.getObservationsCount(GRT)).to.equal(workingCapacity + 1);
+        });
+    });
+
+    describe("AggregatedOracle#getObservationsCapacity", function () {
+        it("Should return the default capacity when the buffer is uninitialized", async function () {
+            const initialCapacity = await oracle.stubInitialCardinality();
+
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(initialCapacity);
+        });
+
+        it("Should return the capacity when the buffer is initialized", async function () {
+            await oracle.stubInitializeBuffers(GRT);
+
+            const initialCapacity = await oracle.stubInitialCardinality();
+
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(initialCapacity);
+        });
+
+        it("Should return the capacity after the buffer has been resized", async function () {
+            const amount = 20;
+
+            // Sanity check that the new amount is greater than the initial amount
+            expect(amount).to.be.greaterThan((await oracle.getObservationsCapacity(GRT)).toNumber());
+
+            await oracle.setObservationsCapacity(GRT, amount);
+
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(amount);
+        });
+    });
+
+    describe("AggregatedOracle#getObservationsCount", function () {
+        it("Should return 0 when the buffer is uninitialized", async function () {
+            expect(await oracle.getObservationsCount(GRT)).to.equal(0);
+        });
+
+        it("Should return 0 when the buffer is initialized but empty", async function () {
+            await oracle.stubInitializeBuffers(GRT);
+
+            expect(await oracle.getObservationsCount(GRT)).to.equal(0);
+        });
+
+        it("Increasing capacity should not change the observations count", async function () {
+            const initialAmount = 4;
+
+            await oracle.setObservationsCapacity(GRT, initialAmount);
+
+            // Push 2 observations
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            // Sanity check that the observations count is 2
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
+            // Increase the capacity by 1
+            await oracle.setObservationsCapacity(GRT, initialAmount + 1);
+
+            // The observations count should still be 2
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+        });
+
+        it("Should be limited by the capacity", async function () {
+            const capacity = 6;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Push capacity + 1 observations
+            for (let i = 0; i < capacity + 1; ++i) {
+                await oracle.stubPush(GRT, 1, 1, 1, 1);
+            }
+
+            // The observations count should be limited by the capacity
+            expect(await oracle.getObservationsCount(GRT)).to.equal(capacity);
+        });
+    });
+
+    describe("AggregatedOracle#getObservations(token, amount, offset, increment)", function () {
+        it("Should return an empty array when amount is 0", async function () {
+            // Push 1 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            const observations = await oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 0, 0, 1);
+
+            expect(observations.length).to.equal(0);
+        });
+
+        it("Should revert if the offset equals the number of observations", async function () {
+            // Push 1 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 1, 1, 1)).to.be.revertedWith(
+                "AggregatedOracle: INSUFFICIENT_DATA"
+            );
+        });
+
+        it("Should revert if the offset equals the number of observations but is less than the capacity", async function () {
+            const capacity = 6;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 1 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 1, 1, 1)).to.be.revertedWith(
+                "AggregatedOracle: INSUFFICIENT_DATA"
+            );
+        });
+
+        it("Should revert if the amount exceeds the number of observations", async function () {
+            // Push 1 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 2, 0, 1)).to.be.revertedWith(
+                "AggregatedOracle: INSUFFICIENT_DATA"
+            );
+        });
+
+        it("Should revert if the amount exceeds the number of observations but is less than the capacity", async function () {
+            const capacity = 6;
+            const amountToGet = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 1 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            // Sanity check that the amount to get is less than the capacity
+            expect(amountToGet).to.be.lessThan(capacity);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, 0, 1)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should revert if the amount and offset exceed the number of observations", async function () {
+            const capacity = 2;
+            const amountToGet = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 2 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, 1, 1)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should revert if the amount and offset exceed the number of observations but is less than the capacity", async function () {
+            const capacity = 6;
+            const amountToGet = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 2 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, 1, 1)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should revert if the increment and amount exceeds the number of observations", async function () {
+            const capacity = 2;
+            const amountToGet = 2;
+            const offset = 0;
+            const increment = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 2 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should revert if the increment and amount exceeds the number of observations but is less than the capacity", async function () {
+            const capacity = 6;
+            const amountToGet = 2;
+            const offset = 0;
+            const increment = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 2 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should revert if the increment, amount, and offset exceeds the number of observations", async function () {
+            const capacity = 2;
+            const amountToGet = 2;
+            const offset = 1;
+            const increment = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 3 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should revert if the increment, amount, and offset exceeds the number of observations but is less than the capacity", async function () {
+            const capacity = 6;
+            const amountToGet = 2;
+            const offset = 1;
+            const increment = 2;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 3 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+
+            await expect(
+                oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
+            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+        });
+
+        it("Should return the latest observation many times when increment is 0", async function () {
+            const capacity = 2;
+            const amountToGet = 2;
+            const offset = 0;
+            const increment = 0;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            // Push 2 observation
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 2, 2, 2, 2);
+
+            const observations = await oracle["getObservations(address,uint256,uint256,uint256)"](
+                GRT,
+                amountToGet,
+                offset,
+                increment
+            );
+
+            expect(observations.length).to.equal(amountToGet);
+
+            for (let i = 0; i < amountToGet; ++i) {
+                expect(observations[i].price).to.equal(2);
+                expect(observations[i].tokenLiquidity).to.equal(2);
+                expect(observations[i].quoteTokenLiquidity).to.equal(2);
+                expect(observations[i].timestamp).to.equal(2);
+            }
+        });
+
+        async function pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush) {
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await oracle.stubPush(GRT, i, i, i, i);
+            }
+
+            // Sanity check the count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(Math.min(observationsToPush, capacity));
+
+            const observations = await oracle["getObservations(address,uint256,uint256,uint256)"](
+                GRT,
+                amountToGet,
+                offset,
+                increment
+            );
+
+            expect(observations.length).to.equal(amountToGet);
+
+            for (let i = 0; i < amountToGet; ++i) {
+                // The latest observation is at index 0 and will have the highest expected values
+                // The following observations will have the expected values decrementing by 1
+                const expected = observationsToPush - i * increment - 1 - offset;
+
+                expect(observations[i].price).to.equal(expected);
+                expect(observations[i].tokenLiquidity).to.equal(expected);
+                expect(observations[i].quoteTokenLiquidity).to.equal(expected);
+                expect(observations[i].timestamp).to.equal(expected);
+            }
+        }
+
+        describe("An increment of 1", function () {
+            describe("An offset of 0", function () {
+                describe("The latest observation is at index 0", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 6;
+                        const offset = 0;
+                        const increment = 1;
+
+                        // Push capacity + 1 observations so that the latest observation is at index 0
+                        const observationsToPush = capacity + 1;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+
+                describe("The latest observation is at index n-1", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 6;
+                        const offset = 0;
+                        const increment = 1;
+
+                        // Push capacity observations so that the latest observation is at index n-1
+                        const observationsToPush = capacity;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+            });
+
+            describe("An offset of 1", function () {
+                describe("The latest observation is at index 0", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 5;
+                        const offset = 1;
+                        const increment = 1;
+
+                        // Push capacity + 1 observations so that the latest observation is at index 0
+                        const observationsToPush = capacity + 1;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+
+                describe("The latest observation is at index n-1", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 5;
+                        const offset = 1;
+                        const increment = 1;
+
+                        // Push capacity observations so that the latest observation is at index n-1
+                        const observationsToPush = capacity;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+            });
+        });
+
+        describe("An increment of 2", function () {
+            describe("An offset of 0", function () {
+                describe("The latest observation is at index 0", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 3;
+                        const offset = 0;
+                        const increment = 2;
+
+                        // Push capacity + 1 observations so that the latest observation is at index 0
+                        const observationsToPush = capacity + 1;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+
+                describe("The latest observation is at index n-1", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 3;
+                        const offset = 0;
+                        const increment = 2;
+
+                        // Push capacity observations so that the latest observation is at index n-1
+                        const observationsToPush = capacity;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+            });
+
+            describe("An offset of 1", function () {
+                describe("The latest observation is at index 0", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 2;
+                        const offset = 1;
+                        const increment = 2;
+
+                        // Push capacity + 1 observations so that the latest observation is at index 0
+                        const observationsToPush = capacity + 1;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+
+                describe("The latest observation is at index n-1", function () {
+                    it("Should return the observations in order", async function () {
+                        const capacity = 6;
+                        const amountToGet = 2;
+                        const offset = 1;
+                        const increment = 2;
+
+                        // Push capacity observations so that the latest observation is at index n-1
+                        const observationsToPush = capacity;
+
+                        await pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush);
+                    });
+                });
+            });
+        });
+    });
+
+    describe("AggregatedOracle#getObservations(token, amount)", function () {
+        async function pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush) {
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Sanity check the capacity
+            expect(await oracle.getObservationsCapacity(GRT)).to.equal(capacity);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await oracle.stubPush(GRT, i, i, i, i);
+            }
+
+            // Sanity check the count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(Math.min(observationsToPush, capacity));
+
+            const observations = await oracle["getObservations(address,uint256)"](GRT, amountToGet);
+
+            expect(observations.length).to.equal(amountToGet);
+
+            for (let i = 0; i < amountToGet; ++i) {
+                // The latest observation is at index 0 and will have the highest expected values
+                // The following observations will have the expected values decrementing by 1
+                const expected = observationsToPush - i * increment - 1 - offset;
+
+                expect(observations[i].price).to.equal(expected);
+                expect(observations[i].tokenLiquidity).to.equal(expected);
+                expect(observations[i].quoteTokenLiquidity).to.equal(expected);
+                expect(observations[i].timestamp).to.equal(expected);
+            }
+        }
+
+        it("Default offset is 0 and increment is 1", async function () {
+            const capacity = 6;
+            const amountToGet = 6;
+
+            // Push capacity observations so that the latest observation is at index n-1
+            const observationsToPush = capacity;
+
+            await pushAndCheckObservations(capacity, amountToGet, 0, 1, observationsToPush);
+        });
+    });
+
+    describe("AggregatedOracle#getObservationAt", function () {
+        it("Should revert if the buffer is uninitialized", async function () {
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(0);
+
+            await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
+        });
+
+        it("Should revert if the buffer is initialized but empty", async function () {
+            await oracle.stubInitializeBuffers(GRT);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(0);
+
+            await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
+        });
+
+        it("Should revert if the index exceeds the number of observations with a full buffer", async function () {
+            const capacity = 6;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Push capacity observations
+            for (let i = 0; i < capacity; ++i) {
+                await oracle.stubPush(GRT, 1, 1, 1, 1);
+            }
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(capacity);
+
+            await expect(oracle.getObservationAt(GRT, capacity)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
+        });
+
+        it("Should revert if the index exceeds the number of observations but is within the capacity", async function () {
+            const capacity = 6;
+
+            await oracle.setObservationsCapacity(GRT, capacity);
+
+            // Push capacity - 1 observations
+            for (let i = 0; i < capacity - 1; ++i) {
+                await oracle.stubPush(GRT, 1, 1, 1, 1);
+            }
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(capacity - 1);
+
+            await expect(oracle.getObservationAt(GRT, capacity - 1)).to.be.revertedWith(
+                "AggregatedOracle: INVALID_INDEX"
+            );
+        });
+
+        it("Should return the latest observation when index = 0", async function () {
+            await oracle.setObservationsCapacity(GRT, 2);
+
+            // Push capacity observations
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 2, 2, 2, 2);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
+            const observation = await oracle.getObservationAt(GRT, 0);
+
+            expect(observation.price).to.equal(2);
+            expect(observation.tokenLiquidity).to.equal(2);
+            expect(observation.quoteTokenLiquidity).to.equal(2);
+            expect(observation.timestamp).to.equal(2);
+        });
+
+        it("Should return the latest observation when index = 0 and the start was just overwritten", async function () {
+            await oracle.setObservationsCapacity(GRT, 2);
+
+            // Push capacity + 1 observations
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 2, 2, 2, 2);
+            await oracle.stubPush(GRT, 3, 3, 3, 3);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
+            const observation = await oracle.getObservationAt(GRT, 0);
+
+            expect(observation.price).to.equal(3);
+            expect(observation.tokenLiquidity).to.equal(3);
+            expect(observation.quoteTokenLiquidity).to.equal(3);
+            expect(observation.timestamp).to.equal(3);
+        });
+
+        it("Should return the correct observation when index = 1 and the latest observation is at the start of the buffer", async function () {
+            await oracle.setObservationsCapacity(GRT, 2);
+
+            // Push capacity + 1 observations
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 2, 2, 2, 2);
+            await oracle.stubPush(GRT, 3, 3, 3, 3);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
+            const observation = await oracle.getObservationAt(GRT, 1);
+
+            expect(observation.price).to.equal(2);
+            expect(observation.tokenLiquidity).to.equal(2);
+            expect(observation.quoteTokenLiquidity).to.equal(2);
+            expect(observation.timestamp).to.equal(2);
+        });
+
+        it("Should return the correct observation when index = 1 and the latest observation is at the end of the buffer", async function () {
+            await oracle.setObservationsCapacity(GRT, 2);
+
+            // Push capacity observations
+            await oracle.stubPush(GRT, 1, 1, 1, 1);
+            await oracle.stubPush(GRT, 2, 2, 2, 2);
+
+            // Sanity check the observations count
+            expect(await oracle.getObservationsCount(GRT)).to.equal(2);
+
+            const observation = await oracle.getObservationAt(GRT, 1);
+
+            expect(observation.price).to.equal(1);
+            expect(observation.tokenLiquidity).to.equal(1);
+            expect(observation.quoteTokenLiquidity).to.equal(1);
+            expect(observation.timestamp).to.equal(1);
+        });
     });
 });

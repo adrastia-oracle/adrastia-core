@@ -7,11 +7,19 @@ import "./AbstractOracle.sol";
 
 abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
     uint256 public immutable override period;
+    uint256 public immutable override granularity;
 
-    constructor(address quoteToken_, uint256 period_) AbstractOracle(quoteToken_) {
+    uint internal immutable _updateEvery;
+
+    constructor(address quoteToken_, uint256 period_, uint256 granularity_) AbstractOracle(quoteToken_) {
         require(period_ > 0, "PeriodicOracle: INVALID_PERIOD");
+        require(granularity_ > 0, "PeriodicOracle: INVALID_GRANULARITY");
+        require(period_ % granularity_ == 0, "PeriodicOracle: INVALID_PERIOD_GRANULARITY");
 
         period = period_;
+        granularity = granularity_;
+
+        _updateEvery = period_ / granularity_;
     }
 
     /// @inheritdoc AbstractOracle
@@ -23,7 +31,7 @@ abstract contract PeriodicOracle is IPeriodic, AbstractOracle {
 
     /// @inheritdoc AbstractOracle
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
-        return timeSinceLastUpdate(data) >= period;
+        return timeSinceLastUpdate(data) >= _updateEvery;
     }
 
     /// @inheritdoc AbstractOracle

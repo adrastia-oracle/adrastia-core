@@ -13,6 +13,9 @@ import "../interfaces/IPriceOracle.sol";
 import "../interfaces/IQuoteToken.sol";
 import "../interfaces/IUpdateable.sol";
 import "../interfaces/IAccumulator.sol";
+import "../interfaces/IHistoricalOracle.sol";
+import "../interfaces/IHistoricalPriceAccumulationOracle.sol";
+import "../interfaces/IHistoricalLiquidityAccumulationOracle.sol";
 
 contract InterfaceIds {
     function iAggregatedOracle() external pure returns (bytes4) {
@@ -61,5 +64,17 @@ contract InterfaceIds {
 
     function iAccumulator() external pure returns (bytes4) {
         return type(IAccumulator).interfaceId;
+    }
+
+    function iHistoricalOracle() external pure returns (bytes4) {
+        return type(IHistoricalOracle).interfaceId;
+    }
+
+    function iHistoricalPriceAccumulationOracle() external pure returns (bytes4) {
+        return type(IHistoricalPriceAccumulationOracle).interfaceId;
+    }
+
+    function iHistoricalLiquidityAccumulationOracle() external pure returns (bytes4) {
+        return type(IHistoricalLiquidityAccumulationOracle).interfaceId;
     }
 }

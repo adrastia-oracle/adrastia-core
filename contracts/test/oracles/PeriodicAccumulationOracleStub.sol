@@ -15,8 +15,44 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         address liquidityAccumulator_,
         address priceAccumulator_,
         address quoteToken_,
-        uint256 period_
-    ) PeriodicAccumulationOracle(liquidityAccumulator_, priceAccumulator_, quoteToken_, period_) {}
+        uint256 period_,
+        uint256 granularity_
+    ) PeriodicAccumulationOracle(liquidityAccumulator_, priceAccumulator_, quoteToken_, period_, granularity_) {}
+
+    function stubPush(
+        address token,
+        uint224 cumulativePrice,
+        uint32 priceTimestamp,
+        uint112 cumulativeTokenLiquidity,
+        uint112 cumulativeQuoteTokenLiquidity,
+        uint32 liquidityTimestamp
+    ) public {
+        AccumulationLibrary.PriceAccumulator memory priceAccumulation;
+        AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation;
+
+        priceAccumulation.cumulativePrice = cumulativePrice;
+        priceAccumulation.timestamp = priceTimestamp;
+
+        liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
+        liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
+        liquidityAccumulation.timestamp = liquidityTimestamp;
+
+        push(token, priceAccumulation, liquidityAccumulation);
+    }
+
+    function stubInitializeBuffers(address token) public {
+        initializeBuffers(token);
+    }
+
+    function priceAccumulations(address token) public view returns (AccumulationLibrary.PriceAccumulator memory) {
+        return priceAccumulationBuffers[token][accumulationBufferMetadata[token].end];
+    }
+
+    function liquidityAccumulations(
+        address token
+    ) public view returns (AccumulationLibrary.LiquidityAccumulator memory) {
+        return liquidityAccumulationBuffers[token][accumulationBufferMetadata[token].end];
+    }
 
     function stubSetObservation(
         address token,
@@ -40,8 +76,14 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint112 cumulativeQuoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
-        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+        ensureBuffersInitialized(token);
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulationBuffers[token][meta.end];
+        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulationBuffers[token][
+            meta.end
+        ];
 
         priceAccumulation.cumulativePrice = cumulativePrice;
         priceAccumulation.timestamp = timestamp;
@@ -52,7 +94,11 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
     }
 
     function stubSetPriceAccumulation(address token, uint112 cumulativePrice, uint32 timestamp) public {
-        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulations[token];
+        ensureBuffersInitialized(token);
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        AccumulationLibrary.PriceAccumulator storage priceAccumulation = priceAccumulationBuffers[token][meta.end];
 
         priceAccumulation.cumulativePrice = cumulativePrice;
         priceAccumulation.timestamp = timestamp;
@@ -64,7 +110,13 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         uint112 cumulativeQuoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulations[token];
+        ensureBuffersInitialized(token);
+
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        AccumulationLibrary.LiquidityAccumulator storage liquidityAccumulation = liquidityAccumulationBuffers[token][
+            meta.end
+        ];
 
         liquidityAccumulation.cumulativeTokenLiquidity = cumulativeTokenLiquidity;
         liquidityAccumulation.cumulativeQuoteTokenLiquidity = cumulativeQuoteTokenLiquidity;
@@ -95,5 +147,16 @@ contract PeriodicAccumulationOracleStub is PeriodicAccumulationOracle {
         ) {}
 
         return super.performUpdate(data);
+    }
+
+    function ensureBuffersInitialized(address token) internal virtual {
+        BufferMetadata storage meta = accumulationBufferMetadata[token];
+
+        if (meta.size == 0) {
+            AccumulationLibrary.PriceAccumulator memory priceAccumulation;
+            AccumulationLibrary.LiquidityAccumulator memory liquidityAccumulation;
+
+            push(token, priceAccumulation, liquidityAccumulation);
+        }
     }
 }

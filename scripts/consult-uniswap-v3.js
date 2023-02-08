@@ -27,7 +27,7 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, liquidityDecimals) {
+async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, granularity, liquidityDecimals) {
     const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -62,7 +62,8 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, 
         liquidityAccumulator.address,
         priceAccumulator.address,
         quoteToken,
-        period
+        period,
+        granularity
     );
 
     return {
@@ -77,6 +78,7 @@ async function main() {
     const quoteToken = usdcAddress;
 
     const underlyingPeriodSeconds = 5;
+    const granularity = 1;
 
     const liquidityDecimals = 4;
 
@@ -85,6 +87,7 @@ async function main() {
         uniswapV3InitCodeHash,
         quoteToken,
         underlyingPeriodSeconds,
+        granularity,
         liquidityDecimals
     );
 

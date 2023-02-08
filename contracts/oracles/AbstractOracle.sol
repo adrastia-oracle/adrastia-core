@@ -9,8 +9,6 @@ import "../libraries/ObservationLibrary.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
 abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
-    mapping(address => ObservationLibrary.Observation) public observations;
-
     constructor(address quoteToken_) SimpleQuotationMetadata(quoteToken_) {}
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -25,12 +23,16 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     /// @inheritdoc IUpdateable
     function canUpdate(bytes memory data) public view virtual override returns (bool);
 
+    function getLatestObservation(
+        address token
+    ) public view virtual returns (ObservationLibrary.Observation memory observation);
+
     /// @param data The encoded address of the token for which the update relates to.
     /// @inheritdoc IUpdateable
     function lastUpdateTime(bytes memory data) public view virtual override returns (uint256) {
         address token = abi.decode(data, (address));
 
-        return observations[token].timestamp;
+        return getLatestObservation(token).timestamp;
     }
 
     /// @param data The encoded address of the token for which the update relates to.
@@ -42,7 +44,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     function consultPrice(address token) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10 ** quoteTokenDecimals());
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
 
@@ -59,7 +61,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
             return price;
         }
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
         require(block.timestamp <= observation.timestamp + maxAge, "AbstractOracle: RATE_TOO_OLD");
@@ -73,7 +75,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     ) public view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (token == quoteTokenAddress()) return (0, 0);
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
 
@@ -94,7 +96,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
             return (tokenLiquidity, quoteTokenLiquidity);
         }
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
         require(block.timestamp <= observation.timestamp + maxAge, "AbstractOracle: RATE_TOO_OLD");
@@ -109,7 +111,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
     ) public view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (token == quoteTokenAddress()) return (uint112(10 ** quoteTokenDecimals()), 0, 0);
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
 
@@ -127,7 +129,7 @@ abstract contract AbstractOracle is IERC165, IOracle, SimpleQuotationMetadata {
 
         if (maxAge == 0) return instantFetch(token);
 
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
 
         require(observation.timestamp != 0, "AbstractOracle: MISSING_OBSERVATION");
         require(block.timestamp <= observation.timestamp + maxAge, "AbstractOracle: RATE_TOO_OLD");

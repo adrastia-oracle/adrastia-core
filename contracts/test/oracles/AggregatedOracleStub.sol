@@ -32,6 +32,7 @@ contract AggregatedOracleStub is AggregatedOracle {
         address[] memory oracles_,
         AggregatedOracle.TokenSpecificOracle[] memory _tokenSpecificOracles,
         uint256 period_,
+        uint256 granularity_,
         uint256 minimumTokenLiquidityValue_,
         uint256 minimumQuoteTokenLiquidity_
     )
@@ -44,11 +45,37 @@ contract AggregatedOracleStub is AggregatedOracle {
             oracles_,
             _tokenSpecificOracles,
             period_,
+            granularity_,
             minimumTokenLiquidityValue_,
             minimumQuoteTokenLiquidity_
         )
     {
         overrideValidateUnderlyingConsultation(true, true); // Skip validation by default
+    }
+
+    function stubPush(
+        address token,
+        uint112 price,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity,
+        uint32 timestamp
+    ) public {
+        ObservationLibrary.Observation memory observation;
+
+        observation.price = price;
+        observation.tokenLiquidity = tokenLiquidity;
+        observation.quoteTokenLiquidity = quoteTokenLiquidity;
+        observation.timestamp = timestamp;
+
+        push(token, observation);
+    }
+
+    function stubInitializeBuffers(address token) public {
+        initializeBuffers(token);
+    }
+
+    function stubInitialCardinality() public view returns (uint256) {
+        return _initialCardinality;
     }
 
     function stubSetLiquidityDecimals(uint8 decimals) public {
@@ -68,12 +95,14 @@ contract AggregatedOracleStub is AggregatedOracle {
         uint112 quoteTokenLiquidity,
         uint32 timestamp
     ) public {
-        ObservationLibrary.Observation storage observation = observations[token];
+        ObservationLibrary.Observation memory observation;
 
         observation.price = price;
         observation.tokenLiquidity = tokenLiquidity;
         observation.quoteTokenLiquidity = quoteTokenLiquidity;
         observation.timestamp = timestamp;
+
+        push(token, observation);
     }
 
     function overrideNeedsUpdate(bool overridden, bool needsUpdate_) public {
