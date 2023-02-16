@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.0.0
+### Interfaces
+- Add IHistoricalOracle interface
+- Add IHistoricalPriceAccumulationOracle interface
+- Add IHistoricalLiquidityAccumulationOracle interface
+- Add IPeriodic#granularity
+
+### Oracles
+- Move observation storage out of AbstractOracle
+- Make AggregatedOracle implement IHistoricalOracle
+- Make PeriodicAccumulationOracle implement IHistoricalPriceAccumulationOracle and IHistoricalLiquidityAccumulationOracle
+- Make AggregatedOracle use an extendable ring buffer to store observations, providing up to 65535 historical observations
+- Make PeriodicAccumulationOracle use an extendable ring buffer to store accumulations, providing up to 65535 historical accumulations
+- Make PeriodicAccumulationOracle emit an AccumulationPushed event when a new accumulation is recorded
+
 ## v2.0.0
 ### Oracles
 - Change PeriodicAccumulationOracle freshness metric to use accumulator heartbeats
