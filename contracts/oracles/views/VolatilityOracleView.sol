@@ -79,12 +79,21 @@ contract VolatilityOracleView {
         );
 
         int256 latestPrice = int256(uint256(observations[0].price));
+        if (latestPrice == 0) {
+            // We don't allow prices of 0
+            latestPrice = 1;
+        }
 
         int256[] memory deltas = new int256[](numObservations - 1);
 
         for (uint256 i = 1; i < numObservations; ++i) {
             // Since observations is in reverse chronological order, this price is older than latestPrice
             int256 price = int256(uint256(observations[i].price));
+
+            if (price == 0) {
+                // If the price is 0, we can't calculate a percentage change, so we set it to the lowest possible value
+                price = 1;
+            }
 
             // Absolute value of the difference between the two prices
             int256 difference = latestPrice - price;
