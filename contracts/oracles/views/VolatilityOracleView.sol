@@ -5,22 +5,44 @@ import "@prb/math/contracts/PRBMathSD59x18.sol";
 
 import "../../interfaces/IHistoricalOracle.sol";
 
+/// @title VolatilityOracleView
+/// @notice A view contract that calculates volatility from a historical oracle.
 contract VolatilityOracleView {
     using PRBMathSD59x18 for int256;
 
+    /// @notice The precision factor to use for calculations and results. Equal to 10^precisionDecimals.
     uint256 public immutable precisionFactor;
 
+    /// @notice Used to indicate that the geometric mean should be used.
     uint256 public constant MEAN_TYPE_GEOMETRIC = 0;
+
+    /// @notice Used to indicate that the arithmetic mean should be used.
     uint256 public constant MEAN_TYPE_ARITHMETIC = 1;
 
+    /// @notice An error thrown when the oracle has less observations than the minimum required.
+    /// @param numObservations The number of observations the oracle has.
+    /// @param minObservations The minimum number of observations required.
     error TooFewObservations(uint256 numObservations, uint256 minObservations);
+
+    /// @notice An error thrown when an invalid mean type is specified.
+    /// @param meanType The invalid mean type.
     error InvalidMeanType(uint256 meanType);
 
+    /// @notice Constructs a new VolatilityOracleView contract.
+    /// @param precisionDecimals_ The number of decimals to use for precision. Only tested up to 8.
     constructor(uint256 precisionDecimals_) {
         // TODO: Check that precisionDecimals_ is not too large
         precisionFactor = 10 ** precisionDecimals_;
     }
 
+    /// @notice Calculates the return rate variance of an asset over a given number of observations.
+    /// @param oracle The address of the oracle to consult.
+    /// @param asset The address of the asset to calculate the variance for.
+    /// @param numObservations The number of observations to use.
+    /// @param offset The offset to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param increment The increment to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param meanType The type of mean to use when performing calculations.
+    /// @return The variance of the asset's return rate, expressed as a percentage.
     function priceChangeVariance(
         IHistoricalOracle oracle,
         address asset,
@@ -36,6 +58,14 @@ contract VolatilityOracleView {
         return variance(deltas, avg);
     }
 
+    /// @notice Calculates the return rate standard deviation of an asset over a given number of observations.
+    /// @param oracle The address of the oracle to consult.
+    /// @param asset The address of the asset to calculate the standard deviation for.
+    /// @param numObservations The number of observations to use.
+    /// @param offset The offset to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param increment The increment to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param meanType The type of mean to use when performing calculations.
+    /// @return The standard deviation of the asset's return rate, expressed as a percentage.
     function priceChangeVolatility(
         IHistoricalOracle oracle,
         address asset,
@@ -47,6 +77,14 @@ contract VolatilityOracleView {
         return sqrt(priceChangeVariance(oracle, asset, numObservations, offset, increment, meanType));
     }
 
+    /// @notice Calculates the average return rate of an asset over a given number of observations.
+    /// @param oracle The address of the oracle to consult.
+    /// @param asset The address of the asset to calculate the average return rate for.
+    /// @param numObservations The number of observations to use.
+    /// @param offset The offset to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param increment The increment to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param meanType The type of mean to use when performing calculations.
+    /// @return The average return rate of the asset, expressed as a percentage.
     function meanPriceChangePercent(
         IHistoricalOracle oracle,
         address asset,
@@ -60,6 +98,13 @@ contract VolatilityOracleView {
         return average(deltas, meanType);
     }
 
+    /// @notice Calculates the return rates of an asset over a given number of observations.
+    /// @param oracle The address of the oracle to consult.
+    /// @param asset The address of the asset to calculate the return rates for.
+    /// @param numObservations The number of observations to use.
+    /// @param offset The offset to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @param increment The increment to use when querying the oracle. See IHistoricalOracle#getObservations().
+    /// @return The return rates of the asset, expressed as percentages.
     function priceChangePercentages(
         IHistoricalOracle oracle,
         address asset,
