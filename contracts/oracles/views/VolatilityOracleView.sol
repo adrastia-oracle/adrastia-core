@@ -140,9 +140,9 @@ contract VolatilityOracleView {
                 price = 1;
             }
 
-            // Absolute value of the difference between the two prices
+            // Calculate the difference between the two prices
             int256 difference = latestPrice - price;
-            // Absolute value of the difference between the two prices, expressed as a percentage of the older price
+            // Calculate the difference between the two prices, expressed as a percentage of the older price
             int256 percentDifference = (difference * int256(precisionFactor)) / price;
 
             deltas[i - 1] = percentDifference;
