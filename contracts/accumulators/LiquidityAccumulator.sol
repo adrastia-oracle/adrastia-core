@@ -37,6 +37,7 @@ abstract contract LiquidityAccumulator is
      * @param providedTokenLiquidity The token liquidity provided externally by the user (updater).
      * @param providedQuoteTokenLiquidity The quote token liquidity provided externally by the user (updater).
      * @param timestamp The timestamp of the block that the validation was performed in.
+     * @param providedTimestamp The timestamp of the block that the provided price was observed in.
      * @param succeeded True if the observed liquidities closely matches the provided liquidities; false otherwise.
      */
     event ValidationPerformed(
@@ -46,6 +47,7 @@ abstract contract LiquidityAccumulator is
         uint256 providedTokenLiquidity,
         uint256 providedQuoteTokenLiquidity,
         uint256 timestamp,
+        uint256 providedTimestamp,
         bool succeeded
     );
 
@@ -300,6 +302,18 @@ abstract contract LiquidityAccumulator is
         return updateThreshold / 2;
     }
 
+    function validateAllowedTimeDifference() internal virtual returns (uint32) {
+        return 5 minutes; // Allow time for the update to be mined
+    }
+
+    function validateObservationTime(uint32 providedTimestamp) internal virtual returns (bool) {
+        uint32 allowedTimeDifference = validateAllowedTimeDifference();
+
+        return
+            block.timestamp <= providedTimestamp + allowedTimeDifference &&
+            block.timestamp >= providedTimestamp - 10 seconds; // Allow for some clock drift
+    }
+
     function validateObservation(
         bytes memory updateData,
         uint112 tokenLiquidity,
@@ -310,17 +324,23 @@ abstract contract LiquidityAccumulator is
         // Extract provided tokenLiquidity and quoteTokenLiquidity
         // The message sender should call consultLiquidity immediately before calling the update function, passing
         //   the returned values into the update data.
-        (address token, uint112 pTokenLiquidity, uint112 pQuoteTokenLiquidity) = abi.decode(
+        (address token, uint112 pTokenLiquidity, uint112 pQuoteTokenLiquidity, uint32 pTimestamp) = abi.decode(
             updateData,
-            (address, uint112, uint112)
+            (address, uint112, uint112, uint32)
         );
 
         uint256 allowedChangeThreshold = validateObservationAllowedChange(token);
 
         // We require liquidity levels to not change by more than the threshold above
         // This check limits the ability of MEV and flashbots from manipulating data
-        bool validated = !changeThresholdSurpassed(tokenLiquidity, pTokenLiquidity, allowedChangeThreshold) &&
-            !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
+        bool liquiditiesValidated = !changeThresholdSurpassed(
+            tokenLiquidity,
+            pTokenLiquidity,
+            allowedChangeThreshold
+        ) && !changeThresholdSurpassed(quoteTokenLiquidity, pQuoteTokenLiquidity, allowedChangeThreshold);
+        bool timeValidated = validateObservationTime(pTimestamp);
+
+        bool validated = liquiditiesValidated && timeValidated;
 
         emit ValidationPerformed(
             token,
@@ -329,6 +349,7 @@ abstract contract LiquidityAccumulator is
             pTokenLiquidity,
             pQuoteTokenLiquidity,
             block.timestamp,
+            pTimestamp,
             validated
         );
 

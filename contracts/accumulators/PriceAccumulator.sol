@@ -37,6 +37,7 @@ abstract contract PriceAccumulator is
      * @param observedPrice The observed price from the on-chain data source.
      * @param providedPrice The price provided externally by the user (updater).
      * @param timestamp The timestamp of the block that the validation was performed in.
+     * @param providedTimestamp The timestamp of the block that the provided price was observed in.
      * @param succeeded True if the observed price closely matches the provided price; false otherwise.
      */
     event ValidationPerformed(
@@ -44,6 +45,7 @@ abstract contract PriceAccumulator is
         uint256 observedPrice,
         uint256 providedPrice,
         uint256 timestamp,
+        uint256 providedTimestamp,
         bool succeeded
     );
 
@@ -279,6 +281,18 @@ abstract contract PriceAccumulator is
         return updateThreshold / 2;
     }
 
+    function validateAllowedTimeDifference() internal virtual returns (uint32) {
+        return 5 minutes; // Allow time for the update to be mined
+    }
+
+    function validateObservationTime(uint32 providedTimestamp) internal virtual returns (bool) {
+        uint32 allowedTimeDifference = validateAllowedTimeDifference();
+
+        return
+            block.timestamp <= providedTimestamp + allowedTimeDifference &&
+            block.timestamp >= providedTimestamp - 10 seconds; // Allow for some clock drift
+    }
+
     function validateObservation(bytes memory updateData, uint112 price) internal virtual returns (bool) {
         validateObservationRequireEoa();
 
@@ -286,15 +300,18 @@ abstract contract PriceAccumulator is
         // The message sender should call consultPrice immediately before calling the update function, passing
         //   the returned value into the update data.
         // We could also use this to anchor the price to an off-chain price
-        (address token, uint112 pPrice) = abi.decode(updateData, (address, uint112));
+        (address token, uint112 pPrice, uint32 pTimestamp) = abi.decode(updateData, (address, uint112, uint32));
 
         uint256 allowedChangeThreshold = validateObservationAllowedChange(token);
 
         // We require the price to not change by more than the threshold above
         // This check limits the ability of MEV and flashbots from manipulating data
-        bool validated = !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
+        bool priceValidated = !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
+        bool timeValidated = validateObservationTime(pTimestamp);
 
-        emit ValidationPerformed(token, price, pPrice, block.timestamp, validated);
+        bool validated = priceValidated && timeValidated;
+
+        emit ValidationPerformed(token, price, pPrice, block.timestamp, pTimestamp, validated);
 
         return validated;
     }

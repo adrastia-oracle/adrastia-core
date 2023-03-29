@@ -32,6 +32,16 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
+async function currentBlockTimestamp() {
+    const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+    return await blockTimestamp(currentBlockNumber);
+}
+
+async function blockTimestamp(blockNum) {
+    return (await ethers.provider.getBlock(blockNum)).timestamp;
+}
+
 async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, granularity, liquidityDecimals) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
@@ -112,10 +122,11 @@ async function main() {
                 const [tokenLiquidity, quoteTokenLiquidity] = await uniswapV2.liquidityAccumulator[
                     "consultLiquidity(address,uint256)"
                 ](token, 0);
+                const currentTime = await currentBlockTimestamp();
 
                 const laUpdateData = ethers.utils.defaultAbiCoder.encode(
-                    ["address", "uint", "uint"],
-                    [token, tokenLiquidity, quoteTokenLiquidity]
+                    ["address", "uint", "uint", "uint"],
+                    [token, tokenLiquidity, quoteTokenLiquidity, currentTime]
                 );
 
                 const updateTx = await uniswapV2.liquidityAccumulator.update(laUpdateData);
@@ -133,8 +144,12 @@ async function main() {
 
             if (await uniswapV2.priceAccumulator.canUpdate(updateData)) {
                 const price = await uniswapV2.priceAccumulator["consultPrice(address,uint256)"](token, 0);
+                const currentTime = await currentBlockTimestamp();
 
-                const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
+                const paUpdateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token, price, currentTime]
+                );
 
                 const updateTx = await uniswapV2.priceAccumulator.update(paUpdateData);
                 const updateReceipt = await updateTx.wait();

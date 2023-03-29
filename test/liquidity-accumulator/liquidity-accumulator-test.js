@@ -1771,10 +1771,11 @@ function describeLiquidityAccumulatorTests(
                 // provided externally
                 const pTokenLiquidity = oTokenLiquidity;
                 const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                const pTimestamp = await currentBlockTimestamp();
 
                 const updateData = ethers.utils.defaultAbiCoder.encode(
-                    ["address", "uint", "uint"],
-                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
                 );
 
                 expect(
@@ -1798,6 +1799,171 @@ function describeLiquidityAccumulatorTests(
                         pTokenLiquidity,
                         pQuoteTokenLiquidity,
                         timestamp,
+                        pTimestamp,
+                        true
+                    );
+            });
+
+            it("Should return false when the provided time is 1 minute after the current time", async function () {
+                // "observed"
+                const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+                const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pTokenLiquidity = oTokenLiquidity;
+                const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                const pTimestamp = (await currentBlockTimestamp()) + 60;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
+                );
+
+                expect(
+                    await accumulator.callStatic.stubValidateObservation(
+                        updateData,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity
+                    )
+                ).to.equal(false);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(
+                        token.address,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity,
+                        pTokenLiquidity,
+                        pQuoteTokenLiquidity,
+                        timestamp,
+                        pTimestamp,
+                        false
+                    );
+            });
+
+            it("Should return true when the provided time is 2-3 seconds after the current time (some time drift is okay)", async function () {
+                // "observed"
+                const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+                const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pTokenLiquidity = oTokenLiquidity;
+                const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                const pTimestamp = (await currentBlockTimestamp()) + 2;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
+                );
+
+                expect(
+                    await accumulator.callStatic.stubValidateObservation(
+                        updateData,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity
+                    )
+                ).to.equal(true);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(
+                        token.address,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity,
+                        pTokenLiquidity,
+                        pQuoteTokenLiquidity,
+                        timestamp,
+                        pTimestamp,
+                        true
+                    );
+            });
+
+            it("Should return false when the provided time is 10 minutes before the current time (the tx took too long to be mined)", async function () {
+                // "observed"
+                const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+                const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pTokenLiquidity = oTokenLiquidity;
+                const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                const pTimestamp = (await currentBlockTimestamp()) - 600;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
+                );
+
+                expect(
+                    await accumulator.callStatic.stubValidateObservation(
+                        updateData,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity
+                    )
+                ).to.equal(false);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(
+                        token.address,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity,
+                        pTokenLiquidity,
+                        pQuoteTokenLiquidity,
+                        timestamp,
+                        pTimestamp,
+                        false
+                    );
+            });
+
+            it("Should return true when the provided time is 2 minutes before the current time (some tx mining delay is okay)", async function () {
+                // "observed"
+                const oTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+                const oQuoteTokenLiquidity = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pTokenLiquidity = oTokenLiquidity;
+                const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                const pTimestamp = (await currentBlockTimestamp()) - 120;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
+                );
+
+                expect(
+                    await accumulator.callStatic.stubValidateObservation(
+                        updateData,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity
+                    )
+                ).to.equal(true);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oTokenLiquidity, oQuoteTokenLiquidity);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(
+                        token.address,
+                        oTokenLiquidity,
+                        oQuoteTokenLiquidity,
+                        pTokenLiquidity,
+                        pQuoteTokenLiquidity,
+                        timestamp,
+                        pTimestamp,
                         true
                     );
             });
@@ -1810,10 +1976,11 @@ function describeLiquidityAccumulatorTests(
                 // provided externally
                 const pTokenLiquidity = oTokenLiquidity.mul(2);
                 const pQuoteTokenLiquidity = oQuoteTokenLiquidity;
+                const pTimestamp = await currentBlockTimestamp();
 
                 const updateData = ethers.utils.defaultAbiCoder.encode(
-                    ["address", "uint", "uint"],
-                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
                 );
 
                 expect(
@@ -1837,6 +2004,7 @@ function describeLiquidityAccumulatorTests(
                         pTokenLiquidity,
                         pQuoteTokenLiquidity,
                         timestamp,
+                        pTimestamp,
                         false
                     );
             });
@@ -1849,10 +2017,11 @@ function describeLiquidityAccumulatorTests(
                 // provided externally
                 const pTokenLiquidity = oTokenLiquidity;
                 const pQuoteTokenLiquidity = oQuoteTokenLiquidity.mul(2);
+                const pTimestamp = await currentBlockTimestamp();
 
                 const updateData = ethers.utils.defaultAbiCoder.encode(
-                    ["address", "uint", "uint"],
-                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
                 );
 
                 expect(
@@ -1876,6 +2045,7 @@ function describeLiquidityAccumulatorTests(
                         pTokenLiquidity,
                         pQuoteTokenLiquidity,
                         timestamp,
+                        pTimestamp,
                         false
                     );
             });
@@ -1888,10 +2058,11 @@ function describeLiquidityAccumulatorTests(
                 // provided externally
                 const pTokenLiquidity = oTokenLiquidity.mul(2);
                 const pQuoteTokenLiquidity = oQuoteTokenLiquidity.mul(2);
+                const pTimestamp = await currentBlockTimestamp();
 
                 const updateData = ethers.utils.defaultAbiCoder.encode(
-                    ["address", "uint", "uint"],
-                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity]
+                    ["address", "uint", "uint", "uint"],
+                    [token.address, pTokenLiquidity, pQuoteTokenLiquidity, pTimestamp]
                 );
 
                 expect(
@@ -1915,6 +2086,7 @@ function describeLiquidityAccumulatorTests(
                         pTokenLiquidity,
                         pQuoteTokenLiquidity,
                         timestamp,
+                        pTimestamp,
                         false
                     );
             });

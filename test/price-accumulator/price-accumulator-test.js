@@ -1339,8 +1339,12 @@ function describePriceAccumulatorTests(
 
                 // provided externally
                 const pPrice = oPrice;
+                const pTimestamp = await currentBlockTimestamp();
 
-                const updateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token.address, pPrice]);
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token.address, pPrice, pTimestamp]
+                );
 
                 expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(true);
 
@@ -1350,17 +1354,21 @@ function describePriceAccumulatorTests(
 
                 await expect(tx)
                     .to.emit(accumulator, "ValidationPerformed")
-                    .withArgs(token.address, oPrice, pPrice, timestamp, true);
+                    .withArgs(token.address, oPrice, pPrice, timestamp, pTimestamp, true);
             });
 
-            it("Should return false when the observed price is too different from the provided value", async function () {
+            it("Should return false when the provided time is 1 minute after the current time", async function () {
                 // "observed"
                 const oPrice = ethers.utils.parseUnits("1.0", 18);
 
                 // provided externally
-                const pPrice = oPrice.mul(2);
+                const pPrice = oPrice;
+                const pTimestamp = (await currentBlockTimestamp()) + 60;
 
-                const updateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token.address, pPrice]);
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token.address, pPrice, pTimestamp]
+                );
 
                 expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(false);
 
@@ -1370,7 +1378,103 @@ function describePriceAccumulatorTests(
 
                 await expect(tx)
                     .to.emit(accumulator, "ValidationPerformed")
-                    .withArgs(token.address, oPrice, pPrice, timestamp, false);
+                    .withArgs(token.address, oPrice, pPrice, timestamp, pTimestamp, false);
+            });
+
+            it("Should return true when the provided time is 2-3 seconds after the current time (some time drift is okay)", async function () {
+                // "observed"
+                const oPrice = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pPrice = oPrice;
+                const pTimestamp = (await currentBlockTimestamp()) + 2;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token.address, pPrice, pTimestamp]
+                );
+
+                expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(true);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oPrice);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(token.address, oPrice, pPrice, timestamp, pTimestamp, true);
+            });
+
+            it("Should return false when the provided time is 10 minutes before the current time (the tx took too long to be mined)", async function () {
+                // "observed"
+                const oPrice = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pPrice = oPrice;
+                const pTimestamp = (await currentBlockTimestamp()) - 600;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token.address, pPrice, pTimestamp]
+                );
+
+                expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(false);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oPrice);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(token.address, oPrice, pPrice, timestamp, pTimestamp, false);
+            });
+
+            it("Should return true when the provided time is 2 minutes before the current time (some tx mining delay is okay)", async function () {
+                // "observed"
+                const oPrice = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pPrice = oPrice;
+                const pTimestamp = (await currentBlockTimestamp()) - 120;
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token.address, pPrice, pTimestamp]
+                );
+
+                expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(true);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oPrice);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(token.address, oPrice, pPrice, timestamp, pTimestamp, true);
+            });
+
+            it("Should return false when the observed price is too different from the provided value", async function () {
+                // "observed"
+                const oPrice = ethers.utils.parseUnits("1.0", 18);
+
+                // provided externally
+                const pPrice = oPrice.mul(2);
+                const pTimestamp = await currentBlockTimestamp();
+
+                const updateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token.address, pPrice, pTimestamp]
+                );
+
+                expect(await accumulator.callStatic.stubValidateObservation(updateData, oPrice)).to.equal(false);
+
+                const tx = await accumulator.stubValidateObservation(updateData, oPrice);
+                const receipt = await tx.wait();
+                const timestamp = await blockTimestamp(receipt.blockNumber);
+
+                await expect(tx)
+                    .to.emit(accumulator, "ValidationPerformed")
+                    .withArgs(token.address, oPrice, pPrice, timestamp, pTimestamp, false);
             });
         });
     });
