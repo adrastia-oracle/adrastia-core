@@ -73,14 +73,14 @@ abstract contract PriceAccumulator is
     ) external pure virtual override returns (uint112 price) {
         require(firstAccumulation.timestamp != 0, "PriceAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
-        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "PriceAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
-        unchecked {
-            // Underflow is desired and results in correct functionality
-            price = uint256((secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime)
-                .toUint112();
-        }
+        price = calculateTimeWeightedAverage(
+            secondAccumulation.cumulativePrice,
+            firstAccumulation.cumulativePrice,
+            deltaTime
+        ).toUint112();
     }
 
     /// @inheritdoc IAccumulator
@@ -164,14 +164,12 @@ abstract contract PriceAccumulator is
 
         accumulation = accumulations[token]; // Load last accumulation
 
-        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
-
+        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
         if (deltaTime != 0) {
             // The last observation price has existed for some time, so we add that
-            uint224 timeWeightedPrice = uint224(lastObservation.price) * deltaTime;
+            uint224 timeWeightedPrice = calculateTimeWeightedValue(lastObservation.price, deltaTime).toUint224();
             unchecked {
                 // Overflow is desired and results in correct functionality
-                // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += timeWeightedPrice;
             }
             accumulation.timestamp = block.timestamp.toUint32();
@@ -216,6 +214,25 @@ abstract contract PriceAccumulator is
         return observation.price;
     }
 
+    /// @notice Calculates a time-weighted price.
+    /// @param value The price to weight, greater than 0.
+    /// @param time The time to weight the value by, in seconds, and greater than 0.
+    /// @return The time-weighted value.
+    function calculateTimeWeightedValue(uint256 value, uint256 time) internal pure virtual returns (uint256) {
+        return value * time;
+    }
+
+    function calculateTimeWeightedAverage(
+        uint224 cumulativeNew,
+        uint224 cumulativeOld,
+        uint256 deltaTime
+    ) internal pure virtual returns (uint256) {
+        unchecked {
+            // Underflow is desired and results in correct functionality
+            return (cumulativeNew - cumulativeOld) / deltaTime;
+        }
+    }
+
     function performUpdate(bytes memory data) internal virtual returns (bool) {
         uint112 price = fetchPrice(data);
         address token = abi.decode(data, (address));
@@ -241,14 +258,11 @@ abstract contract PriceAccumulator is
         /*
          * Update
          */
-
-        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
-
+        uint256 deltaTime = block.timestamp - observation.timestamp;
         if (deltaTime != 0) {
-            uint224 timeWeightedPrice = uint224(observation.price) * deltaTime;
+            uint224 timeWeightedPrice = calculateTimeWeightedValue(observation.price, deltaTime).toUint224();
             unchecked {
                 // Overflow is desired and results in correct functionality
-                // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += timeWeightedPrice;
             }
             observation.price = price;

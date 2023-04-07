@@ -17,103 +17,25 @@ abstract contract GeometricPriceAccumulator is PriceAccumulator {
         uint256 maxUpdateDelay_
     ) PriceAccumulator(quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
-    /// @inheritdoc IPriceAccumulator
-    function calculatePrice(
-        AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
-        AccumulationLibrary.PriceAccumulator calldata secondAccumulation
-    ) external pure virtual override returns (uint112 price) {
-        require(firstAccumulation.timestamp != 0, "PriceAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
+    function calculateTimeWeightedValue(uint256 value, uint256 time) internal pure virtual override returns (uint256) {
+        if (value == 0) {
+            // Natural log of 0 is undefined, so we use 1 as a substitute
+            value = 1;
+        }
 
-        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
-        require(deltaTime != 0, "PriceAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
+        return value.fromUint().ln() * time;
+    }
 
+    function calculateTimeWeightedAverage(
+        uint224 cumulativeNew,
+        uint224 cumulativeOld,
+        uint256 deltaTime
+    ) internal pure virtual override returns (uint256) {
+        uint256 encoded;
         unchecked {
             // Underflow is desired and results in correct functionality
-            price = uint256((secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime)
-                .exp()
-                .toUint()
-                .toUint112();
+            encoded = (cumulativeNew - cumulativeOld) / deltaTime;
         }
-    }
-
-    /// @inheritdoc IPriceAccumulator
-    function getCurrentAccumulation(
-        address token
-    ) public view virtual override returns (AccumulationLibrary.PriceAccumulator memory accumulation) {
-        ObservationLibrary.PriceObservation storage lastObservation = observations[token];
-        require(lastObservation.timestamp != 0, "PriceAccumulator: UNINITIALIZED");
-
-        accumulation = accumulations[token]; // Load last accumulation
-
-        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
-
-        if (deltaTime != 0) {
-            uint256 price = lastObservation.price;
-            if (price == 0) {
-                // ln(0) = undefined, so we set the price to 1
-                price = 1;
-            }
-
-            // The last observation price has existed for some time, so we add that
-            uint224 timeWeightedPrice = (price.fromUint().ln() * deltaTime).toUint224();
-            unchecked {
-                // Overflow is desired and results in correct functionality
-                // We add the natural log of the last price multiplied by the time that price was active
-                accumulation.cumulativePrice += timeWeightedPrice;
-            }
-            accumulation.timestamp = block.timestamp.toUint32();
-        }
-    }
-
-    function performUpdate(bytes memory data) internal virtual override returns (bool) {
-        uint112 price = fetchPrice(data);
-        address token = abi.decode(data, (address));
-
-        // If the observation fails validation, do not update anything
-        if (!validateObservation(data, price)) return false;
-
-        ObservationLibrary.PriceObservation storage observation = observations[token];
-        AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
-
-        if (observation.timestamp == 0) {
-            /*
-             * Initialize
-             */
-            observation.price = price;
-            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
-
-            emit Updated(token, price, block.timestamp);
-
-            return true;
-        }
-
-        /*
-         * Update
-         */
-
-        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
-
-        if (deltaTime != 0) {
-            uint256 oPrice = observation.price;
-            if (oPrice == 0) {
-                // ln(0) = undefined, so we set the price to 1
-                oPrice = 1;
-            }
-
-            uint224 timeWeightedPrice = (oPrice.fromUint().ln() * deltaTime).toUint224();
-            unchecked {
-                // Overflow is desired and results in correct functionality
-                // We add the natural log of the last price multiplied by the time that price was active
-                accumulation.cumulativePrice += timeWeightedPrice;
-            }
-            observation.price = price;
-            observation.timestamp = accumulation.timestamp = block.timestamp.toUint32();
-
-            emit Updated(token, price, block.timestamp);
-
-            return true;
-        }
-
-        return false;
+        return encoded.exp().toUint();
     }
 }
