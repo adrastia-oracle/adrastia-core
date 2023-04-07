@@ -29,7 +29,7 @@ contract UniswapV2HarmonicLiquidityAccumulatorStub is UniswapV2HarmonicLiquidity
     function harnessFetchLiquidity(
         address token
     ) public view returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
-        return super.fetchLiquidity(token);
+        return super.fetchLiquidity(abi.encode(token));
     }
 
     function validateObservation(bytes memory, uint112, uint112) internal virtual override returns (bool) {

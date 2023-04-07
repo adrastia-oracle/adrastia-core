@@ -9,7 +9,7 @@ import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 import "../interfaces/IAccumulator.sol";
 
 abstract contract AbstractAccumulator is IERC165, IAccumulator {
-    uint256 public immutable override changePrecision = 10**8;
+    uint256 public immutable override changePrecision = 10 ** 8;
 
     uint256 public immutable override updateThreshold;
 
@@ -18,8 +18,8 @@ abstract contract AbstractAccumulator is IERC165, IAccumulator {
     }
 
     /// @inheritdoc IAccumulator
-    function updateThresholdSurpassed(address token) public view virtual override returns (bool) {
-        return changeThresholdSurpassed(token, updateThreshold);
+    function updateThresholdSurpassed(bytes memory data) public view virtual override returns (bool) {
+        return changeThresholdSurpassed(data, updateThreshold);
     }
 
     /// @inheritdoc IERC165

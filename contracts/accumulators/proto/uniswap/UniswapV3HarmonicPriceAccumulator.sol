@@ -136,7 +136,9 @@ contract UniswapV3HarmonicPriceAccumulator is HarmonicPriceAccumulator {
         return (true, numerator / denominator);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint112) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        address token = abi.decode(data, (address));
+
         require(token != quoteToken, "UniswapV3PriceAccumulator: IDENTICAL_ADDRESSES");
         require(token != address(0), "UniswapV3PriceAccumulator: ZERO_ADDRESS");
 

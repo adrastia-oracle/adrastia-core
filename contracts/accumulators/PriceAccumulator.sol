@@ -83,17 +83,13 @@ abstract contract PriceAccumulator is
         }
     }
 
-    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
-    /// @dev Calculates the change from the stored observation to the current observation.
-    /// @param token The token to check.
-    /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
-    ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
-    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    /// @inheritdoc IAccumulator
     function changeThresholdSurpassed(
-        address token,
+        bytes memory data,
         uint256 changeThreshold
     ) public view virtual override returns (bool) {
-        uint256 price = fetchPrice(token);
+        uint256 price = fetchPrice(data);
+        address token = abi.decode(data, (address));
 
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
 
@@ -119,9 +115,7 @@ abstract contract PriceAccumulator is
          *
          * Check if the % change in price warrants an update (saves gas vs. always updating on change)
          */
-        address token = abi.decode(data, (address));
-
-        return updateThresholdSurpassed(token);
+        return updateThresholdSurpassed(data);
     }
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -212,7 +206,7 @@ abstract contract PriceAccumulator is
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10 ** quoteTokenDecimals());
 
-        if (maxAge == 0) return fetchPrice(token);
+        if (maxAge == 0) return fetchPrice(abi.encode(token));
 
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
@@ -223,9 +217,8 @@ abstract contract PriceAccumulator is
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {
+        uint112 price = fetchPrice(data);
         address token = abi.decode(data, (address));
-
-        uint112 price = fetchPrice(token);
 
         // If the observation fails validation, do not update anything
         if (!validateObservation(data, price)) return false;
@@ -316,5 +309,5 @@ abstract contract PriceAccumulator is
         return validated;
     }
 
-    function fetchPrice(address token) internal view virtual returns (uint112 price);
+    function fetchPrice(bytes memory data) internal view virtual returns (uint112 price);
 }

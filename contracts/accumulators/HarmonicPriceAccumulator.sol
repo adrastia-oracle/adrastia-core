@@ -33,13 +33,9 @@ abstract contract HarmonicPriceAccumulator is PriceAccumulator {
     }
 
     /// @inheritdoc IPriceAccumulator
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.PriceAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.PriceAccumulator memory accumulation) {
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
         require(lastObservation.timestamp != 0, "PriceAccumulator: UNINITIALIZED");
 
@@ -67,9 +63,8 @@ abstract contract HarmonicPriceAccumulator is PriceAccumulator {
     }
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
+        uint112 price = fetchPrice(data);
         address token = abi.decode(data, (address));
-
-        uint112 price = fetchPrice(token);
 
         // If the observation fails validation, do not update anything
         if (!validateObservation(data, price)) return false;

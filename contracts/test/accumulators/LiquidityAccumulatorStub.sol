@@ -100,7 +100,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     function stubFetchLiquidity(
         address token
     ) public view returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
-        return fetchLiquidity(token);
+        return fetchLiquidity(abi.encode(token));
     }
 
     function harnessChangeThresholdSurpassed(uint256 a, uint256 b, uint256 updateThreshold) public view returns (bool) {
@@ -128,8 +128,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     }
 
     function fetchLiquidity(
-        address token
+        bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        address token = abi.decode(data, (address));
+
         MockLiquidity storage liquidity = mockLiquidity[token];
 
         return (liquidity.tokenLiquidity, liquidity.quoteTokenLiquidity);

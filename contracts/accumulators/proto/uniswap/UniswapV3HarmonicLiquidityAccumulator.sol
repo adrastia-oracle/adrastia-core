@@ -109,8 +109,10 @@ contract UniswapV3HarmonicLiquidityAccumulator is HarmonicLiquidityAccumulator {
     }
 
     function fetchLiquidity(
-        address token
+        bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        address token = abi.decode(data, (address));
+
         require(token != address(0), "UniswapV3LiquidityAccumulator: INVALID_TOKEN");
 
         uint256 tokenLiquidity_;

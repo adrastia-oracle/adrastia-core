@@ -89,17 +89,13 @@ abstract contract LiquidityAccumulator is
         }
     }
 
-    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
-    /// @dev Calculates the change from the stored observation to the current observation.
-    /// @param token The token to check.
-    /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
-    ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
-    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    /// @inheritdoc IAccumulator
     function changeThresholdSurpassed(
-        address token,
+        bytes memory data,
         uint256 changeThreshold
     ) public view virtual override returns (bool) {
-        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(token);
+        (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) = fetchLiquidity(data);
+        address token = abi.decode(data, (address));
 
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
 
@@ -127,9 +123,7 @@ abstract contract LiquidityAccumulator is
          *
          * Check if the % change in liquidity warrants an update (saves gas vs. always updating on change)
          */
-        address token = abi.decode(data, (address));
-
-        return updateThresholdSurpassed(token);
+        return updateThresholdSurpassed(data);
     }
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -228,7 +222,7 @@ abstract contract LiquidityAccumulator is
     ) public view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (token == quoteTokenAddress()) return (0, 0);
 
-        if (maxAge == 0) return fetchLiquidity(token);
+        if (maxAge == 0) return fetchLiquidity(abi.encode(token));
 
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
 
@@ -240,9 +234,8 @@ abstract contract LiquidityAccumulator is
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {
+        (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(data);
         address token = abi.decode(data, (address));
-
-        (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(token);
 
         // If the observation fails validation, do not update anything
         if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;
@@ -357,6 +350,6 @@ abstract contract LiquidityAccumulator is
     }
 
     function fetchLiquidity(
-        address token
+        bytes memory data
     ) internal view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 }

@@ -43,13 +43,9 @@ abstract contract GeometricLiquidityAccumulator is LiquidityAccumulator {
     }
 
     /// @inheritdoc ILiquidityAccumulator
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.LiquidityAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.LiquidityAccumulator memory accumulation) {
         ObservationLibrary.LiquidityObservation storage lastObservation = observations[token];
         require(lastObservation.timestamp != 0, "LiquidityAccumulator: UNINITIALIZED");
 
@@ -85,9 +81,8 @@ abstract contract GeometricLiquidityAccumulator is LiquidityAccumulator {
     }
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
+        (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(data);
         address token = abi.decode(data, (address));
-
-        (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(token);
 
         // If the observation fails validation, do not update anything
         if (!validateObservation(data, tokenLiquidity, quoteTokenLiquidity)) return false;

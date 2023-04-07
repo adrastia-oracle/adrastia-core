@@ -66,9 +66,8 @@ abstract contract GeometricPriceAccumulator is PriceAccumulator {
     }
 
     function performUpdate(bytes memory data) internal virtual override returns (bool) {
+        uint112 price = fetchPrice(data);
         address token = abi.decode(data, (address));
-
-        uint112 price = fetchPrice(token);
 
         // If the observation fails validation, do not update anything
         if (!validateObservation(data, price)) return false;

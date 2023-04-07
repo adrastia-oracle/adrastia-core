@@ -27,7 +27,7 @@ contract CurvePriceAccumulatorStub is CurvePriceAccumulator {
     {}
 
     function harnessFetchPrice(address token) public view returns (uint112 price) {
-        return super.fetchPrice(token);
+        return super.fetchPrice(abi.encode(token));
     }
 
     function validateObservation(bytes memory, uint112) internal virtual override returns (bool) {

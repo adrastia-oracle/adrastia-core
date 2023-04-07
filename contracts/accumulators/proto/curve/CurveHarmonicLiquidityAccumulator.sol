@@ -76,8 +76,10 @@ contract CurveHarmonicLiquidityAccumulator is HarmonicLiquidityAccumulator {
     }
 
     function fetchLiquidity(
-        address token
+        bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        address token = abi.decode(data, (address));
+
         ICurvePool pool = ICurvePool(curvePool);
 
         uint256 tokenIndex = tokenIndices[token];

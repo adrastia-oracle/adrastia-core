@@ -31,22 +31,14 @@ contract HarmonicPriceAccumulatorStub is HarmonicPriceAccumulator {
         mockPrices[token] = price;
     }
 
-    function stubSetObservation(
-        address token,
-        uint112 price,
-        uint32 timestamp
-    ) public {
+    function stubSetObservation(address token, uint112 price, uint32 timestamp) public {
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
         observation.price = price;
         observation.timestamp = timestamp;
     }
 
-    function stubSetAccumulation(
-        address token,
-        uint224 cumulativePrice,
-        uint32 timestamp
-    ) public {
+    function stubSetAccumulation(address token, uint224 cumulativePrice, uint32 timestamp) public {
         AccumulationLibrary.PriceAccumulator storage accumulation = accumulations[token];
 
         accumulation.cumulativePrice = cumulativePrice;
@@ -73,14 +65,10 @@ contract HarmonicPriceAccumulatorStub is HarmonicPriceAccumulator {
     }
 
     function stubFetchPrice(address token) public view returns (uint256 price) {
-        return fetchPrice(token);
+        return fetchPrice(abi.encode(token));
     }
 
-    function harnessChangeThresholdSurpassed(
-        uint256 a,
-        uint256 b,
-        uint256 updateThreshold
-    ) public view returns (bool) {
+    function harnessChangeThresholdSurpassed(uint256 a, uint256 b, uint256 updateThreshold) public view returns (bool) {
         return changeThresholdSurpassed(a, b, updateThreshold);
     }
 
@@ -100,7 +88,9 @@ contract HarmonicPriceAccumulatorStub is HarmonicPriceAccumulator {
         else return super.validateObservation(updateData, price);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint112) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        address token = abi.decode(data, (address));
+
         return mockPrices[token];
     }
 
@@ -113,13 +103,9 @@ contract HarmonicPriceAccumulatorStub is HarmonicPriceAccumulator {
         else return super.changeThresholdSurpassed(a, b, updateThreshold);
     }
 
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        override
-        returns (AccumulationLibrary.PriceAccumulator memory accumulation)
-    {
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual override returns (AccumulationLibrary.PriceAccumulator memory accumulation) {
         if (config.useLastAccumulationAsCurrent) return getLastAccumulation(token);
         else return super.getCurrentAccumulation(token);
     }

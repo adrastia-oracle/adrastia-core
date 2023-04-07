@@ -66,8 +66,10 @@ contract UniswapV2GeometricLiquidityAccumulator is GeometricLiquidityAccumulator
     }
 
     function fetchLiquidity(
-        address token
+        bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        address token = abi.decode(data, (address));
+
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
         require(pairAddress.isContract(), "UniswapV2LiquidityAccumulator: POOL_NOT_FOUND");

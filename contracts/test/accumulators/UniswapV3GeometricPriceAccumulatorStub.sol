@@ -27,7 +27,7 @@ contract UniswapV3GeometricPriceAccumulatorStub is UniswapV3GeometricPriceAccumu
     {}
 
     function stubFetchPrice(address token) public view returns (uint256 price) {
-        return super.fetchPrice(token);
+        return super.fetchPrice(abi.encode(token));
     }
 
     function stubComputeWholeUnitAmount(address token) public view returns (uint128 amount) {
