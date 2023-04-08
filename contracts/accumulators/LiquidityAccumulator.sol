@@ -11,6 +11,7 @@ import "../interfaces/ILiquidityAccumulator.sol";
 import "../interfaces/ILiquidityOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
+import "../libraries/SafeCastExt.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 
 abstract contract LiquidityAccumulator is
@@ -22,6 +23,7 @@ abstract contract LiquidityAccumulator is
 {
     using AddressLibrary for address;
     using SafeCast for uint256;
+    using SafeCastExt for uint256;
 
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
@@ -75,18 +77,19 @@ abstract contract LiquidityAccumulator is
     ) external pure virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
-        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "LiquidityAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
-        unchecked {
-            // Underflow is desired and results in correct functionality
-            tokenLiquidity =
-                (secondAccumulation.cumulativeTokenLiquidity - firstAccumulation.cumulativeTokenLiquidity) /
-                deltaTime;
-            quoteTokenLiquidity =
-                (secondAccumulation.cumulativeQuoteTokenLiquidity - firstAccumulation.cumulativeQuoteTokenLiquidity) /
-                deltaTime;
-        }
+        tokenLiquidity = calculateTimeWeightedAverage(
+            secondAccumulation.cumulativeTokenLiquidity,
+            firstAccumulation.cumulativeTokenLiquidity,
+            deltaTime
+        ).toUint112();
+        quoteTokenLiquidity = calculateTimeWeightedAverage(
+            secondAccumulation.cumulativeQuoteTokenLiquidity,
+            firstAccumulation.cumulativeQuoteTokenLiquidity,
+            deltaTime
+        ).toUint112();
     }
 
     /// @inheritdoc IAccumulator
@@ -172,15 +175,17 @@ abstract contract LiquidityAccumulator is
 
         accumulation = accumulations[token]; // Load last accumulation
 
-        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
-
+        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
         if (deltaTime != 0) {
             // The last observation liquidities have existed for some time, so we add that
-            uint112 timeWeightedTokenLiquidity = lastObservation.tokenLiquidity * deltaTime;
-            uint112 timeWeightedQuoteTokenLiquidity = lastObservation.quoteTokenLiquidity * deltaTime;
+            uint112 timeWeightedTokenLiquidity = calculateTimeWeightedValue(lastObservation.tokenLiquidity, deltaTime)
+                .toUint112();
+            uint112 timeWeightedQuoteTokenLiquidity = calculateTimeWeightedValue(
+                lastObservation.quoteTokenLiquidity,
+                deltaTime
+            ).toUint112();
             unchecked {
                 // Overflow is desired and results in correct functionality
-                // We add the liquidites multiplied by the time those liquidities were present
                 accumulation.cumulativeTokenLiquidity += timeWeightedTokenLiquidity;
                 accumulation.cumulativeQuoteTokenLiquidity += timeWeightedQuoteTokenLiquidity;
             }
@@ -233,6 +238,25 @@ abstract contract LiquidityAccumulator is
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
+    /// @notice Calculates a time-weighted value.
+    /// @param value The value to weight, greater than 0.
+    /// @param time The time to weight the value by, in seconds, and greater than 0.
+    /// @return The time-weighted value.
+    function calculateTimeWeightedValue(uint256 value, uint256 time) internal pure virtual returns (uint256) {
+        return value * time;
+    }
+
+    function calculateTimeWeightedAverage(
+        uint112 cumulativeNew,
+        uint112 cumulativeOld,
+        uint256 deltaTime
+    ) internal pure virtual returns (uint256) {
+        unchecked {
+            // Underflow is desired and results in correct functionality
+            return (cumulativeNew - cumulativeOld) / deltaTime;
+        }
+    }
+
     function performUpdate(bytes memory data) internal virtual returns (bool) {
         (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = fetchLiquidity(data);
         address token = abi.decode(data, (address));
@@ -260,14 +284,16 @@ abstract contract LiquidityAccumulator is
          * Update
          */
 
-        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
-
+        uint256 deltaTime = block.timestamp - observation.timestamp;
         if (deltaTime != 0) {
-            uint112 timeWeightedTokenLiquidity = observation.tokenLiquidity * deltaTime;
-            uint112 timeWeightedQuoteTokenLiquidity = observation.quoteTokenLiquidity * deltaTime;
+            uint112 timeWeightedTokenLiquidity = calculateTimeWeightedValue(observation.tokenLiquidity, deltaTime)
+                .toUint112();
+            uint112 timeWeightedQuoteTokenLiquidity = calculateTimeWeightedValue(
+                observation.quoteTokenLiquidity,
+                deltaTime
+            ).toUint112();
             unchecked {
                 // Overflow is desired and results in correct functionality
-                // We add the liquidites multiplied by the time those liquidities were present
                 accumulation.cumulativeTokenLiquidity += timeWeightedTokenLiquidity;
                 accumulation.cumulativeQuoteTokenLiquidity += timeWeightedQuoteTokenLiquidity;
             }
