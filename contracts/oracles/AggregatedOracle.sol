@@ -87,49 +87,61 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
      * Constructors
      */
 
+    struct AggregatedOracleParams {
+        string quoteTokenName;
+        address quoteTokenAddress;
+        string quoteTokenSymbol;
+        uint8 quoteTokenDecimals;
+        uint8 liquidityDecimals;
+        address[] oracles;
+        TokenSpecificOracle[] tokenSpecificOracles;
+        uint256 period;
+        uint256 granularity;
+        uint256 minimumTokenLiquidityValue;
+        uint256 minimumQuoteTokenLiquidity;
+    }
+
     constructor(
-        string memory quoteTokenName_,
-        address quoteTokenAddress_,
-        string memory quoteTokenSymbol_,
-        uint8 quoteTokenDecimals_,
-        uint8 liquidityDecimals_,
-        address[] memory oracles_,
-        TokenSpecificOracle[] memory tokenSpecificOracles_,
-        uint256 period_,
-        uint256 granularity_,
-        uint256 minimumTokenLiquidityValue_,
-        uint256 minimumQuoteTokenLiquidity_
+        AggregatedOracleParams memory params
     )
-        PeriodicOracle(quoteTokenAddress_, period_, granularity_)
-        ExplicitQuotationMetadata(quoteTokenName_, quoteTokenAddress_, quoteTokenSymbol_, quoteTokenDecimals_)
+        PeriodicOracle(params.quoteTokenAddress, params.period, params.granularity)
+        ExplicitQuotationMetadata(
+            params.quoteTokenName,
+            params.quoteTokenAddress,
+            params.quoteTokenSymbol,
+            params.quoteTokenDecimals
+        )
     {
-        require(oracles_.length > 0 || tokenSpecificOracles_.length > 0, "AggregatedOracle: MISSING_ORACLES");
+        require(
+            params.oracles.length > 0 || params.tokenSpecificOracles.length > 0,
+            "AggregatedOracle: MISSING_ORACLES"
+        );
 
-        minimumTokenLiquidityValue = minimumTokenLiquidityValue_;
-        minimumQuoteTokenLiquidity = minimumQuoteTokenLiquidity_;
+        minimumTokenLiquidityValue = params.minimumTokenLiquidityValue;
+        minimumQuoteTokenLiquidity = params.minimumQuoteTokenLiquidity;
 
-        _quoteTokenWholeUnit = 10 ** quoteTokenDecimals_;
+        _quoteTokenWholeUnit = 10 ** params.quoteTokenDecimals;
 
-        _liquidityDecimals = liquidityDecimals_;
+        _liquidityDecimals = params.liquidityDecimals;
 
         // Setup general oracles
-        for (uint256 i = 0; i < oracles_.length; ++i) {
-            require(!oracleExists[oracles_[i]], "AggregatedOracle: DUPLICATE_ORACLE");
+        for (uint256 i = 0; i < params.oracles.length; ++i) {
+            require(!oracleExists[params.oracles[i]], "AggregatedOracle: DUPLICATE_ORACLE");
 
-            oracleExists[oracles_[i]] = true;
+            oracleExists[params.oracles[i]] = true;
 
             oracles.push(
                 OracleConfig({
-                    oracle: oracles_[i],
-                    quoteTokenDecimals: IOracle(oracles_[i]).quoteTokenDecimals(),
-                    liquidityDecimals: IOracle(oracles_[i]).liquidityDecimals()
+                    oracle: params.oracles[i],
+                    quoteTokenDecimals: IOracle(params.oracles[i]).quoteTokenDecimals(),
+                    liquidityDecimals: IOracle(params.oracles[i]).liquidityDecimals()
                 })
             );
         }
 
         // Setup token-specific oracles
-        for (uint256 i = 0; i < tokenSpecificOracles_.length; ++i) {
-            TokenSpecificOracle memory oracle = tokenSpecificOracles_[i];
+        for (uint256 i = 0; i < params.tokenSpecificOracles.length; ++i) {
+            TokenSpecificOracle memory oracle = params.tokenSpecificOracles[i];
 
             require(!oracleExists[oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
             require(!oracleForExists[oracle.token][oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");

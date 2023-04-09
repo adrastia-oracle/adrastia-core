@@ -23,33 +23,7 @@ contract AggregatedOracleStub is AggregatedOracle {
 
     Config public config;
 
-    constructor(
-        string memory quoteTokenName_,
-        address quoteTokenAddress_,
-        string memory quoteTokenSymbol_,
-        uint8 quoteTokenDecimals_,
-        uint8 liquidityDecimals_,
-        address[] memory oracles_,
-        AggregatedOracle.TokenSpecificOracle[] memory _tokenSpecificOracles,
-        uint256 period_,
-        uint256 granularity_,
-        uint256 minimumTokenLiquidityValue_,
-        uint256 minimumQuoteTokenLiquidity_
-    )
-        AggregatedOracle(
-            quoteTokenName_,
-            quoteTokenAddress_,
-            quoteTokenSymbol_,
-            quoteTokenDecimals_,
-            liquidityDecimals_,
-            oracles_,
-            _tokenSpecificOracles,
-            period_,
-            granularity_,
-            minimumTokenLiquidityValue_,
-            minimumQuoteTokenLiquidity_
-        )
-    {
+    constructor(AggregatedOracleParams memory params) AggregatedOracle(params) {
         overrideValidateUnderlyingConsultation(true, true); // Skip validation by default
     }
 

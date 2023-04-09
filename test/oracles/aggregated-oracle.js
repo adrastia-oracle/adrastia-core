@@ -91,7 +91,7 @@ describe("AggregatedOracle#constructor", async function () {
         const minimumTokenLiquidityValue = BigNumber.from(1);
         const minimumQuoteTokenLiquidity = BigNumber.from(2);
 
-        const oracle = await oracleFactory.deploy(
+        const oracle = await oracleFactory.deploy({
             quoteTokenName,
             quoteTokenAddress,
             quoteTokenSymbol,
@@ -102,8 +102,8 @@ describe("AggregatedOracle#constructor", async function () {
             period,
             granularity,
             minimumTokenLiquidityValue,
-            minimumQuoteTokenLiquidity
-        );
+            minimumQuoteTokenLiquidity,
+        });
 
         expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
         expect(await oracle.quoteTokenAddress()).to.equal(quoteTokenAddress);
@@ -123,19 +123,19 @@ describe("AggregatedOracle#constructor", async function () {
 
     it("Should revert if no underlying oracles are provided", async () => {
         await expect(
-            oracleFactory.deploy(
-                "NAME",
-                USDC,
-                "NIL",
-                18,
-                0,
-                [],
-                [],
-                PERIOD,
-                GRANULARITY,
-                MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                MINIMUM_QUOTE_TOKEN_LIQUIDITY
-            )
+            oracleFactory.deploy({
+                quoteTokenName: "NAME",
+                quoteTokenAddress: USDC,
+                quoteTokenSymbol: "NIL",
+                quoteTokenDecimals: 18,
+                liquidityDecimals: 0,
+                oracles: [],
+                tokenSpecificOracles: [],
+                period: PERIOD,
+                granularity: GRANULARITY,
+                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+            })
         ).to.be.revertedWith("AggregatedOracle: MISSING_ORACLES");
     });
 
@@ -144,19 +144,19 @@ describe("AggregatedOracle#constructor", async function () {
         await oracle1.deployed();
 
         await expect(
-            oracleFactory.deploy(
-                "NAME",
-                USDC,
-                "NIL",
-                18,
-                0,
-                [oracle1.address, oracle1.address],
-                [],
-                PERIOD,
-                GRANULARITY,
-                MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                MINIMUM_QUOTE_TOKEN_LIQUIDITY
-            )
+            oracleFactory.deploy({
+                quoteTokenName: "NAME",
+                quoteTokenAddress: USDC,
+                quoteTokenSymbol: "NIL",
+                quoteTokenDecimals: 18,
+                liquidityDecimals: 0,
+                oracles: [oracle1.address, oracle1.address],
+                tokenSpecificOracles: [],
+                period: PERIOD,
+                granularity: GRANULARITY,
+                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+            })
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
 
@@ -170,19 +170,19 @@ describe("AggregatedOracle#constructor", async function () {
         };
 
         await expect(
-            oracleFactory.deploy(
-                "NAME",
-                USDC,
-                "NIL",
-                18,
-                0,
-                [],
-                [oracle1Config, oracle1Config],
-                PERIOD,
-                GRANULARITY,
-                MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                MINIMUM_QUOTE_TOKEN_LIQUIDITY
-            )
+            oracleFactory.deploy({
+                quoteTokenName: "NAME",
+                quoteTokenAddress: USDC,
+                quoteTokenSymbol: "NIL",
+                quoteTokenDecimals: 18,
+                liquidityDecimals: 0,
+                oracles: [],
+                tokenSpecificOracles: [oracle1Config, oracle1Config],
+                period: PERIOD,
+                granularity: GRANULARITY,
+                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+            })
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
 
@@ -196,19 +196,19 @@ describe("AggregatedOracle#constructor", async function () {
         };
 
         await expect(
-            oracleFactory.deploy(
-                "NAME",
-                USDC,
-                "NIL",
-                18,
-                0,
-                [oracle1.address],
-                [oracle1Config],
-                PERIOD,
-                GRANULARITY,
-                MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                MINIMUM_QUOTE_TOKEN_LIQUIDITY
-            )
+            oracleFactory.deploy({
+                quoteTokenName: "NAME",
+                quoteTokenAddress: USDC,
+                quoteTokenSymbol: "NIL",
+                quoteTokenDecimals: 18,
+                liquidityDecimals: 0,
+                oracles: [oracle1.address],
+                tokenSpecificOracles: [oracle1Config],
+                period: PERIOD,
+                granularity: GRANULARITY,
+                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+            })
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
 });
@@ -223,19 +223,19 @@ describe("AggregatedOracle#needsUpdate", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -306,19 +306,19 @@ describe("AggregatedOracle#canUpdate", function () {
         underlyingOracle2 = await mockOracleFactory.deploy(USDC);
         await underlyingOracle2.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle1.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle1.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -389,19 +389,19 @@ describe("AggregatedOracle#consultPrice(token)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it("Should revert when there's no observation", async () => {
@@ -444,19 +444,19 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
@@ -482,19 +482,19 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -640,19 +640,19 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it("Should revert when there's no observation", async () => {
@@ -699,19 +699,19 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
@@ -771,19 +771,19 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -949,19 +949,19 @@ describe("AggregatedOracle#consult(token)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it("Should revert when there's no observation", async () => {
@@ -1012,19 +1012,19 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
@@ -1051,19 +1051,19 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
 
     it("Should revert when the price exceeds uint112.max", async function () {
         // Redeploy with more quote token decimal places
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            7,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 7,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         const price = BigNumber.from(2).pow(112).sub(1); // = uint112.max
         const tokenLiqudity = BigNumber.from(200);
@@ -1086,19 +1086,19 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            6,
-            0,
-            [underlyingOracle.address, underlyingOracle2.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address, underlyingOracle2.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
@@ -1122,19 +1122,19 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            6,
-            0,
-            [underlyingOracle.address, underlyingOracle2.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address, underlyingOracle2.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = LOWEST_ACCEPTABLE_LIQUIDITY;
@@ -1158,19 +1158,19 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            6,
-            0,
-            [underlyingOracle.address, underlyingOracle2.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address, underlyingOracle2.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
@@ -1261,19 +1261,19 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -1391,19 +1391,19 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await underlyingOracle.stubSetLiquidityDecimals(6);
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            6,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USDC Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 6,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it("Should update successfully", async () => {
@@ -1912,19 +1912,19 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         underlyingOracle2 = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle2.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle1.address, underlyingOracle2.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle1.address, underlyingOracle2.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it("Should set observation liquitities to (2^112)-1 when total liquitities >= 2^112", async function () {
@@ -2098,24 +2098,24 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         tokenSpecificOracle = await mockOracleFactory.deploy(quoteToken);
         await tokenSpecificOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [
                 {
                     token: GRT,
                     oracle: tokenSpecificOracle.address,
                 },
             ],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     it("Should call update on both the general oracle and the token specific oracle (underlying)", async () => {
@@ -2232,19 +2232,19 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            minimumTokenLiquidityValue,
-            minimumQuoteTokenLiquidity
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: minimumTokenLiquidityValue,
+            minimumQuoteTokenLiquidity: minimumQuoteTokenLiquidity,
+        });
 
         await oracle.overrideValidateUnderlyingConsultation(false, false);
         await oracle.overrideSanityCheckTvlDistributionRatio(true, true);
@@ -2342,19 +2342,19 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            minimumTokenLiquidityValue,
-            minimumQuoteTokenLiquidity
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: minimumTokenLiquidityValue,
+            minimumQuoteTokenLiquidity: minimumQuoteTokenLiquidity,
+        });
 
         await oracle.overrideValidateUnderlyingConsultation(false, false);
         await oracle.overrideSanityCheckTvlDistributionRatio(true, true);
@@ -2449,19 +2449,19 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         await oracle.overrideValidateUnderlyingConsultation(false, false);
         await oracle.overrideSanityCheckTokenLiquidityValue(true, true);
@@ -2595,19 +2595,19 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
         underlyingOracle2 = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle2.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            quoteToken,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle1.address, underlyingOracle2.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle1.address, underlyingOracle2.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
 
         await oracle.overrideValidateUnderlyingConsultation(false, false);
     });
@@ -2697,19 +2697,19 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
                 underlyingOracle = await mockOracleFactory.deploy(USDC);
                 await underlyingOracle.deployed();
 
-                oracle = await oracleFactory.deploy(
-                    "USD Coin",
-                    USDC,
-                    "USDC",
-                    6,
-                    0,
-                    [underlyingOracle.address],
-                    [],
-                    PERIOD,
-                    GRANULARITY,
-                    MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                    minimumQuoteTokenLiquidity
-                );
+                oracle = await oracleFactory.deploy({
+                    quoteTokenName: "USD Coin",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "USDC",
+                    quoteTokenDecimals: 6,
+                    liquidityDecimals: 0,
+                    oracles: [underlyingOracle.address],
+                    tokenSpecificOracles: [],
+                    period: PERIOD,
+                    granularity: GRANULARITY,
+                    minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+                    minimumQuoteTokenLiquidity: minimumQuoteTokenLiquidity,
+                });
             });
 
             for (const quoteTokenLiquidity of tests) {
@@ -2815,19 +2815,19 @@ describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
                                 underlyingOracle = await mockOracleFactory.deploy(USDC);
                                 await underlyingOracle.deployed();
 
-                                oracle = await oracleFactory.deploy(
-                                    "USD Coin",
-                                    USDC,
-                                    "USDC",
-                                    quoteTokenDecimals,
-                                    liquidityDecimals,
-                                    [underlyingOracle.address],
-                                    [],
-                                    PERIOD,
-                                    GRANULARITY,
-                                    minimumTokenLiquidityValue,
-                                    MINIMUM_QUOTE_TOKEN_LIQUIDITY
-                                );
+                                oracle = await oracleFactory.deploy({
+                                    quoteTokenName: "USD Coin",
+                                    quoteTokenAddress: USDC,
+                                    quoteTokenSymbol: "USDC",
+                                    quoteTokenDecimals: quoteTokenDecimals,
+                                    liquidityDecimals: liquidityDecimals,
+                                    oracles: [underlyingOracle.address],
+                                    tokenSpecificOracles: [],
+                                    period: PERIOD,
+                                    granularity: GRANULARITY,
+                                    minimumTokenLiquidityValue: minimumTokenLiquidityValue,
+                                    minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+                                });
                             });
 
                             for (const price of prices) {
@@ -2884,19 +2884,19 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            USDC,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     const liquidities = [
@@ -2998,19 +2998,19 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            USDC,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     const tests = [true, false];
@@ -3085,19 +3085,19 @@ describe("AggregatedOracle#calculateMaxAge", function () {
     });
 
     it("Shouldn't return 0 when period is 1", async function () {
-        const oracle = await oracleFactory.deploy(
-            "USD Coin",
-            USDC,
-            "USDC",
-            6,
-            0,
-            [underlyingOracle.address],
-            [],
-            1, // period
-            GRANULARITY,
-            0,
-            0
-        );
+        const oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: 1,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: 0,
+            minimumQuoteTokenLiquidity: 0,
+        });
 
         expect(await oracle.stubCalculateMaxAge()).to.not.equal(0);
     });
@@ -3106,19 +3106,19 @@ describe("AggregatedOracle#calculateMaxAge", function () {
 
     for (const period of periods) {
         it(`Should return ${period - 1} when period = ${period}`, async function () {
-            const oracle = await oracleFactory.deploy(
-                "USD Coin",
-                USDC,
-                "USDC",
-                6,
-                0,
-                [underlyingOracle.address],
-                [],
-                period, // period
-                GRANULARITY,
-                0,
-                0
-            );
+            const oracle = await oracleFactory.deploy({
+                quoteTokenName: "USD Coin",
+                quoteTokenAddress: USDC,
+                quoteTokenSymbol: "USDC",
+                quoteTokenDecimals: 6,
+                liquidityDecimals: 0,
+                oracles: [underlyingOracle.address],
+                tokenSpecificOracles: [],
+                period: period,
+                granularity: GRANULARITY,
+                minimumTokenLiquidityValue: 0,
+                minimumQuoteTokenLiquidity: 0,
+            });
 
             expect(await oracle.stubCalculateMaxAge()).to.equal(period - 1);
         });
@@ -3137,19 +3137,19 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "NAME",
-            USDC,
-            "NIL",
-            18,
-            0,
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "NAME",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "NIL",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
         interfaceIds = await interfaceIdsFactory.deploy();
     });
 
@@ -3205,19 +3205,19 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy(
-            "USD Coin",
-            USDC,
-            "USDC",
-            6, // quote token decimals
-            0, // liquidity decimals
-            [underlyingOracle.address],
-            [],
-            PERIOD,
-            GRANULARITY,
-            MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            MINIMUM_QUOTE_TOKEN_LIQUIDITY
-        );
+        oracle = await oracleFactory.deploy({
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: USDC,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+            tokenSpecificOracles: [],
+            period: PERIOD,
+            granularity: GRANULARITY,
+            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+        });
     });
 
     describe("AggregatedOracle#initializeBuffers", function () {
