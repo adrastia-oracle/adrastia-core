@@ -38,13 +38,23 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period, granularity, liquidityDecimals) {
+async function createCurveOracle(
+    priceAveragingStrategy,
+    liquidityAveragingStrategy,
+    pool,
+    poolQuoteToken,
+    ourQuoteToken,
+    period,
+    granularity,
+    liquidityDecimals
+) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
         "CurveLiquidityAccumulator",
+        liquidityAveragingStrategy,
         pool,
         3,
         poolQuoteToken,
@@ -57,6 +67,7 @@ async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period, gr
 
     const priceAccumulator = await createContract(
         "CurvePriceAccumulator",
+        priceAveragingStrategy,
         pool,
         3,
         poolQuoteToken,
@@ -95,7 +106,12 @@ async function main() {
 
     const liquidityDecimals = 4;
 
+    const priceAveragingStrategy = await createContract("GeometricAveraging");
+    const liquidityAveragingStrategy = await createContract("HarmonicAveragingWS80");
+
     const curve = await createCurveOracle(
+        priceAveragingStrategy.address,
+        liquidityAveragingStrategy.address,
         poolAddress,
         poolQuoteToken,
         ourQuoteToken,

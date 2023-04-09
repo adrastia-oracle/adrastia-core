@@ -42,13 +42,23 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, granularity, liquidityDecimals) {
+async function createUniswapV2Oracle(
+    priceAveragingStrategy,
+    liquidityAveragingStrategy,
+    factory,
+    initCodeHash,
+    quoteToken,
+    period,
+    granularity,
+    liquidityDecimals
+) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
         "UniswapV2LiquidityAccumulator",
+        liquidityAveragingStrategy,
         factory,
         initCodeHash,
         quoteToken,
@@ -60,6 +70,7 @@ async function createUniswapV2Oracle(factory, initCodeHash, quoteToken, period, 
 
     const priceAccumulator = await createContract(
         "UniswapV2PriceAccumulator",
+        priceAveragingStrategy,
         factory,
         initCodeHash,
         quoteToken,
@@ -96,7 +107,12 @@ async function main() {
 
     const liquidityDecimals = 4;
 
+    const priceAveragingStrategy = await createContract("GeometricAveraging");
+    const liquidityAveragingStrategy = await createContract("HarmonicAveragingWS80");
+
     const uniswapV2 = await createUniswapV2Oracle(
+        priceAveragingStrategy.address,
+        liquidityAveragingStrategy.address,
         factoryAddress,
         initCodeHash,
         quoteToken,

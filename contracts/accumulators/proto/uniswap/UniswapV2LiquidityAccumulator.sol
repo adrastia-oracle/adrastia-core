@@ -23,6 +23,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     uint256 internal immutable _quoteTokenWholeUnit;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         address quoteToken_,
@@ -30,7 +31,7 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) LiquidityAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         _liquidityDecimals = decimals_;

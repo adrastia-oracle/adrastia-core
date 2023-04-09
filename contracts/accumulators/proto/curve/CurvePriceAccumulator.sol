@@ -25,6 +25,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
     mapping(address => TokenConfig) public tokenIndices;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address curvePool_,
         int8 nCoins_,
         address poolQuoteToken_,
@@ -32,7 +33,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) PriceAccumulator(averagingStrategy_, ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         int128 quoteTokenIndex_ = -1;

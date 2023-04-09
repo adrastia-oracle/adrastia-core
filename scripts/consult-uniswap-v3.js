@@ -37,7 +37,16 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, granularity, liquidityDecimals) {
+async function createUniswapV3Oracle(
+    priceAveragingStrategy,
+    liquidityAveragingStrategy,
+    factory,
+    initCodeHash,
+    quoteToken,
+    period,
+    granularity,
+    liquidityDecimals
+) {
     const poolFees = [/*500, */ 3000 /*, 10000*/];
 
     const updateTheshold = 2000000; // 2% change -> update
@@ -46,6 +55,7 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, 
 
     const liquidityAccumulator = await createContract(
         "UniswapV3LiquidityAccumulator",
+        liquidityAveragingStrategy,
         factory,
         initCodeHash,
         poolFees,
@@ -58,6 +68,7 @@ async function createUniswapV3Oracle(factory, initCodeHash, quoteToken, period, 
 
     const priceAccumulator = await createContract(
         "UniswapV3PriceAccumulator",
+        priceAveragingStrategy,
         factory,
         initCodeHash,
         poolFees,
@@ -92,7 +103,12 @@ async function main() {
 
     const liquidityDecimals = 4;
 
+    const priceAveragingStrategy = await createContract("GeometricAveraging");
+    const liquidityAveragingStrategy = await createContract("HarmonicAveragingWS80");
+
     const uniswapV3 = await createUniswapV3Oracle(
+        priceAveragingStrategy.address,
+        liquidityAveragingStrategy.address,
         uniswapV3FactoryAddress,
         uniswapV3InitCodeHash,
         quoteToken,

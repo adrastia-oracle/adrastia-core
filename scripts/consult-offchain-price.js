@@ -33,8 +33,11 @@ async function main() {
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 10; // At most (optimistically) 10 seconds between every update
 
+    const priceAveragingStrategy = await createContract("GeometricAveraging");
+
     const accumulator = await createContract(
         "OffchainPriceAccumulator",
+        priceAveragingStrategy.address,
         quoteToken,
         updateTheshold,
         minUpdateDelay,

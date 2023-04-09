@@ -13,11 +13,12 @@ contract OffchainPriceAccumulator is PriceAccumulator {
     using SafeCastExt for uint256;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address quoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {}
+    ) PriceAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
     /// @inheritdoc PriceAccumulator
     function canUpdate(bytes memory data) public view virtual override returns (bool) {

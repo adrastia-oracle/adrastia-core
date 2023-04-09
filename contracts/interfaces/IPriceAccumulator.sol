@@ -33,23 +33,19 @@ abstract contract IPriceAccumulator is IAccumulator {
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
         AccumulationLibrary.PriceAccumulator calldata secondAccumulation
-    ) external pure virtual returns (uint112 price);
+    ) external view virtual returns (uint112 price);
 
     /// @notice Gets the last cumulative price that was stored.
     /// @param token The address of the token to get the cumulative price for.
     /// @return The last cumulative price along with the timestamp of that price.
-    function getLastAccumulation(address token)
-        public
-        view
-        virtual
-        returns (AccumulationLibrary.PriceAccumulator memory);
+    function getLastAccumulation(
+        address token
+    ) public view virtual returns (AccumulationLibrary.PriceAccumulator memory);
 
     /// @notice Gets the current cumulative price.
     /// @param token The address of the token to get the cumulative price for.
     /// @return The current cumulative price along with the timestamp of that price.
-    function getCurrentAccumulation(address token)
-        public
-        view
-        virtual
-        returns (AccumulationLibrary.PriceAccumulator memory);
+    function getCurrentAccumulation(
+        address token
+    ) public view virtual returns (AccumulationLibrary.PriceAccumulator memory);
 }

@@ -24,6 +24,7 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
     mapping(address => uint256) tokenIndices;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address curvePool_,
         uint8 nCoins_,
         address poolQuoteToken_,
@@ -32,7 +33,7 @@ contract CurveLiquidityAccumulator is LiquidityAccumulator {
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) LiquidityAccumulator(averagingStrategy_, ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         uint256 quoteTokenIndex_ = type(uint256).max;

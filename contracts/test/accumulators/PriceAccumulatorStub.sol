@@ -19,11 +19,12 @@ contract PriceAccumulatorStub is PriceAccumulator {
     Config public config;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address quoteToken_,
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
+    ) PriceAccumulator(averagingStrategy_, quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
     /* Stub functions */
 

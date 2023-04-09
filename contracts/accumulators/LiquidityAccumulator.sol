@@ -13,6 +13,7 @@ import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
 import "../libraries/SafeCastExt.sol";
 import "../utils/SimpleQuotationMetadata.sol";
+import "../strategies/averaging/IAveragingStrategy.sol";
 
 abstract contract LiquidityAccumulator is
     IERC165,
@@ -24,6 +25,8 @@ abstract contract LiquidityAccumulator is
     using AddressLibrary for address;
     using SafeCast for uint256;
     using SafeCastExt for uint256;
+
+    IAveragingStrategy public immutable averagingStrategy;
 
     uint256 public immutable minUpdateDelay;
     uint256 public immutable maxUpdateDelay;
@@ -54,6 +57,7 @@ abstract contract LiquidityAccumulator is
     );
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address quoteToken_,
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
@@ -61,6 +65,7 @@ abstract contract LiquidityAccumulator is
     ) AbstractAccumulator(updateThreshold_) SimpleQuotationMetadata(quoteToken_) {
         require(maxUpdateDelay_ >= minUpdateDelay_, "LiquidityAccumulator: INVALID_UPDATE_DELAYS");
 
+        averagingStrategy = averagingStrategy_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
@@ -74,7 +79,7 @@ abstract contract LiquidityAccumulator is
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
-    ) external pure virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+    ) external view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         require(firstAccumulation.timestamp != 0, "LiquidityAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
         uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
@@ -238,23 +243,21 @@ abstract contract LiquidityAccumulator is
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
     }
 
-    /// @notice Calculates a time-weighted value.
-    /// @param value The value to weight, greater than 0.
-    /// @param time The time to weight the value by, in seconds, and greater than 0.
-    /// @return The time-weighted value.
-    function calculateTimeWeightedValue(uint256 value, uint256 time) internal pure virtual returns (uint256) {
-        return value * time;
+    function calculateTimeWeightedValue(uint256 value, uint256 time) internal view virtual returns (uint256) {
+        return averagingStrategy.calculateWeightedValue(value, time);
     }
 
     function calculateTimeWeightedAverage(
         uint112 cumulativeNew,
         uint112 cumulativeOld,
         uint256 deltaTime
-    ) internal pure virtual returns (uint256) {
+    ) internal view virtual returns (uint256) {
+        uint256 totalWeightedValues;
         unchecked {
             // Underflow is desired and results in correct functionality
-            return (cumulativeNew - cumulativeOld) / deltaTime;
+            totalWeightedValues = cumulativeNew - cumulativeOld;
         }
+        return averagingStrategy.calculateWeightedAverage(totalWeightedValues, deltaTime);
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {

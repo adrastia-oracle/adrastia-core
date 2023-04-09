@@ -7,6 +7,7 @@ import "../../accumulators/proto/uniswap/UniswapV2LiquidityAccumulator.sol";
 
 contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         address quoteToken_,
@@ -16,6 +17,7 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
         uint256 maxUpdateDelay_
     )
         UniswapV2LiquidityAccumulator(
+            averagingStrategy_,
             uniswapFactory_,
             initCodeHash_,
             quoteToken_,

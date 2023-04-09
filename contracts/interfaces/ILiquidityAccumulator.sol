@@ -37,7 +37,7 @@ abstract contract ILiquidityAccumulator is IAccumulator {
     function calculateLiquidity(
         AccumulationLibrary.LiquidityAccumulator calldata firstAccumulation,
         AccumulationLibrary.LiquidityAccumulator calldata secondAccumulation
-    ) external pure virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+    ) external view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 
     /// @notice Gets the last cumulative liquidity levels for the token and quote token that was stored.
     /// @param token The address of the token to get the cumulative liquidity levels for (with the quote token).

@@ -7,6 +7,7 @@ import "../../accumulators/proto/curve/CurveLiquidityAccumulator.sol";
 
 contract CurveLiquidityAccumulatorStub is CurveLiquidityAccumulator {
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address pool_,
         uint8 nCoins_,
         address poolQuoteToken_,
@@ -17,6 +18,7 @@ contract CurveLiquidityAccumulatorStub is CurveLiquidityAccumulator {
         uint256 maxUpdateDelay_
     )
         CurveLiquidityAccumulator(
+            averagingStrategy_,
             pool_,
             nCoins_,
             poolQuoteToken_,
