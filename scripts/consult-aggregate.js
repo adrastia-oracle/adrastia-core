@@ -170,8 +170,7 @@ async function createAggregatedOracle(
     oracles,
     tokenSpecificOracles
 ) {
-    return await createContract(
-        "AggregatedOracle",
+    return await createContract("AggregatedOracle", {
         quoteTokenName,
         quoteTokenAddress,
         quoteTokenSymbol,
@@ -181,9 +180,9 @@ async function createAggregatedOracle(
         tokenSpecificOracles,
         period,
         granularity,
-        1,
-        10 ** quoteTokenDecimals // minimum is one whole token
-    );
+        minimumTokenLiquidityValue: 1,
+        minimumQuoteTokenLiquidity: 10 ** quoteTokenDecimals, // minimum is one whole token
+    });
 }
 
 async function main() {
