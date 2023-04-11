@@ -49,10 +49,12 @@ function harmonicMean(values, weights) {
 describe("AggregatedOracle#constructor", async function () {
     var underlyingOracleFactory;
     var oracleFactory;
+    var aggregationStrategyFactory;
 
     beforeEach(async () => {
         oracleFactory = await ethers.getContractFactory("AggregatedOracle");
         underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
+        aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
     });
 
     function oraclesFor(token, oracles, tokenSpecificOracles) {
@@ -74,6 +76,9 @@ describe("AggregatedOracle#constructor", async function () {
         const oracle2 = await underlyingOracleFactory.deploy(USDC);
         await oracle2.deployed();
 
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const grtOracle = {
             token: GRT,
             oracle: oracle2.address,
@@ -92,6 +97,7 @@ describe("AggregatedOracle#constructor", async function () {
         const minimumQuoteTokenLiquidity = BigNumber.from(2);
 
         const oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName,
             quoteTokenAddress,
             quoteTokenSymbol,
@@ -122,8 +128,12 @@ describe("AggregatedOracle#constructor", async function () {
     });
 
     it("Should revert if no underlying oracles are provided", async () => {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         await expect(
             oracleFactory.deploy({
+                aggregationStrategy: aggregationStrategy.address,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -140,11 +150,15 @@ describe("AggregatedOracle#constructor", async function () {
     });
 
     it("Should revert if duplicate general oracles are provided", async () => {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
         await oracle1.deployed();
 
         await expect(
             oracleFactory.deploy({
+                aggregationStrategy: aggregationStrategy.address,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -161,6 +175,9 @@ describe("AggregatedOracle#constructor", async function () {
     });
 
     it("Should revert if duplicate token specific oracles are provided", async () => {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
         await oracle1.deployed();
 
@@ -171,6 +188,7 @@ describe("AggregatedOracle#constructor", async function () {
 
         await expect(
             oracleFactory.deploy({
+                aggregationStrategy: aggregationStrategy.address,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -187,6 +205,9 @@ describe("AggregatedOracle#constructor", async function () {
     });
 
     it("Should revert if duplicate general / token specific oracles are provided", async () => {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
         await oracle1.deployed();
 
@@ -197,6 +218,7 @@ describe("AggregatedOracle#constructor", async function () {
 
         await expect(
             oracleFactory.deploy({
+                aggregationStrategy: aggregationStrategy.address,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -217,6 +239,10 @@ describe("AggregatedOracle#needsUpdate", function () {
     var oracle;
 
     beforeEach(async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -224,6 +250,7 @@ describe("AggregatedOracle#needsUpdate", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -297,6 +324,10 @@ describe("AggregatedOracle#canUpdate", function () {
     var underlyingOracle2;
 
     beforeEach(async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -307,6 +338,7 @@ describe("AggregatedOracle#canUpdate", function () {
         await underlyingOracle2.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -383,6 +415,10 @@ describe("AggregatedOracle#consultPrice(token)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -390,6 +426,7 @@ describe("AggregatedOracle#consultPrice(token)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -438,6 +475,10 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -445,6 +486,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -476,6 +518,10 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -483,6 +529,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -634,6 +681,10 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
     ];
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -641,6 +692,7 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -693,6 +745,10 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -700,6 +756,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -765,6 +822,10 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
     ];
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -772,6 +833,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -943,6 +1005,10 @@ describe("AggregatedOracle#consult(token)", function () {
     ];
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -950,6 +1016,7 @@ describe("AggregatedOracle#consult(token)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1006,6 +1073,10 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
     var oracle;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         mockOracleFactory = await ethers.getContractFactory("MockOracle");
         oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -1013,6 +1084,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1050,8 +1122,13 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
     });
 
     it("Should revert when the price exceeds uint112.max", async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         // Redeploy with more quote token decimal places
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1078,15 +1155,20 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         );
         expect(await oracle.quoteTokenDecimals()).to.equal(7, "Aggregated oracle should use 7 decimals for the price");
 
-        await expect(oracle["consult(address,uint256)"](GRT, 0)).to.be.revertedWith("AggregatedOracle: PRICE_TOO_HIGH");
+        await expect(oracle["consult(address,uint256)"](GRT, 0)).to.be.reverted;
     });
 
     it("Should report token liquidity of uint112.max when it exceeds that", async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const underlyingOracle2 = await mockOracleFactory.deploy(USDC);
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1118,11 +1200,16 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
     });
 
     it("Should report quote token liquidity of uint112.max when it exceeds that", async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const underlyingOracle2 = await mockOracleFactory.deploy(USDC);
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1154,11 +1241,16 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
     });
 
     it("Should report liquidities of uint112.max when they exceeds that", async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const underlyingOracle2 = await mockOracleFactory.deploy(USDC);
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1255,6 +1347,10 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
     ];
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -1262,6 +1358,7 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -1383,6 +1480,10 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -1392,6 +1493,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         await underlyingOracle.stubSetLiquidityDecimals(6);
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USDC Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -1903,6 +2005,10 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -1913,6 +2019,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         await underlyingOracle2.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2089,6 +2196,10 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2099,6 +2210,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         await tokenSpecificOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2226,6 +2338,10 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2233,6 +2349,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2336,6 +2453,10 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2343,6 +2464,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2443,6 +2565,10 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2450,6 +2576,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2586,6 +2713,10 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2596,6 +2727,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
         await underlyingOracle2.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2692,12 +2824,17 @@ describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
             var oracle;
 
             beforeEach(async function () {
+                const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+                const aggregationStrategy = await aggregationStrategyFactory.deploy();
+                await aggregationStrategy.deployed();
+
                 const mockOracleFactory = await ethers.getContractFactory("MockOracle");
 
                 underlyingOracle = await mockOracleFactory.deploy(USDC);
                 await underlyingOracle.deployed();
 
                 oracle = await oracleFactory.deploy({
+                    aggregationStrategy: aggregationStrategy.address,
                     quoteTokenName: "USD Coin",
                     quoteTokenAddress: USDC,
                     quoteTokenSymbol: "USDC",
@@ -2810,12 +2947,17 @@ describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
                             var oracle;
 
                             beforeEach(async function () {
+                                const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+                                const aggregationStrategy = await aggregationStrategyFactory.deploy();
+                                await aggregationStrategy.deployed();
+
                                 const mockOracleFactory = await ethers.getContractFactory("MockOracle");
 
                                 underlyingOracle = await mockOracleFactory.deploy(USDC);
                                 await underlyingOracle.deployed();
 
                                 oracle = await oracleFactory.deploy({
+                                    aggregationStrategy: aggregationStrategy.address,
                                     quoteTokenName: "USD Coin",
                                     quoteTokenAddress: USDC,
                                     quoteTokenSymbol: "USDC",
@@ -2878,6 +3020,10 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
     var oracleFactory;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
 
@@ -2885,6 +3031,7 @@ describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "USDC",
@@ -2992,6 +3139,10 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
     var oracleFactory;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
 
@@ -2999,6 +3150,7 @@ describe("AggregatedOracle#validateUnderlyingConsultation", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "USDC",
@@ -3085,7 +3237,12 @@ describe("AggregatedOracle#calculateMaxAge", function () {
     });
 
     it("Shouldn't return 0 when period is 1", async function () {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "USDC",
@@ -3106,7 +3263,12 @@ describe("AggregatedOracle#calculateMaxAge", function () {
 
     for (const period of periods) {
         it(`Should return ${period - 1} when period = ${period}`, async function () {
+            const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+            const aggregationStrategy = await aggregationStrategyFactory.deploy();
+            await aggregationStrategy.deployed();
+
             const oracle = await oracleFactory.deploy({
+                aggregationStrategy: aggregationStrategy.address,
                 quoteTokenName: "USD Coin",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "USDC",
@@ -3137,7 +3299,12 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "NAME",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "NIL",
@@ -3199,6 +3366,10 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
     var underlyingOracle;
 
     beforeEach(async () => {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -3206,6 +3377,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         await underlyingOracle.deployed();
 
         oracle = await oracleFactory.deploy({
+            aggregationStrategy: aggregationStrategy.address,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: USDC,
             quoteTokenSymbol: "USDC",

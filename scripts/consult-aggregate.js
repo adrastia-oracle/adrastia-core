@@ -170,7 +170,11 @@ async function createAggregatedOracle(
     oracles,
     tokenSpecificOracles
 ) {
+    const averagingStrategy = await createContract("ArithmeticAveraging");
+    const aggregationStrategy = await createContract("QuoteTokenWeightedMeanAggregator", averagingStrategy.address);
+
     return await createContract("AggregatedOracle", {
+        aggregationStrategy: aggregationStrategy.address,
         quoteTokenName,
         quoteTokenAddress,
         quoteTokenSymbol,

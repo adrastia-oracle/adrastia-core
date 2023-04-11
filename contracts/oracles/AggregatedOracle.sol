@@ -10,6 +10,7 @@ import "../interfaces/IHistoricalOracle.sol";
 import "../libraries/SafeCastExt.sol";
 import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
+import "../strategies/aggregation/IAggregationStrategy.sol";
 
 /// @dev Limitation: Supports up to 16 underlying oracles.
 contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracle, ExplicitQuotationMetadata {
@@ -41,6 +42,8 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     mapping(address => BufferMetadata) internal observationBufferMetadata;
 
     mapping(address => ObservationLibrary.Observation[]) internal observationBuffers;
+
+    IAggregationStrategy public immutable aggregationStrategy;
 
     /// @notice The minimum quote token denominated value of the token liquidity, scaled by this oracle's liquidity
     /// decimals, required for all underlying oracles to be considered valid and thus included in the aggregation.
@@ -88,6 +91,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
      */
 
     struct AggregatedOracleParams {
+        IAggregationStrategy aggregationStrategy;
         string quoteTokenName;
         address quoteTokenAddress;
         string quoteTokenSymbol;
@@ -116,6 +120,8 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
             params.oracles.length > 0 || params.tokenSpecificOracles.length > 0,
             "AggregatedOracle: MISSING_ORACLES"
         );
+
+        aggregationStrategy = params.aggregationStrategy;
 
         minimumTokenLiquidityValue = params.minimumTokenLiquidityValue;
         minimumQuoteTokenLiquidity = params.minimumQuoteTokenLiquidity;
@@ -351,7 +357,7 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
             }
         }
 
-        (, , , uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
+        (, uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
         return validResponses >= minimumResponses();
@@ -484,26 +490,12 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
             }
         }
 
-        uint256 price;
-        uint256 tokenLiquidity;
-        uint256 quoteTokenLiquidity;
-        uint256 validResponses;
-
-        (price, tokenLiquidity, quoteTokenLiquidity, validResponses) = aggregateUnderlying(token, calculateMaxAge());
-
-        // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we set the observation to the max
-        // This allows the price to continue to be updated while tightly packing liquidities for gas efficiency
-        if (tokenLiquidity > type(uint112).max) tokenLiquidity = type(uint112).max;
-        if (quoteTokenLiquidity > type(uint112).max) quoteTokenLiquidity = type(uint112).max;
+        (ObservationLibrary.Observation memory observation, uint256 validResponses) = aggregateUnderlying(
+            token,
+            calculateMaxAge()
+        );
 
         if (validResponses >= minimumResponses()) {
-            ObservationLibrary.Observation memory observation;
-
-            observation.price = price.toUint112(); // Should never (realistically) overflow
-            observation.tokenLiquidity = uint112(tokenLiquidity); // Will never overflow
-            observation.quoteTokenLiquidity = uint112(quoteTokenLiquidity); // Will never overflow
-            observation.timestamp = block.timestamp.toUint32();
-
             push(token, observation);
 
             return true;
@@ -585,12 +577,10 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     function aggregateUnderlying(
         address token,
         uint256 maxAge
-    )
-        internal
-        view
-        returns (uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity, uint256 validResponses)
-    {
-        uint256 denominator; // sum of oracleQuoteTokenLiquidity divided by oraclePrice
+    ) internal view returns (ObservationLibrary.Observation memory result, uint256 validResponses) {
+        ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](
+            oracles.length + tokenSpecificOracles[token].length
+        );
 
         for (uint256 j = 0; j < 2; ++j) {
             OracleConfig[] memory _oracles;
@@ -626,11 +616,6 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
                     continue;
                 }
 
-                // Shift liquidity for more precise calculations as we divide this by the price
-                // This is safe as liquidity < 2^112
-                // Shifting left by 140 bits allows us to add 16 maximum liquidity values without overflowing
-                oQuoteTokenLiquidity = oQuoteTokenLiquidity << 140;
-
                 // Fix differing quote token decimal places (for price)
                 if (_oracles[i].quoteTokenDecimals < quoteTokenDecimals()) {
                     // Scale up
@@ -659,61 +644,42 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
                     oQuoteTokenLiquidity /= scalar;
                 }
 
-                if (!validateUnderlyingConsultation(oPrice, oTokenLiquidity, oQuoteTokenLiquidity >> 140)) {
+                if (!validateUnderlyingConsultation(oPrice, oTokenLiquidity, oQuoteTokenLiquidity)) {
                     continue;
                 }
 
-                if (oPrice != 0 && oQuoteTokenLiquidity != 0 && oQuoteTokenLiquidity > oPrice) {
-                    ++validResponses;
-
-                    // Note: (oQuoteTokenLiquidity / oPrice) will equal 0 if oQuoteTokenLiquidity <
-                    //   oPrice, but for this to happen, price would have to be insanely high
-                    denominator += oQuoteTokenLiquidity / oPrice;
-
-                    // Should never realistically overflow
-                    tokenLiquidity += oTokenLiquidity;
-                    quoteTokenLiquidity += oQuoteTokenLiquidity;
+                if (oPrice != 0 && oQuoteTokenLiquidity != 0) {
+                    observations[validResponses++] = ObservationLibrary.Observation({
+                        price: oPrice.toUint112(),
+                        tokenLiquidity: oTokenLiquidity.toUint112(),
+                        quoteTokenLiquidity: oQuoteTokenLiquidity.toUint112(),
+                        timestamp: 0 // Not used
+                    });
                 }
             }
         }
 
-        price = denominator == 0 ? 0 : quoteTokenLiquidity / denominator;
+        if (validResponses == 0) {
+            return (
+                ObservationLibrary.Observation({price: 0, tokenLiquidity: 0, quoteTokenLiquidity: 0, timestamp: 0}),
+                0
+            );
+        }
 
-        // Right shift liquidity to undo the left shift and get the real value
-        quoteTokenLiquidity = quoteTokenLiquidity >> 140;
+        result = aggregationStrategy.aggregateObservations(observations, 0, validResponses - 1);
     }
 
     /// @inheritdoc AbstractOracle
     function instantFetch(
         address token
     ) internal view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
-        (
-            uint256 bigPrice,
-            uint256 bigTokenLiquidity,
-            uint256 bigQuoteTokenLiquidity,
-            uint256 validResponses
-        ) = aggregateUnderlying(token, 0);
+        (ObservationLibrary.Observation memory result, uint256 validResponses) = aggregateUnderlying(token, 0);
 
         // Reverts if none of the underlying oracles report anything
         require(validResponses > 0, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
 
-        // This revert should realistically never occur, but we use it to prevent an invalid price from being returned
-        require(bigPrice <= type(uint112).max, "AggregatedOracle: PRICE_TOO_HIGH");
-
-        price = uint112(bigPrice);
-
-        // Liquidities should rarely ever overflow uint112 (if ever), but if they do, we use the max value
-        // This matches how observations are stored
-        if (bigTokenLiquidity > type(uint112).max) {
-            tokenLiquidity = type(uint112).max;
-        } else {
-            tokenLiquidity = uint112(bigTokenLiquidity);
-        }
-
-        if (bigQuoteTokenLiquidity > type(uint112).max) {
-            quoteTokenLiquidity = type(uint112).max;
-        } else {
-            quoteTokenLiquidity = uint112(bigQuoteTokenLiquidity);
-        }
+        price = result.price;
+        tokenLiquidity = result.tokenLiquidity;
+        quoteTokenLiquidity = result.quoteTokenLiquidity;
     }
 }
