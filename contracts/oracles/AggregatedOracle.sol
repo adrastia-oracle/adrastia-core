@@ -12,14 +12,9 @@ import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
 import "../strategies/aggregation/IAggregationStrategy.sol";
 
-/// @dev Limitation: Supports up to 16 underlying oracles.
 contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracle, ExplicitQuotationMetadata {
     using SafeCast for uint256;
     using SafeCastExt for uint256;
-
-    /*
-     * Structs
-     */
 
     struct TokenSpecificOracle {
         address token;
@@ -39,10 +34,6 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         uint16 maxSize;
     }
 
-    mapping(address => BufferMetadata) internal observationBufferMetadata;
-
-    mapping(address => ObservationLibrary.Observation[]) internal observationBuffers;
-
     IAggregationStrategy public immutable aggregationStrategy;
 
     /// @notice The minimum quote token denominated value of the token liquidity, scaled by this oracle's liquidity
@@ -53,6 +44,10 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     /// underlying oracles to be considered valid and thus included in the aggregation.
     uint256 public immutable minimumQuoteTokenLiquidity;
 
+    mapping(address => BufferMetadata) internal observationBufferMetadata;
+
+    mapping(address => ObservationLibrary.Observation[]) internal observationBuffers;
+
     /// @notice One whole unit of the quote token, in the quote token's smallest denomination.
     uint256 internal immutable _quoteTokenWholeUnit;
 
@@ -60,16 +55,8 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
 
     uint16 internal immutable _initialCardinality;
 
-    /*
-     * Internal variables
-     */
-
     OracleConfig[] internal oracles;
     mapping(address => OracleConfig[]) internal tokenSpecificOracles;
-
-    /*
-     * Private variables
-     */
 
     mapping(address => bool) private oracleExists;
     mapping(address => mapping(address => bool)) private oracleForExists;
@@ -85,10 +72,6 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     /// @param token The token for which the observation buffer's capacity was initialized.
     /// @param capacity The capacity of the observation buffer.
     event ObservationCapacityInitialized(address indexed token, uint256 capacity);
-
-    /*
-     * Constructors
-     */
 
     struct AggregatedOracleParams {
         IAggregationStrategy aggregationStrategy;
@@ -165,10 +148,6 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
 
         _initialCardinality = 1;
     }
-
-    /*
-     * External functions
-     */
 
     /// @inheritdoc IAggregatedOracle
     function getOracles() external view virtual override returns (address[] memory) {
@@ -276,10 +255,6 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
         }
     }
 
-    /*
-     * Public functions
-     */
-
     /// @inheritdoc ExplicitQuotationMetadata
     function quoteTokenName()
         public
@@ -367,10 +342,6 @@ contract AggregatedOracle is IAggregatedOracle, IHistoricalOracle, PeriodicOracl
     function liquidityDecimals() public view virtual override returns (uint8) {
         return _liquidityDecimals;
     }
-
-    /*
-     * Internal functions
-     */
 
     function getLatestObservation(
         address token
