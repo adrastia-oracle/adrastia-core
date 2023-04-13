@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
-import "../interfaces/IAggregatedOracle.sol";
+import "../oracles/IOracleAggregator.sol";
 import "../interfaces/IHasLiquidityAccumulator.sol";
 import "../interfaces/IHasPriceAccumulator.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
@@ -18,8 +18,8 @@ import "../interfaces/IHistoricalPriceAccumulationOracle.sol";
 import "../interfaces/IHistoricalLiquidityAccumulationOracle.sol";
 
 contract InterfaceIds {
-    function iAggregatedOracle() external pure returns (bytes4) {
-        return type(IAggregatedOracle).interfaceId;
+    function iOracleAggregator() external pure returns (bytes4) {
+        return type(IOracleAggregator).interfaceId;
     }
 
     function iHasLiquidityAccumulator() external pure returns (bytes4) {
