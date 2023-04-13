@@ -425,11 +425,20 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
                 continue;
             }
 
-            if (oPrice != 0 && oQuoteTokenLiquidity != 0) {
+            if (
+                // Check that the values are not zero
+                oPrice != 0 &&
+                oTokenLiquidity != 0 &&
+                oQuoteTokenLiquidity != 0 &&
+                // Check that the values are not too large
+                oPrice <= type(uint112).max &&
+                oTokenLiquidity <= type(uint112).max &&
+                oQuoteTokenLiquidity <= type(uint112).max
+            ) {
                 observations[validResponses++] = ObservationLibrary.Observation({
-                    price: oPrice.toUint112(),
-                    tokenLiquidity: oTokenLiquidity.toUint112(),
-                    quoteTokenLiquidity: oQuoteTokenLiquidity.toUint112(),
+                    price: uint112(oPrice),
+                    tokenLiquidity: uint112(oTokenLiquidity),
+                    quoteTokenLiquidity: uint112(oQuoteTokenLiquidity),
                     timestamp: 0 // Not used
                 });
             }
