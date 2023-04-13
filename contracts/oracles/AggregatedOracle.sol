@@ -1,22 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
-import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 import "./IOracleAggregator.sol";
 import "./PeriodicOracle.sol";
 import "./HistoricalOracle.sol";
-import "../interfaces/IHistoricalOracle.sol";
-import "../libraries/SafeCastExt.sol";
-import "../libraries/uniswap-lib/FullMath.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
-import "../strategies/aggregation/IAggregationStrategy.sol";
 
 contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, HistoricalOracle, ExplicitQuotationMetadata {
-    using SafeCast for uint256;
-    using SafeCastExt for uint256;
-
     struct TokenSpecificOracle {
         address token;
         address oracle;
