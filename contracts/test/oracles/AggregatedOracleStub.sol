@@ -49,7 +49,7 @@ contract AggregatedOracleStub is AggregatedOracle {
     }
 
     function stubInitialCardinality() public view returns (uint256) {
-        return _initialCardinality;
+        return initialCapacity;
     }
 
     function stubSetLiquidityDecimals(uint8 decimals) public {

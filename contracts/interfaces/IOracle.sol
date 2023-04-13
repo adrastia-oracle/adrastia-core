@@ -10,20 +10,6 @@ import "./IPriceOracle.sol";
  * @notice An interface that defines a price and liquidity oracle.
  */
 abstract contract IOracle is IUpdateable, IPriceOracle, ILiquidityOracle {
-    /// @notice Emitted when a stored quotation is updated.
-    /// @param token The address of the token that the quotation is for.
-    /// @param price The quote token denominated price for a whole token.
-    /// @param tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
-    /// @param quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
-    /// @param timestamp The epoch timestamp of the quotation (in seconds).
-    event Updated(
-        address indexed token,
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity,
-        uint256 timestamp
-    );
-
     /**
      * @notice Gets the price of a token in terms of the quote token along with the liquidity levels of the token
      *  andquote token in the underlying pool.
