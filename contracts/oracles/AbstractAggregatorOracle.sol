@@ -425,8 +425,8 @@ abstract contract AbstractAggregatorOracle is
     ) internal view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         (ObservationLibrary.Observation memory result, uint256 validResponses) = aggregateUnderlying(token, 0);
 
-        // Reverts if none of the underlying oracles report anything
-        require(validResponses > 0, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+        uint256 minResponses = minimumResponses();
+        require(validResponses >= minResponses, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         price = result.price;
         tokenLiquidity = result.tokenLiquidity;
