@@ -87,12 +87,10 @@ async function createUniswapV2Oracle(
     );
 
     const oracle = await createContract(
-        "PeriodicAccumulationOracle",
+        "AccumulatorOracleView",
         liquidityAccumulator.address,
         priceAccumulator.address,
-        quoteToken,
-        period,
-        granularity
+        quoteToken
     );
 
     return {
@@ -144,12 +142,10 @@ async function createUniswapV3Oracle(
     );
 
     const oracle = await createContract(
-        "PeriodicAccumulationOracle",
+        "AccumulatorOracleView",
         liquidityAccumulator.address,
         priceAccumulator.address,
-        quoteToken,
-        period,
-        granularity
+        quoteToken
     );
 
     return {
@@ -159,16 +155,17 @@ async function createUniswapV3Oracle(
     };
 }
 
-async function createPeriodicAggregatorOracle(
+async function createCurrentAggregatorOracle(
     quoteTokenName,
     quoteTokenAddress,
     quoteTokenSymbol,
     quoteTokenDecimals,
     liquidityDecimals,
-    period,
-    granularity,
     oracles,
-    tokenSpecificOracles
+    tokenSpecificOracles,
+    updateTheshold,
+    minUpdateDelay,
+    maxUpdateDelay
 ) {
     const minimumTokenLiquidityValue = 1;
     const minimumQuoteTokenLiquidity = 10 ** quoteTokenDecimals; // minimum is one whole token
@@ -186,19 +183,23 @@ async function createPeriodicAggregatorOracle(
         maximumLiquidityRatio
     );
 
-    return await createContract("PeriodicAggregatorOracle", {
-        aggregationStrategy: aggregationStrategy.address,
-        validationStrategy: validationStrategy.address,
-        quoteTokenName,
-        quoteTokenAddress,
-        quoteTokenSymbol,
-        quoteTokenDecimals,
-        liquidityDecimals,
-        oracles,
-        tokenSpecificOracles,
-        period,
-        granularity,
-    });
+    return await createContract(
+        "CurrentAggregatorOracle",
+        {
+            aggregationStrategy: aggregationStrategy.address,
+            validationStrategy: validationStrategy.address,
+            quoteTokenName,
+            quoteTokenAddress,
+            quoteTokenSymbol,
+            quoteTokenDecimals,
+            liquidityDecimals,
+            oracles,
+            tokenSpecificOracles,
+        },
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
+    );
 }
 
 async function main() {
@@ -206,8 +207,11 @@ async function main() {
     const quoteToken = usdcAddress;
 
     const underlyingPeriodSeconds = 10;
-    const periodSeconds = 10;
-    const granularity = 2;
+    const granularity = 1;
+
+    const updateTheshold = 2000000; // 2% change -> update
+    const minUpdateDelay = 5; // At least 5 seconds between every update
+    const maxUpdateDelay = 10; // At most (optimistically) 60 seconds between every update
 
     const liquidityDecimals = 4;
 
@@ -251,16 +255,17 @@ async function main() {
 
     const tokenSpecificOracles = [];
 
-    const oracle = await createPeriodicAggregatorOracle(
+    const oracle = await createCurrentAggregatorOracle(
         "USD Coin",
         quoteToken,
         "USDC",
         6,
         liquidityDecimals,
-        periodSeconds,
-        granularity,
         oracles,
-        tokenSpecificOracles
+        tokenSpecificOracles,
+        updateTheshold,
+        minUpdateDelay,
+        maxUpdateDelay
     );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
