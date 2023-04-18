@@ -32,7 +32,9 @@ contract MedianAggregator is AbstractAggregator {
         uint256 length = observations.length;
         if (length <= to - from) revert InsufficientObservations(observations.length, to - from + 1);
         if (length == 1) {
-            return observations[from];
+            ObservationLibrary.Observation memory observation = observations[from];
+            observation.timestamp = uint32(block.timestamp);
+            return observation;
         }
 
         uint112[] memory prices = new uint112[](length);
