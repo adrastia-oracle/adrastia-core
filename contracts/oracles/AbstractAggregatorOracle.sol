@@ -187,16 +187,11 @@ abstract contract AbstractAggregatorOracle is
             return false;
         }
 
-        address token = abi.decode(data, (address));
-
-        // Ensure all underlying oracles are up-to-date
-        Oracle[] memory theOracles = _getOracles(token);
-        for (uint256 i = 0; i < theOracles.length; ++i) {
-            if (IOracle(theOracles[i].oracle).canUpdate(data)) {
-                // We can update one of the underlying oracles
-                return true;
-            }
+        if (canUpdateUnderlyingOracles(data)) {
+            return true;
         }
+
+        address token = abi.decode(data, (address));
 
         (, uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
 
@@ -222,6 +217,51 @@ abstract contract AbstractAggregatorOracle is
         return observationBuffers[token][meta.end];
     }
 
+    /// @notice Checks if any of the underlying oracles for the token need to be updated.
+    /// @dev This function is used to determine if the aggregator can be updated by updating one of the underlying
+    /// oracles. Please ensure updateUnderlyingOracles will update the underlying oracles if this function returns true.
+    /// @param data The encoded token address, along with any additional data required by the oracle.
+    /// @return True if any of the underlying oracles can be updated, false otherwise.
+    function canUpdateUnderlyingOracles(bytes memory data) internal view virtual returns (bool) {
+        address token = abi.decode(data, (address));
+
+        // Ensure all underlying oracles are up-to-date
+        Oracle[] memory theOracles = _getOracles(token);
+        for (uint256 i = 0; i < theOracles.length; ++i) {
+            if (IOracle(theOracles[i].oracle).canUpdate(data)) {
+                // We can update one of the underlying oracles
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// @notice Updates the underlying oracles for the token.
+    /// @dev This function is used to update the underlying oracles before consulting them.
+    /// @param data The encoded token address, along with any additional data required by the oracle.
+    /// @return True if any of the underlying oracles were updated, false otherwise.
+    function updateUnderlyingOracles(bytes memory data) internal virtual returns (bool) {
+        bool underlyingUpdated;
+        address token = abi.decode(data, (address));
+
+        // Ensure all underlying oracles are up-to-date
+        Oracle[] memory theOracles = _getOracles(token);
+        for (uint256 i = 0; i < theOracles.length; ++i) {
+            // We don't want any problematic underlying oracles to prevent this oracle from updating
+            // so we put update in a try-catch block
+            try IOracle(theOracles[i].oracle).update(data) returns (bool updated) {
+                underlyingUpdated = underlyingUpdated || updated;
+            } catch Error(string memory reason) {
+                emit UpdateErrorWithReason(theOracles[i].oracle, token, reason);
+            } catch (bytes memory err) {
+                emit UpdateError(theOracles[i].oracle, token, err);
+            }
+        }
+
+        return underlyingUpdated;
+    }
+
     function _getOracles(address token) internal view virtual returns (Oracle[] memory) {
         Oracle[] memory generalOracles = oracles;
         Oracle[] memory specificOracles = tokenSpecificOracles[token];
@@ -241,22 +281,9 @@ abstract contract AbstractAggregatorOracle is
     }
 
     function performUpdate(bytes memory data) internal virtual returns (bool) {
-        bool underlyingUpdated;
-        address token = abi.decode(data, (address));
+        bool underlyingUpdated = updateUnderlyingOracles(data);
 
-        // Ensure all underlying oracles are up-to-date
-        Oracle[] memory theOracles = _getOracles(token);
-        for (uint256 i = 0; i < theOracles.length; ++i) {
-            // We don't want any problematic underlying oracles to prevent this oracle from updating
-            // so we put update in a try-catch block
-            try IOracle(theOracles[i].oracle).update(data) returns (bool updated) {
-                underlyingUpdated = underlyingUpdated || updated;
-            } catch Error(string memory reason) {
-                emit UpdateErrorWithReason(theOracles[i].oracle, token, reason);
-            } catch (bytes memory err) {
-                emit UpdateError(theOracles[i].oracle, token, err);
-            }
-        }
+        address token = abi.decode(data, (address));
 
         (ObservationLibrary.Observation memory observation, uint256 validResponses) = aggregateUnderlying(
             token,
