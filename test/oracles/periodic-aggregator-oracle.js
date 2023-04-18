@@ -104,7 +104,13 @@ async function constructDefaultAggregator(
         };
     }
 
-    return await factory.deploy(params);
+    const period = params.period;
+    const granularity = params.granularity;
+
+    delete params.period;
+    delete params.granularity;
+
+    return await factory.deploy(params, period, granularity);
 }
 
 describe("PeriodicAggregatorOracle#constructor", async function () {
@@ -144,19 +150,21 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
         const period = 30;
         const granularity = 5;
 
-        const oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            validationStrategy: validationStrategyAddress,
-            quoteTokenName,
-            quoteTokenAddress,
-            quoteTokenSymbol,
-            quoteTokenDecimals,
-            liquidityDecimals,
-            oracles,
-            tokenSpecificOracles,
+        const oracle = await oracleFactory.deploy(
+            {
+                aggregationStrategy: aggregationStrategy.address,
+                validationStrategy: validationStrategyAddress,
+                quoteTokenName,
+                quoteTokenAddress,
+                quoteTokenSymbol,
+                quoteTokenDecimals,
+                liquidityDecimals,
+                oracles,
+                tokenSpecificOracles,
+            },
             period,
-            granularity,
-        });
+            granularity
+        );
 
         const generalOracles = [
             [oracle1.address, await oracle1.quoteTokenDecimals(), await oracle1.liquidityDecimals()],
@@ -188,20 +196,22 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
         const validationStrategyAddress = AddressZero;
 
         await expect(
-            oracleFactory.deploy({
-                aggregationStrategy: aggregationStrategy.address,
-                validationStrategy: validationStrategyAddress,
-                quoteTokenName: "NAME",
-                quoteTokenAddress: USDC,
-                quoteTokenSymbol: "NIL",
-                quoteTokenDecimals: 18,
-                liquidityDecimals: 0,
-                oracles: [],
-                tokenSpecificOracles: [],
-                period: PERIOD,
-                granularity: GRANULARITY,
-            })
-        ).to.be.revertedWith("PeriodicAggregatorOracle: MISSING_ORACLES");
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [],
+                    tokenSpecificOracles: [],
+                },
+                PERIOD,
+                GRANULARITY
+            )
+        ).to.be.revertedWith("AbstractAggregatorOracle: MISSING_ORACLES");
     });
 
     it("Should revert if duplicate general oracles are provided", async () => {
@@ -214,20 +224,22 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
         await oracle1.deployed();
 
         await expect(
-            oracleFactory.deploy({
-                aggregationStrategy: aggregationStrategy.address,
-                validationStrategy: validationStrategyAddress,
-                quoteTokenName: "NAME",
-                quoteTokenAddress: USDC,
-                quoteTokenSymbol: "NIL",
-                quoteTokenDecimals: 18,
-                liquidityDecimals: 0,
-                oracles: [oracle1.address, oracle1.address],
-                tokenSpecificOracles: [],
-                period: PERIOD,
-                granularity: GRANULARITY,
-            })
-        ).to.be.revertedWith("PeriodicAggregatorOracle: DUPLICATE_ORACLE");
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [oracle1.address, oracle1.address],
+                    tokenSpecificOracles: [],
+                },
+                PERIOD,
+                GRANULARITY
+            )
+        ).to.be.revertedWith("AbstractAggregatorOracle: DUPLICATE_ORACLE");
     });
 
     it("Should revert if duplicate token specific oracles are provided", async () => {
@@ -245,20 +257,22 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
         };
 
         await expect(
-            oracleFactory.deploy({
-                aggregationStrategy: aggregationStrategy.address,
-                validationStrategy: validationStrategyAddress,
-                quoteTokenName: "NAME",
-                quoteTokenAddress: USDC,
-                quoteTokenSymbol: "NIL",
-                quoteTokenDecimals: 18,
-                liquidityDecimals: 0,
-                oracles: [],
-                tokenSpecificOracles: [oracle1Config, oracle1Config],
-                period: PERIOD,
-                granularity: GRANULARITY,
-            })
-        ).to.be.revertedWith("PeriodicAggregatorOracle: DUPLICATE_ORACLE");
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [],
+                    tokenSpecificOracles: [oracle1Config, oracle1Config],
+                },
+                PERIOD,
+                GRANULARITY
+            )
+        ).to.be.revertedWith("AbstractAggregatorOracle: DUPLICATE_ORACLE");
     });
 
     it("Should revert if duplicate general / token specific oracles are provided", async () => {
@@ -276,20 +290,22 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
         };
 
         await expect(
-            oracleFactory.deploy({
-                aggregationStrategy: aggregationStrategy.address,
-                validationStrategy: validationStrategyAddress,
-                quoteTokenName: "NAME",
-                quoteTokenAddress: USDC,
-                quoteTokenSymbol: "NIL",
-                quoteTokenDecimals: 18,
-                liquidityDecimals: 0,
-                oracles: [oracle1.address],
-                tokenSpecificOracles: [oracle1Config],
-                period: PERIOD,
-                granularity: GRANULARITY,
-            })
-        ).to.be.revertedWith("PeriodicAggregatorOracle: DUPLICATE_ORACLE");
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [oracle1.address],
+                    tokenSpecificOracles: [oracle1Config],
+                },
+                PERIOD,
+                GRANULARITY
+            )
+        ).to.be.revertedWith("AbstractAggregatorOracle: DUPLICATE_ORACLE");
     });
 });
 
@@ -1084,7 +1100,7 @@ describe("PeriodicAggregatorOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle.stubSetConsultError(true);
 
         await expect(oracle["consult(address,uint256)"](GRT, 0)).to.be.revertedWith(
-            "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS"
+            "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS"
         );
     });
 
@@ -1800,7 +1816,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1836,7 +1852,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1872,7 +1888,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1908,7 +1924,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2312,7 +2328,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum t
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2427,7 +2443,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum q
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2535,7 +2551,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and an allowed 
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)

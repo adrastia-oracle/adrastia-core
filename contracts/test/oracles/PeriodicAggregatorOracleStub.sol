@@ -15,7 +15,11 @@ contract PeriodicAggregatorOracleStub is PeriodicAggregatorOracle {
 
     Config public config;
 
-    constructor(PeriodicAggregatorOracleParams memory params) PeriodicAggregatorOracle(params) {}
+    constructor(
+        AbstractAggregatorOracleParams memory params,
+        uint256 period_,
+        uint256 granularity_
+    ) PeriodicAggregatorOracle(params, period_, granularity_) {}
 
     function stubPush(
         address token,
@@ -80,9 +84,9 @@ contract PeriodicAggregatorOracleStub is PeriodicAggregatorOracle {
 
     /* Overridden functions */
 
-    function needsUpdate(bytes memory data) public view virtual override(IUpdateable, PeriodicOracle) returns (bool) {
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         if (config.needsUpdateOverridden) return config.needsUpdate;
-        else return PeriodicOracle.needsUpdate(data);
+        else return super.needsUpdate(data);
     }
 
     function quoteTokenDecimals() public view virtual override returns (uint8) {
