@@ -7,7 +7,13 @@ import "./HistoricalOracle.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
 import "../strategies/validation/IValidationStrategy.sol";
 
-contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, HistoricalOracle, ExplicitQuotationMetadata {
+contract PeriodicAggregatorOracle is
+    IOracleAggregator,
+    IOracle,
+    PeriodicOracle,
+    HistoricalOracle,
+    ExplicitQuotationMetadata
+{
     struct TokenSpecificOracle {
         address token;
         address oracle;
@@ -40,7 +46,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
     /// @param err Data corresponding with a low level error being thrown.
     event UpdateError(address indexed oracle, address indexed token, bytes err);
 
-    struct AggregatedOracleParams {
+    struct PeriodicAggregatorOracleParams {
         IAggregationStrategy aggregationStrategy;
         IValidationStrategy validationStrategy;
         string quoteTokenName;
@@ -55,7 +61,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
     }
 
     constructor(
-        AggregatedOracleParams memory params
+        PeriodicAggregatorOracleParams memory params
     )
         PeriodicOracle(params.quoteTokenAddress, params.period, params.granularity)
         HistoricalOracle(1)
@@ -68,13 +74,13 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
     {
         require(
             params.oracles.length > 0 || params.tokenSpecificOracles.length > 0,
-            "AggregatedOracle: MISSING_ORACLES"
+            "PeriodicAggregatorOracle: MISSING_ORACLES"
         );
         if (
             address(params.validationStrategy) != address(0) &&
             params.validationStrategy.quoteTokenDecimals() != params.quoteTokenDecimals
         ) {
-            revert("AggregatedOracle: QUOTE_TOKEN_DECIMALS_MISMATCH");
+            revert("PeriodicAggregatorOracle: QUOTE_TOKEN_DECIMALS_MISMATCH");
         }
 
         aggregationStrategy = params.aggregationStrategy;
@@ -86,7 +92,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
 
         // Setup general oracles
         for (uint256 i = 0; i < params.oracles.length; ++i) {
-            require(!oracleExists[params.oracles[i]], "AggregatedOracle: DUPLICATE_ORACLE");
+            require(!oracleExists[params.oracles[i]], "PeriodicAggregatorOracle: DUPLICATE_ORACLE");
 
             oracleExists[params.oracles[i]] = true;
 
@@ -103,8 +109,8 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
         for (uint256 i = 0; i < params.tokenSpecificOracles.length; ++i) {
             TokenSpecificOracle memory oracle = params.tokenSpecificOracles[i];
 
-            require(!oracleExists[oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
-            require(!oracleForExists[oracle.token][oracle.oracle], "AggregatedOracle: DUPLICATE_ORACLE");
+            require(!oracleExists[oracle.oracle], "PeriodicAggregatorOracle: DUPLICATE_ORACLE");
+            require(!oracleForExists[oracle.token][oracle.oracle], "PeriodicAggregatorOracle: DUPLICATE_ORACLE");
 
             oracleForExists[oracle.token][oracle.oracle] = true;
 
@@ -263,7 +269,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
             push(token, observation);
 
             return true;
-        } else emit UpdateErrorWithReason(address(this), token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+        } else emit UpdateErrorWithReason(address(this), token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         return underlyingUpdated;
     }
@@ -403,7 +409,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
         (ObservationLibrary.Observation memory result, uint256 validResponses) = aggregateUnderlying(token, 0);
 
         // Reverts if none of the underlying oracles report anything
-        require(validResponses > 0, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+        require(validResponses > 0, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         price = result.price;
         tokenLiquidity = result.tokenLiquidity;

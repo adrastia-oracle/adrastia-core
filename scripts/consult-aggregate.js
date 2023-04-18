@@ -159,7 +159,7 @@ async function createUniswapV3Oracle(
     };
 }
 
-async function createAggregatedOracle(
+async function createPeriodicAggregatorOracle(
     quoteTokenName,
     quoteTokenAddress,
     quoteTokenSymbol,
@@ -170,11 +170,25 @@ async function createAggregatedOracle(
     oracles,
     tokenSpecificOracles
 ) {
+    const minimumTokenLiquidityValue = 1;
+    const minimumQuoteTokenLiquidity = 10 ** quoteTokenDecimals; // minimum is one whole token
+    const minimumLiquidityRatio = 1000; // 1:10 value(token):value(quoteToken)
+    const maximumLiquidityRatio = 100000; // 10:1 value(token):value(quoteToken)
+
     const averagingStrategy = await createContract("ArithmeticAveraging");
     const aggregationStrategy = await createContract("QuoteTokenWeightedMeanAggregator", averagingStrategy.address);
+    const validationStrategy = await createContract(
+        "DefaultValidation",
+        quoteTokenDecimals,
+        minimumTokenLiquidityValue,
+        minimumQuoteTokenLiquidity,
+        minimumLiquidityRatio,
+        maximumLiquidityRatio
+    );
 
-    return await createContract("AggregatedOracle", {
+    return await createContract("PeriodicAggregatorOracle", {
         aggregationStrategy: aggregationStrategy.address,
+        validationStrategy: validationStrategy.address,
         quoteTokenName,
         quoteTokenAddress,
         quoteTokenSymbol,
@@ -184,8 +198,6 @@ async function createAggregatedOracle(
         tokenSpecificOracles,
         period,
         granularity,
-        minimumTokenLiquidityValue: 1,
-        minimumQuoteTokenLiquidity: 10 ** quoteTokenDecimals, // minimum is one whole token
     });
 }
 
@@ -239,7 +251,7 @@ async function main() {
 
     const tokenSpecificOracles = [];
 
-    const oracle = await createAggregatedOracle(
+    const oracle = await createPeriodicAggregatorOracle(
         "USD Coin",
         quoteToken,
         "USDC",

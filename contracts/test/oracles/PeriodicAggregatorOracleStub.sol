@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
-import "../../oracles/AggregatedOracle.sol";
+import "../../oracles/PeriodicAggregatorOracle.sol";
 
-contract AggregatedOracleStub is AggregatedOracle {
+contract PeriodicAggregatorOracleStub is PeriodicAggregatorOracle {
     struct Config {
         bool needsUpdateOverridden;
         bool needsUpdate;
@@ -15,7 +15,7 @@ contract AggregatedOracleStub is AggregatedOracle {
 
     Config public config;
 
-    constructor(AggregatedOracleParams memory params) AggregatedOracle(params) {}
+    constructor(PeriodicAggregatorOracleParams memory params) PeriodicAggregatorOracle(params) {}
 
     function stubPush(
         address token,

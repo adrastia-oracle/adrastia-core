@@ -107,13 +107,13 @@ async function constructDefaultAggregator(
     return await factory.deploy(params);
 }
 
-describe("AggregatedOracle#constructor", async function () {
+describe("PeriodicAggregatorOracle#constructor", async function () {
     var underlyingOracleFactory;
     var oracleFactory;
     var aggregationStrategyFactory;
 
     beforeEach(async () => {
-        oracleFactory = await ethers.getContractFactory("AggregatedOracle");
+        oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracle");
         underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
         aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
     });
@@ -201,7 +201,7 @@ describe("AggregatedOracle#constructor", async function () {
                 period: PERIOD,
                 granularity: GRANULARITY,
             })
-        ).to.be.revertedWith("AggregatedOracle: MISSING_ORACLES");
+        ).to.be.revertedWith("PeriodicAggregatorOracle: MISSING_ORACLES");
     });
 
     it("Should revert if duplicate general oracles are provided", async () => {
@@ -227,7 +227,7 @@ describe("AggregatedOracle#constructor", async function () {
                 period: PERIOD,
                 granularity: GRANULARITY,
             })
-        ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
+        ).to.be.revertedWith("PeriodicAggregatorOracle: DUPLICATE_ORACLE");
     });
 
     it("Should revert if duplicate token specific oracles are provided", async () => {
@@ -258,7 +258,7 @@ describe("AggregatedOracle#constructor", async function () {
                 period: PERIOD,
                 granularity: GRANULARITY,
             })
-        ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
+        ).to.be.revertedWith("PeriodicAggregatorOracle: DUPLICATE_ORACLE");
     });
 
     it("Should revert if duplicate general / token specific oracles are provided", async () => {
@@ -289,16 +289,16 @@ describe("AggregatedOracle#constructor", async function () {
                 period: PERIOD,
                 granularity: GRANULARITY,
             })
-        ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
+        ).to.be.revertedWith("PeriodicAggregatorOracle: DUPLICATE_ORACLE");
     });
 });
 
-describe("AggregatedOracle#needsUpdate", function () {
+describe("PeriodicAggregatorOracle#needsUpdate", function () {
     var oracle;
 
     beforeEach(async function () {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -362,7 +362,7 @@ describe("AggregatedOracle#needsUpdate", function () {
     });
 });
 
-describe("AggregatedOracle#canUpdate", function () {
+describe("PeriodicAggregatorOracle#canUpdate", function () {
     var oracle;
     var validationStrategy;
 
@@ -371,7 +371,7 @@ describe("AggregatedOracle#canUpdate", function () {
 
     beforeEach(async function () {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
         const validationStrategyFactory = await ethers.getContractFactory("ValidationStub");
 
         validationStrategy = await validationStrategyFactory.deploy();
@@ -450,12 +450,12 @@ describe("AggregatedOracle#canUpdate", function () {
     });
 });
 
-describe("AggregatedOracle#consultPrice(token)", function () {
+describe("PeriodicAggregatorOracle#consultPrice(token)", function () {
     var oracle;
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -500,13 +500,13 @@ describe("AggregatedOracle#consultPrice(token)", function () {
     });
 });
 
-describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
+describe("PeriodicAggregatorOracle#consultPrice(token, maxAge = 0)", function () {
     var underlyingOracle;
     var oracle;
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -533,14 +533,14 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
     });
 });
 
-describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
+describe("PeriodicAggregatorOracle#consultPrice(token, maxAge)", function () {
     const MAX_AGE = 60;
 
     var oracle;
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -658,7 +658,7 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
     });
 });
 
-describe("AggregatedOracle#consultLiquidity(token)", function () {
+describe("PeriodicAggregatorOracle#consultLiquidity(token)", function () {
     var oracle;
 
     const tests = [
@@ -694,7 +694,7 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -743,13 +743,13 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
     });
 });
 
-describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
+describe("PeriodicAggregatorOracle#consultLiquidity(token, maxAge = 0)", function () {
     var underlyingOracle;
     var oracle;
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -779,7 +779,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
     });
 });
 
-describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
+describe("PeriodicAggregatorOracle#consultLiquidity(token, maxAge)", function () {
     const MAX_AGE = 60;
 
     var oracle;
@@ -817,7 +817,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -927,7 +927,7 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
     });
 });
 
-describe("AggregatedOracle#consult(token)", function () {
+describe("PeriodicAggregatorOracle#consult(token)", function () {
     var oracle;
 
     const tests = [
@@ -991,7 +991,7 @@ describe("AggregatedOracle#consult(token)", function () {
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -1042,7 +1042,7 @@ describe("AggregatedOracle#consult(token)", function () {
     });
 });
 
-describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
+describe("PeriodicAggregatorOracle#consult(token, maxAge = 0)", function () {
     var oracleFactory;
     var mockOracleFactory;
     var underlyingOracle;
@@ -1050,7 +1050,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
 
     beforeEach(async () => {
         mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -1084,7 +1084,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle.stubSetConsultError(true);
 
         await expect(oracle["consult(address,uint256)"](GRT, 0)).to.be.revertedWith(
-            "AggregatedOracle: INVALID_NUM_CONSULTATIONS"
+            "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS"
         );
     });
 
@@ -1229,7 +1229,7 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
     });
 });
 
-describe("AggregatedOracle#consult(token, maxAge)", function () {
+describe("PeriodicAggregatorOracle#consult(token, maxAge)", function () {
     const MAX_AGE = 60;
 
     var oracle;
@@ -1295,7 +1295,7 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -1406,7 +1406,7 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
     });
 });
 
-describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
+describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
     const quoteToken = USDC;
     const token = GRT;
 
@@ -1419,7 +1419,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         await hre.timeAndMine.setTimeIncrease(1);
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
@@ -1800,7 +1800,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1836,7 +1836,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1872,7 +1872,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1908,7 +1908,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1923,7 +1923,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
     });
 });
 
-describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
+describe("PeriodicAggregatorOracle#update w/ 2 underlying oracle", function () {
     const quoteToken = USDC;
     const token = GRT;
 
@@ -1937,7 +1937,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         await hre.timeAndMine.setTimeIncrease(1);
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle1 = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle1.deployed();
@@ -2107,7 +2107,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
     });
 });
 
-describe("AggregatedOracle#update w/ 1 general underlying oracle and one token specific oracle", function () {
+describe("PeriodicAggregatorOracle#update w/ 1 general underlying oracle and one token specific oracle", function () {
     const quoteToken = USDC;
     var token = GRT;
 
@@ -2121,7 +2121,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         await hre.timeAndMine.setTimeIncrease(1);
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
@@ -2240,7 +2240,7 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
     });
 });
 
-describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liquidity value", function () {
+describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum token liquidity value", function () {
     const quoteToken = USDC;
     const token = GRT;
     const tokenDecimals = 18;
@@ -2261,7 +2261,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
         await aggregationStrategy.deployed();
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
@@ -2312,7 +2312,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2359,7 +2359,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
     });
 });
 
-describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote token liquidity", function () {
+describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum quote token liquidity", function () {
     const quoteToken = USDC;
     const token = GRT;
     const tokenDecimals = 18;
@@ -2376,7 +2376,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
         await hre.timeAndMine.setTimeIncrease(1);
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
@@ -2427,7 +2427,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2474,7 +2474,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
     });
 });
 
-describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL distribution range", function () {
+describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and an allowed TVL distribution range", function () {
     const quoteToken = USDC;
     const token = GRT;
     const tokenDecimals = 18;
@@ -2488,7 +2488,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
         await hre.timeAndMine.setTimeIncrease(1);
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
@@ -2535,7 +2535,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
-            .withArgs(oracle.address, token, "AggregatedOracle: INVALID_NUM_CONSULTATIONS");
+            .withArgs(oracle.address, token, "PeriodicAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2616,7 +2616,7 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
     });
 });
 
-describe("AggregatedOracle#update w/ 2 underlying oracles but one failing validation", function () {
+describe("PeriodicAggregatorOracle#update w/ 2 underlying oracles but one failing validation", function () {
     const quoteToken = USDC;
     const token = GRT;
     const tokenDecimals = 18;
@@ -2631,7 +2631,7 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
         await hre.timeAndMine.setTimeIncrease(1);
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle1 = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle1.deployed();
@@ -2709,13 +2709,13 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
     });
 });
 
-describe("AggregatedOracle#calculateMaxAge", function () {
+describe("PeriodicAggregatorOracle#calculateMaxAge", function () {
     var underlyingOracle;
 
     var oracleFactory;
 
     beforeEach(async () => {
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
 
@@ -2752,13 +2752,13 @@ describe("AggregatedOracle#calculateMaxAge", function () {
     }
 });
 
-describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
+describe("PeriodicAggregatorOracle#supportsInterface(interfaceId)", function () {
     var oracle;
     var interfaceIds;
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
         const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
@@ -2814,13 +2814,13 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
     });
 });
 
-describe("AggregatedOracle - IHistoricalOracle implementation", function () {
+describe("PeriodicAggregatorOracle - IHistoricalOracle implementation", function () {
     var oracle;
     var underlyingOracle;
 
     beforeEach(async () => {
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
@@ -2833,7 +2833,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
-    describe("AggregatedOracle#initializeBuffers", function () {
+    describe("PeriodicAggregatorOracle#initializeBuffers", function () {
         it("Can't be called twice", async function () {
             await oracle.stubInitializeBuffers(GRT);
 
@@ -2847,7 +2847,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         });
     });
 
-    describe("AggregatedOracle#setObservationCapacity", function () {
+    describe("PeriodicAggregatorOracle#setObservationCapacity", function () {
         it("Should revert if the amount is less than the existing capacity", async function () {
             await oracle.setObservationsCapacity(GRT, 4);
 
@@ -2947,7 +2947,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         });
     });
 
-    describe("AggregatedOracle#getObservationsCapacity", function () {
+    describe("PeriodicAggregatorOracle#getObservationsCapacity", function () {
         it("Should return the default capacity when the buffer is uninitialized", async function () {
             const initialCapacity = await oracle.stubInitialCardinality();
 
@@ -2974,7 +2974,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         });
     });
 
-    describe("AggregatedOracle#getObservationsCount", function () {
+    describe("PeriodicAggregatorOracle#getObservationsCount", function () {
         it("Should return 0 when the buffer is uninitialized", async function () {
             expect(await oracle.getObservationsCount(GRT)).to.equal(0);
         });
@@ -3019,7 +3019,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         });
     });
 
-    describe("AggregatedOracle#getObservations(token, amount, offset, increment)", function () {
+    describe("PeriodicAggregatorOracle#getObservations(token, amount, offset, increment)", function () {
         it("Should return an empty array when amount is 0", async function () {
             // Push 1 observation
             await oracle.stubPush(GRT, 1, 1, 1, 1);
@@ -3392,7 +3392,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         });
     });
 
-    describe("AggregatedOracle#getObservations(token, amount)", function () {
+    describe("PeriodicAggregatorOracle#getObservations(token, amount)", function () {
         async function pushAndCheckObservations(capacity, amountToGet, offset, increment, observationsToPush) {
             await oracle.setObservationsCapacity(GRT, capacity);
 
@@ -3433,7 +3433,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         });
     });
 
-    describe("AggregatedOracle#getObservationAt", function () {
+    describe("PeriodicAggregatorOracle#getObservationAt", function () {
         it("Should revert if the buffer is uninitialized", async function () {
             // Sanity check the observations count
             expect(await oracle.getObservationsCount(GRT)).to.equal(0);
