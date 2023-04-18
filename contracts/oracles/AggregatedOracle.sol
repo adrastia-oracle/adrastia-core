@@ -5,6 +5,7 @@ import "./IOracleAggregator.sol";
 import "./PeriodicOracle.sol";
 import "./HistoricalOracle.sol";
 import "../utils/ExplicitQuotationMetadata.sol";
+import "../strategies/validation/IValidationStrategy.sol";
 
 contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, HistoricalOracle, ExplicitQuotationMetadata {
     struct TokenSpecificOracle {
@@ -14,13 +15,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
 
     IAggregationStrategy public immutable override aggregationStrategy;
 
-    /// @notice The minimum quote token denominated value of the token liquidity, scaled by this oracle's liquidity
-    /// decimals, required for all underlying oracles to be considered valid and thus included in the aggregation.
-    uint256 public immutable minimumTokenLiquidityValue;
-
-    /// @notice The minimum quote token liquidity, scaled by this oracle's liquidity decimals, required for all
-    /// underlying oracles to be considered valid and thus included in the aggregation.
-    uint256 public immutable minimumQuoteTokenLiquidity;
+    IValidationStrategy public immutable validationStrategy;
 
     /// @notice One whole unit of the quote token, in the quote token's smallest denomination.
     uint256 internal immutable _quoteTokenWholeUnit;
@@ -47,6 +42,7 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
 
     struct AggregatedOracleParams {
         IAggregationStrategy aggregationStrategy;
+        IValidationStrategy validationStrategy;
         string quoteTokenName;
         address quoteTokenAddress;
         string quoteTokenSymbol;
@@ -56,8 +52,6 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
         TokenSpecificOracle[] tokenSpecificOracles;
         uint256 period;
         uint256 granularity;
-        uint256 minimumTokenLiquidityValue;
-        uint256 minimumQuoteTokenLiquidity;
     }
 
     constructor(
@@ -76,11 +70,15 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
             params.oracles.length > 0 || params.tokenSpecificOracles.length > 0,
             "AggregatedOracle: MISSING_ORACLES"
         );
+        if (
+            address(params.validationStrategy) != address(0) &&
+            params.validationStrategy.quoteTokenDecimals() != params.quoteTokenDecimals
+        ) {
+            revert("AggregatedOracle: QUOTE_TOKEN_DECIMALS_MISMATCH");
+        }
 
         aggregationStrategy = params.aggregationStrategy;
-
-        minimumTokenLiquidityValue = params.minimumTokenLiquidityValue;
-        minimumQuoteTokenLiquidity = params.minimumQuoteTokenLiquidity;
+        validationStrategy = params.validationStrategy;
 
         _quoteTokenWholeUnit = 10 ** params.quoteTokenDecimals;
 
@@ -293,53 +291,6 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
         return period - 1; // Subract 1 to ensure that we don't use any data from the previous period
     }
 
-    function sanityCheckTvlDistributionRatio(
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    ) internal view virtual returns (bool) {
-        if (quoteTokenLiquidity == 0) {
-            // We'll always ignore consultations where the quote token liquidity is 0
-            return false;
-        }
-
-        // Calculate the ratio of token liquidity value (denominated in the quote token) to quote token liquidity
-        // Safe from overflows: price and tokenLiquidity are actually uint112 in disguise
-        // We multiply by 100 to avoid floating point errors => 100 represents a ratio of 1:1
-        uint256 ratio = ((((price * tokenLiquidity) / _quoteTokenWholeUnit) * 100) / quoteTokenLiquidity);
-
-        if (ratio > 1000 || ratio < 10) {
-            // Reject consultations where the ratio is above 10:1 or below 1:10
-            // This prevents Uniswap v3 or orderbook-like oracles from skewing our observations when liquidity is very
-            // one-sided as one-sided liquidity can be used as an attack vector
-            return false;
-        }
-
-        return true;
-    }
-
-    function sanityCheckQuoteTokenLiquidity(uint256 quoteTokenLiquidity) internal view virtual returns (bool) {
-        return quoteTokenLiquidity >= minimumQuoteTokenLiquidity;
-    }
-
-    function sanityCheckTokenLiquidityValue(
-        uint256 price,
-        uint256 tokenLiquidity
-    ) internal view virtual returns (bool) {
-        return ((price * tokenLiquidity) / _quoteTokenWholeUnit) >= minimumTokenLiquidityValue;
-    }
-
-    function validateUnderlyingConsultation(
-        uint256 price,
-        uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    ) internal view virtual returns (bool) {
-        return
-            sanityCheckTokenLiquidityValue(price, tokenLiquidity) &&
-            sanityCheckQuoteTokenLiquidity(quoteTokenLiquidity) &&
-            sanityCheckTvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity);
-    }
-
     function aggregateUnderlying(
         address token,
         uint256 maxAge
@@ -411,10 +362,6 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
                 oQuoteTokenLiquidity /= scalar;
             }
 
-            if (!validateUnderlyingConsultation(oPrice, oTokenLiquidity, oQuoteTokenLiquidity)) {
-                continue;
-            }
-
             if (
                 // Check that the values are not zero
                 oPrice != 0 &&
@@ -425,12 +372,17 @@ contract AggregatedOracle is IOracleAggregator, IOracle, PeriodicOracle, Histori
                 oTokenLiquidity <= type(uint112).max &&
                 oQuoteTokenLiquidity <= type(uint112).max
             ) {
-                observations[validResponses++] = ObservationLibrary.Observation({
+                ObservationLibrary.Observation memory observation = ObservationLibrary.Observation({
                     price: uint112(oPrice),
                     tokenLiquidity: uint112(oTokenLiquidity),
                     quoteTokenLiquidity: uint112(oQuoteTokenLiquidity),
                     timestamp: 0 // Not used
                 });
+
+                if (address(validationStrategy) == address(0) || validationStrategy.validateObservation(observation)) {
+                    // The observation is valid, so we add it to the array
+                    observations[validResponses++] = observation;
+                }
             }
         }
 

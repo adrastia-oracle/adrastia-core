@@ -12,9 +12,25 @@ const PERIOD = 100;
 const GRANULARITY = 1;
 const MINIMUM_TOKEN_LIQUIDITY_VALUE = BigNumber.from(0);
 const MINIMUM_QUOTE_TOKEN_LIQUIDITY = BigNumber.from(0);
+const MINIMUM_LIQUIDITY_RATIO = 1000; // 1:10 value(token):value(quoteToken)
+const MAXIMUM_LIQUIDITY_RATIO = 100000; // 10:1 value(token):value(quoteToken)
 
 const LOWEST_ACCEPTABLE_PRICE = BigNumber.from(2);
 const LOWEST_ACCEPTABLE_LIQUIDITY = BigNumber.from(2);
+
+const DEFAULT_AGGREGATOR_CONSTRUCTOR_PARAMS = {
+    aggregationStrategy: null,
+    validationStrategy: null,
+    quoteTokenName: "USD Coin",
+    quoteTokenAddress: USDC,
+    quoteTokenSymbol: "USDC",
+    quoteTokenDecimals: 6,
+    liquidityDecimals: 0,
+    oracles: [],
+    tokenSpecificOracles: [],
+    period: PERIOD,
+    granularity: GRANULARITY,
+};
 
 // Credits: https://stackoverflow.com/questions/53311809/all-possible-combinations-of-a-2d-array-in-javascript
 function combos(list, n = 0, result = [], current = []) {
@@ -46,6 +62,51 @@ function harmonicMean(values, weights) {
     return numerator.div(denominator);
 }
 
+async function constructDefaultAggregator(
+    factory,
+    constructorOverrides,
+    minimumTokenLiquidityValue = MINIMUM_TOKEN_LIQUIDITY_VALUE,
+    minimumQuoteTokenLiquidity = MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+    minimumLiquidityRatio = MINIMUM_LIQUIDITY_RATIO,
+    maximumLiquidityRatio = MAXIMUM_LIQUIDITY_RATIO
+) {
+    var params = {
+        ...DEFAULT_AGGREGATOR_CONSTRUCTOR_PARAMS,
+        ...constructorOverrides,
+    };
+
+    if (params.aggregationStrategy === null) {
+        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
+        params = {
+            ...params,
+            aggregationStrategy: aggregationStrategy.address,
+        };
+    }
+
+    if (params.validationStrategy === null) {
+        const validationStrategyFactory = await ethers.getContractFactory("DefaultValidationStub");
+
+        const validationStrategy = await validationStrategyFactory.deploy(
+            params.quoteTokenDecimals,
+            minimumTokenLiquidityValue,
+            minimumQuoteTokenLiquidity,
+            minimumLiquidityRatio,
+            maximumLiquidityRatio
+        );
+        await validationStrategy.deployed();
+
+        params = {
+            ...params,
+            validationStrategy: validationStrategy.address,
+        };
+    }
+
+    return await factory.deploy(params);
+}
+
 describe("AggregatedOracle#constructor", async function () {
     var underlyingOracleFactory;
     var oracleFactory;
@@ -56,18 +117,6 @@ describe("AggregatedOracle#constructor", async function () {
         underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
         aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
     });
-
-    function oraclesFor(token, oracles, tokenSpecificOracles) {
-        var allOracles = [];
-
-        for (const oracle of oracles) allOracles.push(oracle);
-
-        for (const oracle of tokenSpecificOracles) {
-            if (oracle.token == token) allOracles.push(oracle.oracle);
-        }
-
-        return allOracles;
-    }
 
     it("Should deploy correctly with valid arguments", async function () {
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
@@ -84,6 +133,7 @@ describe("AggregatedOracle#constructor", async function () {
             oracle: oracle2.address,
         };
 
+        const validationStrategyAddress = AddressZero;
         const quoteTokenName = "USD Coin";
         const quoteTokenAddress = USDC;
         const quoteTokenSymbol = "USDC";
@@ -93,11 +143,10 @@ describe("AggregatedOracle#constructor", async function () {
         const tokenSpecificOracles = [grtOracle];
         const period = 30;
         const granularity = 5;
-        const minimumTokenLiquidityValue = BigNumber.from(1);
-        const minimumQuoteTokenLiquidity = BigNumber.from(2);
 
         const oracle = await oracleFactory.deploy({
             aggregationStrategy: aggregationStrategy.address,
+            validationStrategy: validationStrategyAddress,
             quoteTokenName,
             quoteTokenAddress,
             quoteTokenSymbol,
@@ -107,33 +156,41 @@ describe("AggregatedOracle#constructor", async function () {
             tokenSpecificOracles,
             period,
             granularity,
-            minimumTokenLiquidityValue,
-            minimumQuoteTokenLiquidity,
         });
 
+        const generalOracles = [
+            [oracle1.address, await oracle1.quoteTokenDecimals(), await oracle1.liquidityDecimals()],
+        ];
+
+        const grtOracles = [
+            ...generalOracles,
+            [oracle2.address, await oracle2.quoteTokenDecimals(), await oracle2.liquidityDecimals()],
+        ];
+
+        expect(await oracle.aggregationStrategy()).to.equal(aggregationStrategy.address);
+        expect(await oracle.validationStrategy()).to.equal(validationStrategyAddress);
         expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
         expect(await oracle.quoteTokenAddress()).to.equal(quoteTokenAddress);
         expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);
         expect(await oracle.quoteTokenDecimals()).to.equal(quoteTokenDecimals);
         expect(await oracle.liquidityDecimals()).to.equal(liquidityDecimals);
-        expect(await oracle.getOracles()).to.eql(oracles); // eql = deep equality
+        expect(await oracle.getOracles(BAT)).to.eql(generalOracles); // eql = deep equality
         expect(await oracle.period()).to.equal(period);
         expect(await oracle.granularity()).to.equal(granularity);
-        expect(await oracle.minimumTokenLiquidityValue()).to.equal(minimumTokenLiquidityValue);
-        expect(await oracle.minimumQuoteTokenLiquidity()).to.equal(minimumQuoteTokenLiquidity);
 
-        expect(await oracle.getOraclesFor(grtOracle.token)).to.eql(
-            oraclesFor(grtOracle.token, oracles, tokenSpecificOracles)
-        );
+        expect(await oracle.getOracles(grtOracle.token)).to.eql(grtOracles);
     });
 
     it("Should revert if no underlying oracles are provided", async () => {
         const aggregationStrategy = await aggregationStrategyFactory.deploy();
         await aggregationStrategy.deployed();
 
+        const validationStrategyAddress = AddressZero;
+
         await expect(
             oracleFactory.deploy({
                 aggregationStrategy: aggregationStrategy.address,
+                validationStrategy: validationStrategyAddress,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -143,8 +200,6 @@ describe("AggregatedOracle#constructor", async function () {
                 tokenSpecificOracles: [],
                 period: PERIOD,
                 granularity: GRANULARITY,
-                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
             })
         ).to.be.revertedWith("AggregatedOracle: MISSING_ORACLES");
     });
@@ -153,12 +208,15 @@ describe("AggregatedOracle#constructor", async function () {
         const aggregationStrategy = await aggregationStrategyFactory.deploy();
         await aggregationStrategy.deployed();
 
+        const validationStrategyAddress = AddressZero;
+
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
         await oracle1.deployed();
 
         await expect(
             oracleFactory.deploy({
                 aggregationStrategy: aggregationStrategy.address,
+                validationStrategy: validationStrategyAddress,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -168,8 +226,6 @@ describe("AggregatedOracle#constructor", async function () {
                 tokenSpecificOracles: [],
                 period: PERIOD,
                 granularity: GRANULARITY,
-                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
             })
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
@@ -177,6 +233,8 @@ describe("AggregatedOracle#constructor", async function () {
     it("Should revert if duplicate token specific oracles are provided", async () => {
         const aggregationStrategy = await aggregationStrategyFactory.deploy();
         await aggregationStrategy.deployed();
+
+        const validationStrategyAddress = AddressZero;
 
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
         await oracle1.deployed();
@@ -189,6 +247,7 @@ describe("AggregatedOracle#constructor", async function () {
         await expect(
             oracleFactory.deploy({
                 aggregationStrategy: aggregationStrategy.address,
+                validationStrategy: validationStrategyAddress,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -198,8 +257,6 @@ describe("AggregatedOracle#constructor", async function () {
                 tokenSpecificOracles: [oracle1Config, oracle1Config],
                 period: PERIOD,
                 granularity: GRANULARITY,
-                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
             })
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
@@ -207,6 +264,8 @@ describe("AggregatedOracle#constructor", async function () {
     it("Should revert if duplicate general / token specific oracles are provided", async () => {
         const aggregationStrategy = await aggregationStrategyFactory.deploy();
         await aggregationStrategy.deployed();
+
+        const validationStrategyAddress = AddressZero;
 
         const oracle1 = await underlyingOracleFactory.deploy(USDC);
         await oracle1.deployed();
@@ -219,6 +278,7 @@ describe("AggregatedOracle#constructor", async function () {
         await expect(
             oracleFactory.deploy({
                 aggregationStrategy: aggregationStrategy.address,
+                validationStrategy: validationStrategyAddress,
                 quoteTokenName: "NAME",
                 quoteTokenAddress: USDC,
                 quoteTokenSymbol: "NIL",
@@ -228,8 +288,6 @@ describe("AggregatedOracle#constructor", async function () {
                 tokenSpecificOracles: [oracle1Config],
                 period: PERIOD,
                 granularity: GRANULARITY,
-                minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
             })
         ).to.be.revertedWith("AggregatedOracle: DUPLICATE_ORACLE");
     });
@@ -239,30 +297,17 @@ describe("AggregatedOracle#needsUpdate", function () {
     var oracle;
 
     beforeEach(async function () {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const constructorOverrides = {
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -319,17 +364,19 @@ describe("AggregatedOracle#needsUpdate", function () {
 
 describe("AggregatedOracle#canUpdate", function () {
     var oracle;
+    var validationStrategy;
 
     var underlyingOracle1;
     var underlyingOracle2;
 
     beforeEach(async function () {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
+        const validationStrategyFactory = await ethers.getContractFactory("ValidationStub");
+
+        validationStrategy = await validationStrategyFactory.deploy();
+        await validationStrategy.deployed();
+        await validationStrategy.stubSetQuoteTokenDecimals(DEFAULT_AGGREGATOR_CONSTRUCTOR_PARAMS.quoteTokenDecimals);
 
         underlyingOracle1 = await mockOracleFactory.deploy(USDC);
         await underlyingOracle1.deployed();
@@ -337,20 +384,12 @@ describe("AggregatedOracle#canUpdate", function () {
         underlyingOracle2 = await mockOracleFactory.deploy(USDC);
         await underlyingOracle2.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const constructorOverrides = {
+            validationStrategy: validationStrategy.address,
             oracles: [underlyingOracle1.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -370,7 +409,7 @@ describe("AggregatedOracle#canUpdate", function () {
         });
 
         it("Needs an update but all of the underlying oracles fail validation", async function () {
-            await oracle.overrideValidateUnderlyingConsultation(true, false);
+            await validationStrategy.stubSetIsValid(false);
 
             await underlyingOracle1.stubSetNeedsUpdate(false);
 
@@ -415,30 +454,21 @@ describe("AggregatedOracle#consultPrice(token)", function () {
     var oracle;
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -475,30 +505,21 @@ describe("AggregatedOracle#consultPrice(token, maxAge = 0)", function () {
     var oracle;
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
@@ -518,30 +539,21 @@ describe("AggregatedOracle#consultPrice(token, maxAge)", function () {
     var oracle;
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -681,30 +693,21 @@ describe("AggregatedOracle#consultLiquidity(token)", function () {
     ];
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -745,33 +748,24 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge = 0)", function () {
     var oracle;
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
-    it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
+    it(`Should get the set liquidity (=(2, 3))`, async () => {
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2);
         const quoteTokenLiquidity = BigNumber.from(3);
@@ -822,30 +816,21 @@ describe("AggregatedOracle#consultLiquidity(token, maxAge)", function () {
     ];
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -1005,30 +990,21 @@ describe("AggregatedOracle#consult(token)", function () {
     ];
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it("Should revert when there's no observation", async () => {
@@ -1073,30 +1049,21 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
     var oracle;
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         mockOracleFactory = await ethers.getContractFactory("MockOracle");
         oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it(`Should get the set price (=${LOWEST_ACCEPTABLE_PRICE})`, async () => {
@@ -1127,20 +1094,15 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await aggregationStrategy.deployed();
 
         // Redeploy with more quote token decimal places
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 7,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals + 1,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         const price = BigNumber.from(2).pow(112).sub(1); // = uint112.max
         const tokenLiqudity = BigNumber.from(200);
@@ -1167,20 +1129,15 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address, underlyingOracle2.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
@@ -1208,20 +1165,15 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address, underlyingOracle2.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = LOWEST_ACCEPTABLE_LIQUIDITY;
@@ -1249,20 +1201,15 @@ describe("AggregatedOracle#consult(token, maxAge = 0)", function () {
         await underlyingOracle2.deployed();
 
         // Redeploy with additional underlying oracle
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address, underlyingOracle2.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         const price = LOWEST_ACCEPTABLE_PRICE;
         const tokenLiqudity = BigNumber.from(2).pow(112).sub(1); // = uint112.max
@@ -1347,30 +1294,21 @@ describe("AggregatedOracle#consult(token, maxAge)", function () {
     ];
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const quoteTokenDecimals = await underlyingOracle.quoteTokenDecimals();
+
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenDecimals: quoteTokenDecimals,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
@@ -1480,10 +1418,6 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -1492,20 +1426,17 @@ describe("AggregatedOracle#update w/ 1 underlying oracle", function () {
 
         await underlyingOracle.stubSetLiquidityDecimals(6);
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "USDC Coin",
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
+            quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
             quoteTokenDecimals: 6,
             liquidityDecimals: 6,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it("Should update successfully", async () => {
@@ -2005,10 +1936,6 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2018,20 +1945,17 @@ describe("AggregatedOracle#update w/ 2 underlying oracle", function () {
         underlyingOracle2 = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle2.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
             quoteTokenDecimals: 6,
             liquidityDecimals: 0,
             oracles: [underlyingOracle1.address, underlyingOracle2.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it("Should set observation liquitities to (2^112)-1 when total liquitities >= 2^112", async function () {
@@ -2196,10 +2120,6 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2209,8 +2129,8 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
         tokenSpecificOracle = await mockOracleFactory.deploy(quoteToken);
         await tokenSpecificOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
@@ -2223,11 +2143,9 @@ describe("AggregatedOracle#update w/ 1 general underlying oracle and one token s
                     oracle: tokenSpecificOracle.address,
                 },
             ],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     it("Should call update on both the general oracle and the token specific oracle (underlying)", async () => {
@@ -2348,24 +2266,28 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum token liq
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
+        const constructorOverrides = {
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
             quoteTokenDecimals: 6,
             liquidityDecimals: 0,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: minimumTokenLiquidityValue,
-            minimumQuoteTokenLiquidity: minimumQuoteTokenLiquidity,
-        });
+        };
 
-        await oracle.overrideValidateUnderlyingConsultation(false, false);
-        await oracle.overrideSanityCheckTvlDistributionRatio(true, true);
-        await oracle.overrideSanityCheckQuoteTokenLiquidity(true, true);
+        oracle = await constructDefaultAggregator(
+            oracleFactory,
+            constructorOverrides,
+            minimumTokenLiquidityValue,
+            minimumQuoteTokenLiquidity
+        );
+
+        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
+
+        await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
+        await validationStrategy.overrideSanityCheckTvlDistributionRatio(true, true);
+        await validationStrategy.overrideSanityCheckQuoteTokenLiquidity(true, true);
     });
 
     it("Shouldn't update when the underlying oracle has less token liquidity value than the minimum", async () => {
@@ -2453,34 +2375,34 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and a minimum quote tok
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
+        const constructorOverrides = {
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
             quoteTokenDecimals: 6,
             liquidityDecimals: 0,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: minimumTokenLiquidityValue,
-            minimumQuoteTokenLiquidity: minimumQuoteTokenLiquidity,
-        });
+        };
 
-        await oracle.overrideValidateUnderlyingConsultation(false, false);
-        await oracle.overrideSanityCheckTvlDistributionRatio(true, true);
-        await oracle.overrideSanityCheckTokenLiquidityValue(true, true);
+        oracle = await constructDefaultAggregator(
+            oracleFactory,
+            constructorOverrides,
+            minimumTokenLiquidityValue,
+            minimumQuoteTokenLiquidity
+        );
+
+        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
+
+        await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
+        await validationStrategy.overrideSanityCheckTvlDistributionRatio(true, true);
+        await validationStrategy.overrideSanityCheckTokenLiquidityValue(true, true);
     });
 
     it("Shouldn't update when the underlying oracle has less token quote token liquidity than the minimum", async () => {
@@ -2565,34 +2487,29 @@ describe("AggregatedOracle#update w/ 1 underlying oracle and an allowed TVL dist
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
+        const constructorOverrides = {
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
             quoteTokenDecimals: 6,
             liquidityDecimals: 0,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
 
-        await oracle.overrideValidateUnderlyingConsultation(false, false);
-        await oracle.overrideSanityCheckTokenLiquidityValue(true, true);
-        await oracle.overrideSanityCheckQuoteTokenLiquidity(true, true);
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
+
+        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
+
+        await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
+        await validationStrategy.overrideSanityCheckTokenLiquidityValue(true, true);
+        await validationStrategy.overrideSanityCheckQuoteTokenLiquidity(true, true);
     });
 
     it("Shouldn't update when the underlying oracle has one-sided liquidity (100:1)", async () => {
@@ -2713,10 +2630,6 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
         // Time increases by 1 second with each block mined
         await hre.timeAndMine.setTimeIncrease(1);
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
@@ -2726,22 +2639,21 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
         underlyingOracle2 = await mockOracleFactory.deploy(quoteToken);
         await underlyingOracle2.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
+        const constructorOverrides = {
             quoteTokenName: "USD Coin",
             quoteTokenAddress: quoteToken,
             quoteTokenSymbol: "USDC",
             quoteTokenDecimals: 6,
             liquidityDecimals: 0,
             oracles: [underlyingOracle1.address, underlyingOracle2.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
 
-        await oracle.overrideValidateUnderlyingConsultation(false, false);
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
+
+        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
+
+        await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
     });
 
     it("Should update successfully using only the data from the passing oracle", async () => {
@@ -2797,431 +2709,6 @@ describe("AggregatedOracle#update w/ 2 underlying oracles but one failing valida
     });
 });
 
-describe("AggregatedOracle#sanityCheckQuoteTokenLiquidity", function () {
-    var oracleFactory;
-
-    beforeEach(async () => {
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
-    });
-
-    const tests = [
-        BigNumber.from(0),
-        ethers.utils.parseUnits("1.0", 18),
-        ethers.utils.parseUnits("1000000000", 18),
-        ethers.constants.MaxUint256,
-    ];
-
-    const expectedReturn = (minimumQuoteTokenLiquidity, quoteTokenLiquidity) => {
-        if (quoteTokenLiquidity.lt(minimumQuoteTokenLiquidity)) {
-            return false;
-        }
-
-        return true;
-    };
-
-    for (const minimumQuoteTokenLiquidity of tests) {
-        describe("Minimum quote token liquidity = " + minimumQuoteTokenLiquidity, function () {
-            var oracle;
-
-            beforeEach(async function () {
-                const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-                const aggregationStrategy = await aggregationStrategyFactory.deploy();
-                await aggregationStrategy.deployed();
-
-                const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-
-                underlyingOracle = await mockOracleFactory.deploy(USDC);
-                await underlyingOracle.deployed();
-
-                oracle = await oracleFactory.deploy({
-                    aggregationStrategy: aggregationStrategy.address,
-                    quoteTokenName: "USD Coin",
-                    quoteTokenAddress: USDC,
-                    quoteTokenSymbol: "USDC",
-                    quoteTokenDecimals: 6,
-                    liquidityDecimals: 0,
-                    oracles: [underlyingOracle.address],
-                    tokenSpecificOracles: [],
-                    period: PERIOD,
-                    granularity: GRANULARITY,
-                    minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-                    minimumQuoteTokenLiquidity: minimumQuoteTokenLiquidity,
-                });
-            });
-
-            for (const quoteTokenLiquidity of tests) {
-                if (quoteTokenLiquidity.gt(0)) {
-                    it(
-                        "Should return " +
-                            expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.sub(1)) +
-                            " when quoteTokenLiquidity = " +
-                            quoteTokenLiquidity.sub(1),
-                        async function () {
-                            expect(
-                                await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity.sub(1))
-                            ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.sub(1)));
-                        }
-                    );
-                }
-
-                it(
-                    "Should return " +
-                        expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity) +
-                        " when quoteTokenLiquidity = " +
-                        quoteTokenLiquidity,
-                    async function () {
-                        expect(await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity)).to.equal(
-                            expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity)
-                        );
-                    }
-                );
-
-                if (quoteTokenLiquidity.lt(ethers.constants.MaxUint256)) {
-                    it(
-                        "Should return " +
-                            expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.add(1)) +
-                            " when quoteTokenLiquidity = " +
-                            quoteTokenLiquidity.add(1),
-                        async function () {
-                            expect(
-                                await oracle.stubSanityCheckQuoteTokenLiquidity(quoteTokenLiquidity.add(1))
-                            ).to.equal(expectedReturn(minimumQuoteTokenLiquidity, quoteTokenLiquidity.add(1)));
-                        }
-                    );
-                }
-            }
-        });
-    }
-});
-
-describe("AggregatedOracle#sanityCheckTokenLiquidityValue", function () {
-    var oracleFactory;
-
-    beforeEach(async () => {
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
-    });
-
-    const tests = [
-        BigNumber.from(0),
-        ethers.utils.parseUnits("1.0", 18),
-        ethers.utils.parseUnits("1000000000", 18),
-        ethers.constants.MaxUint256,
-    ];
-
-    const liquidities = [
-        BigNumber.from(0),
-        ethers.utils.parseUnits("1.0", 18),
-        ethers.utils.parseUnits("1000000000", 18),
-    ];
-
-    const prices = [
-        BigNumber.from(0),
-        BigNumber.from(1),
-        ethers.utils.parseUnits("1.0", 6),
-        ethers.utils.parseUnits("1.0", 18),
-        ethers.utils.parseUnits("1000000", 18),
-    ];
-
-    const tokenDecimals = [0, 1, 6, 18];
-
-    const tokenLiquidityValue = (price, tokenLiquidity, tokenDecimals) => {
-        return price.mul(tokenLiquidity).div(ethers.utils.parseUnits("1", tokenDecimals));
-    };
-
-    const expectedReturn = (minimumTokenLiquidityValue, price, tokenLiquidity, tokenDecimals) => {
-        const quoteTokenLiquidityValue = tokenLiquidityValue(price, tokenLiquidity, tokenDecimals);
-
-        if (quoteTokenLiquidityValue.lt(minimumTokenLiquidityValue)) {
-            return false;
-        }
-
-        return true;
-    };
-
-    for (const quoteTokenDecimals of tokenDecimals) {
-        describe("Quote token decimals = " + quoteTokenDecimals, function () {
-            for (const liquidityDecimals of tokenDecimals) {
-                describe("Liquidity decimals = " + liquidityDecimals, function () {
-                    for (const minimumTokenLiquidityValue of tests) {
-                        describe("Minimum token liquidity value = " + minimumTokenLiquidityValue, function () {
-                            var oracle;
-
-                            beforeEach(async function () {
-                                const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-                                const aggregationStrategy = await aggregationStrategyFactory.deploy();
-                                await aggregationStrategy.deployed();
-
-                                const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-
-                                underlyingOracle = await mockOracleFactory.deploy(USDC);
-                                await underlyingOracle.deployed();
-
-                                oracle = await oracleFactory.deploy({
-                                    aggregationStrategy: aggregationStrategy.address,
-                                    quoteTokenName: "USD Coin",
-                                    quoteTokenAddress: USDC,
-                                    quoteTokenSymbol: "USDC",
-                                    quoteTokenDecimals: quoteTokenDecimals,
-                                    liquidityDecimals: liquidityDecimals,
-                                    oracles: [underlyingOracle.address],
-                                    tokenSpecificOracles: [],
-                                    period: PERIOD,
-                                    granularity: GRANULARITY,
-                                    minimumTokenLiquidityValue: minimumTokenLiquidityValue,
-                                    minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-                                });
-                            });
-
-                            for (const price of prices) {
-                                describe("Price = " + price, function () {
-                                    for (const tokenLiquidity of liquidities) {
-                                        describe("Token liquidity = " + tokenLiquidity, function () {
-                                            it(
-                                                "Should return " +
-                                                    expectedReturn(
-                                                        minimumTokenLiquidityValue,
-                                                        price,
-                                                        tokenLiquidity,
-                                                        quoteTokenDecimals
-                                                    ) +
-                                                    " when tokenLiquidityValue = " +
-                                                    tokenLiquidityValue(price, tokenLiquidity, quoteTokenDecimals),
-                                                async function () {
-                                                    expect(
-                                                        await oracle.stubSanityCheckTokenLiquidityValue(
-                                                            AddressZero,
-                                                            price,
-                                                            tokenLiquidity
-                                                        )
-                                                    ).to.equal(
-                                                        expectedReturn(
-                                                            minimumTokenLiquidityValue,
-                                                            price,
-                                                            tokenLiquidity,
-                                                            quoteTokenDecimals
-                                                        )
-                                                    );
-                                                }
-                                            );
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-        });
-    }
-});
-
-describe("AggregatedOracle#sanityCheckTvlDistributionRatio", function () {
-    var oracle;
-    var oracleFactory;
-
-    beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
-        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-
-        underlyingOracle = await mockOracleFactory.deploy(USDC);
-        await underlyingOracle.deployed();
-
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "USD Coin",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "USDC",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
-            oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
-    });
-
-    const liquidities = [
-        BigNumber.from(0),
-        ethers.utils.parseUnits("1.0", 18),
-        ethers.utils.parseUnits("1000000000", 18),
-        ethers.utils.parseUnits("1100000000", 18),
-    ];
-
-    const prices = [
-        BigNumber.from(0),
-        BigNumber.from(1),
-        ethers.utils.parseUnits("1.0", 6),
-        ethers.utils.parseUnits("1.0", 18),
-        ethers.utils.parseUnits("1000000", 18),
-    ];
-
-    const tokenDecimals = [0, 1, 6, 18];
-
-    const tvlDistributionRatio = (price, tokenLiquidity, quoteTokenLiquidity, tokenDecimals) => {
-        if (quoteTokenLiquidity.eq(0)) {
-            return BigNumber.from(0);
-        }
-
-        return price
-            .mul(tokenLiquidity)
-            .mul(100)
-            .div(quoteTokenLiquidity)
-            .div(ethers.utils.parseUnits("1", tokenDecimals));
-    };
-
-    const expectedReturn = (price, tokenLiquidity, quoteTokenLiquidity, tokenDecimals) => {
-        if (quoteTokenLiquidity.eq(0)) {
-            return false;
-        }
-
-        const ratio = tvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity, tokenDecimals);
-
-        if (ratio.lt(10) || ratio.gt(1000)) {
-            // below 1:10 or above 10:1
-            return false;
-        }
-
-        return true;
-    };
-
-    for (const decimals of tokenDecimals) {
-        describe("Token decimals = " + decimals, function () {
-            var token;
-
-            beforeEach(async function () {
-                const mockTokenFactory = await ethers.getContractFactory("FakeERC20");
-
-                token = await mockTokenFactory.deploy("Name", "SYMB", decimals);
-            });
-
-            for (const price of prices) {
-                describe("Price = " + price, function () {
-                    for (const tokenLiquidity of liquidities) {
-                        describe("Token liquidity = " + tokenLiquidity, function () {
-                            for (const quoteTokenLiquidity of liquidities) {
-                                describe("Quote token liquidity = " + tokenLiquidity, function () {
-                                    it(
-                                        "Should return " +
-                                            expectedReturn(price, tokenLiquidity, quoteTokenLiquidity, decimals) +
-                                            " when tvl distribution ratio = " +
-                                            tvlDistributionRatio(price, tokenLiquidity, quoteTokenLiquidity, decimals),
-                                        async function () {
-                                            expect(
-                                                await oracle.stubSanityCheckTvlDistributionRatio(
-                                                    token.address,
-                                                    price,
-                                                    tokenLiquidity.div(BigNumber.from(10).pow(decimals)),
-                                                    quoteTokenLiquidity.div(BigNumber.from(10).pow(6))
-                                                )
-                                            ).to.equal(
-                                                expectedReturn(price, tokenLiquidity, quoteTokenLiquidity, decimals)
-                                            );
-                                        }
-                                    );
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-        });
-    }
-});
-
-describe("AggregatedOracle#validateUnderlyingConsultation", function () {
-    var oracle;
-    var oracleFactory;
-
-    beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
-        oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
-        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-
-        underlyingOracle = await mockOracleFactory.deploy(USDC);
-        await underlyingOracle.deployed();
-
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "USD Coin",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "USDC",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
-            oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
-    });
-
-    const tests = [true, false];
-
-    const expectedReturn = (
-        sanityCheckTvlDistributionRatio,
-        sanityCheckQuoteTokenLiquidity,
-        sanityCheckTokenLiquidityValue
-    ) => {
-        return sanityCheckQuoteTokenLiquidity && sanityCheckTvlDistributionRatio && sanityCheckTokenLiquidityValue;
-    };
-
-    for (const sanityCheckTvlDistributionRatio of tests) {
-        describe("Sanity check tvl distribution ratio = " + sanityCheckTvlDistributionRatio, function () {
-            for (const sanityCheckQuoteTokenLiquidity of tests) {
-                describe("Sanity check quote token liquidity = " + sanityCheckQuoteTokenLiquidity, function () {
-                    for (const sanityCheckTokenLiquidityValue of tests) {
-                        describe("Sanity check token liquidity value = " + sanityCheckTokenLiquidityValue, function () {
-                            it(
-                                "Should return " +
-                                    expectedReturn(
-                                        sanityCheckTvlDistributionRatio,
-                                        sanityCheckQuoteTokenLiquidity,
-                                        sanityCheckTokenLiquidityValue
-                                    ),
-                                async function () {
-                                    await oracle.overrideValidateUnderlyingConsultation(false, false);
-
-                                    await oracle.overrideSanityCheckTvlDistributionRatio(
-                                        true,
-                                        sanityCheckTvlDistributionRatio
-                                    );
-                                    await oracle.overrideSanityCheckQuoteTokenLiquidity(
-                                        true,
-                                        sanityCheckQuoteTokenLiquidity
-                                    );
-                                    await oracle.overrideSanityCheckTokenLiquidityValue(
-                                        true,
-                                        sanityCheckTokenLiquidityValue
-                                    );
-
-                                    // We input junk to stubValidateUnderlyingConsultation because we override everything
-                                    expect(await oracle.stubValidateUnderlyingConsultation(USDC, 1, 1, 1)).to.equal(
-                                        expectedReturn(
-                                            sanityCheckTvlDistributionRatio,
-                                            sanityCheckQuoteTokenLiquidity,
-                                            sanityCheckTokenLiquidityValue
-                                        )
-                                    );
-                                }
-                            );
-                        });
-                    }
-                });
-            }
-        });
-    }
-});
-
 describe("AggregatedOracle#calculateMaxAge", function () {
     var underlyingOracle;
 
@@ -3237,24 +2724,13 @@ describe("AggregatedOracle#calculateMaxAge", function () {
     });
 
     it("Shouldn't return 0 when period is 1", async function () {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
-        const oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "USD Coin",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "USDC",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
             period: 1,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: 0,
-            minimumQuoteTokenLiquidity: 0,
-        });
+        };
+
+        const oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
         expect(await oracle.stubCalculateMaxAge()).to.not.equal(0);
     });
@@ -3263,24 +2739,13 @@ describe("AggregatedOracle#calculateMaxAge", function () {
 
     for (const period of periods) {
         it(`Should return ${period - 1} when period = ${period}`, async function () {
-            const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-            const aggregationStrategy = await aggregationStrategyFactory.deploy();
-            await aggregationStrategy.deployed();
-
-            const oracle = await oracleFactory.deploy({
-                aggregationStrategy: aggregationStrategy.address,
-                quoteTokenName: "USD Coin",
-                quoteTokenAddress: USDC,
-                quoteTokenSymbol: "USDC",
-                quoteTokenDecimals: 6,
-                liquidityDecimals: 0,
+            const constructorOverrides = {
+                validationStrategy: AddressZero,
                 oracles: [underlyingOracle.address],
-                tokenSpecificOracles: [],
                 period: period,
-                granularity: GRANULARITY,
-                minimumTokenLiquidityValue: 0,
-                minimumQuoteTokenLiquidity: 0,
-            });
+            };
+
+            const oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
             expect(await oracle.stubCalculateMaxAge()).to.equal(period - 1);
         });
@@ -3299,29 +2764,17 @@ describe("AggregatedOracle#supportsInterface(interfaceId)", function () {
         const underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "NAME",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "NIL",
-            quoteTokenDecimals: 18,
-            liquidityDecimals: 0,
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
         interfaceIds = await interfaceIdsFactory.deploy();
     });
 
-    it("Should support IAggregatedOracle", async () => {
-        const interfaceId = await interfaceIds.iAggregatedOracle();
+    it("Should support IOracleAggregator", async () => {
+        const interfaceId = await interfaceIds.iOracleAggregator();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 
@@ -3366,37 +2819,25 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
     var underlyingOracle;
 
     beforeEach(async () => {
-        const aggregationStrategyFactory = await ethers.getContractFactory("DefaultAggregator");
-        const aggregationStrategy = await aggregationStrategyFactory.deploy();
-        await aggregationStrategy.deployed();
-
         const mockOracleFactory = await ethers.getContractFactory("MockOracle");
         const oracleFactory = await ethers.getContractFactory("AggregatedOracleStub");
 
         underlyingOracle = await mockOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        oracle = await oracleFactory.deploy({
-            aggregationStrategy: aggregationStrategy.address,
-            quoteTokenName: "USD Coin",
-            quoteTokenAddress: USDC,
-            quoteTokenSymbol: "USDC",
-            quoteTokenDecimals: 6,
-            liquidityDecimals: 0,
+        const constructorOverrides = {
+            validationStrategy: AddressZero,
             oracles: [underlyingOracle.address],
-            tokenSpecificOracles: [],
-            period: PERIOD,
-            granularity: GRANULARITY,
-            minimumTokenLiquidityValue: MINIMUM_TOKEN_LIQUIDITY_VALUE,
-            minimumQuoteTokenLiquidity: MINIMUM_QUOTE_TOKEN_LIQUIDITY,
-        });
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
     });
 
     describe("AggregatedOracle#initializeBuffers", function () {
         it("Can't be called twice", async function () {
             await oracle.stubInitializeBuffers(GRT);
 
-            await expect(oracle.stubInitializeBuffers(GRT)).to.be.revertedWith("AggregatedOracle: ALREADY_INITIALIZED");
+            await expect(oracle.stubInitializeBuffers(GRT)).to.be.revertedWith("BufferAlreadyInitialized");
         });
 
         it("Emits the correct event", async function () {
@@ -3410,21 +2851,15 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
         it("Should revert if the amount is less than the existing capacity", async function () {
             await oracle.setObservationsCapacity(GRT, 4);
 
-            await expect(oracle.setObservationsCapacity(GRT, 2)).to.be.revertedWith(
-                "AggregatedOracle: CAPACITY_CANNOT_BE_DECREASED"
-            );
+            await expect(oracle.setObservationsCapacity(GRT, 2)).to.be.revertedWith("CapacityCannotBeDecreased");
         });
 
         it("Should revert if the amount is 0", async function () {
-            await expect(oracle.setObservationsCapacity(GRT, 0)).to.be.revertedWith(
-                "AggregatedOracle: CAPACITY_CANNOT_BE_DECREASED"
-            );
+            await expect(oracle.setObservationsCapacity(GRT, 0)).to.be.revertedWith("CapacityCannotBeDecreased");
         });
 
         it("Should revert if the amount is larger than the maximum capacity", async function () {
-            await expect(oracle.setObservationsCapacity(GRT, 65536)).to.be.revertedWith(
-                "AggregatedOracle: CAPACITY_TOO_LARGE"
-            );
+            await expect(oracle.setObservationsCapacity(GRT, 65536)).to.be.revertedWith("CapacityTooLarge");
         });
 
         it("Should emit an event when the capacity is changed", async function () {
@@ -3599,7 +3034,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             await oracle.stubPush(GRT, 1, 1, 1, 1);
 
             await expect(oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 1, 1, 1)).to.be.revertedWith(
-                "AggregatedOracle: INSUFFICIENT_DATA"
+                "InsufficientData"
             );
         });
 
@@ -3615,7 +3050,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             await oracle.stubPush(GRT, 1, 1, 1, 1);
 
             await expect(oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 1, 1, 1)).to.be.revertedWith(
-                "AggregatedOracle: INSUFFICIENT_DATA"
+                "InsufficientData"
             );
         });
 
@@ -3624,7 +3059,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             await oracle.stubPush(GRT, 1, 1, 1, 1);
 
             await expect(oracle["getObservations(address,uint256,uint256,uint256)"](GRT, 2, 0, 1)).to.be.revertedWith(
-                "AggregatedOracle: INSUFFICIENT_DATA"
+                "InsufficientData"
             );
         });
 
@@ -3645,7 +3080,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, 0, 1)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should revert if the amount and offset exceed the number of observations", async function () {
@@ -3663,7 +3098,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, 1, 1)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should revert if the amount and offset exceed the number of observations but is less than the capacity", async function () {
@@ -3681,7 +3116,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, 1, 1)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should revert if the increment and amount exceeds the number of observations", async function () {
@@ -3701,7 +3136,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should revert if the increment and amount exceeds the number of observations but is less than the capacity", async function () {
@@ -3721,7 +3156,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should revert if the increment, amount, and offset exceeds the number of observations", async function () {
@@ -3742,7 +3177,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should revert if the increment, amount, and offset exceeds the number of observations but is less than the capacity", async function () {
@@ -3763,7 +3198,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
 
             await expect(
                 oracle["getObservations(address,uint256,uint256,uint256)"](GRT, amountToGet, offset, increment)
-            ).to.be.revertedWith("AggregatedOracle: INSUFFICIENT_DATA");
+            ).to.be.revertedWith("InsufficientData");
         });
 
         it("Should return the latest observation many times when increment is 0", async function () {
@@ -4003,7 +3438,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             // Sanity check the observations count
             expect(await oracle.getObservationsCount(GRT)).to.equal(0);
 
-            await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
+            await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("InvalidIndex");
         });
 
         it("Should revert if the buffer is initialized but empty", async function () {
@@ -4012,7 +3447,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             // Sanity check the observations count
             expect(await oracle.getObservationsCount(GRT)).to.equal(0);
 
-            await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
+            await expect(oracle.getObservationAt(GRT, 0)).to.be.revertedWith("InvalidIndex");
         });
 
         it("Should revert if the index exceeds the number of observations with a full buffer", async function () {
@@ -4028,7 +3463,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             // Sanity check the observations count
             expect(await oracle.getObservationsCount(GRT)).to.equal(capacity);
 
-            await expect(oracle.getObservationAt(GRT, capacity)).to.be.revertedWith("AggregatedOracle: INVALID_INDEX");
+            await expect(oracle.getObservationAt(GRT, capacity)).to.be.revertedWith("InvalidIndex");
         });
 
         it("Should revert if the index exceeds the number of observations but is within the capacity", async function () {
@@ -4044,9 +3479,7 @@ describe("AggregatedOracle - IHistoricalOracle implementation", function () {
             // Sanity check the observations count
             expect(await oracle.getObservationsCount(GRT)).to.equal(capacity - 1);
 
-            await expect(oracle.getObservationAt(GRT, capacity - 1)).to.be.revertedWith(
-                "AggregatedOracle: INVALID_INDEX"
-            );
+            await expect(oracle.getObservationAt(GRT, capacity - 1)).to.be.revertedWith("InvalidIndex");
         });
 
         it("Should return the latest observation when index = 0", async function () {
