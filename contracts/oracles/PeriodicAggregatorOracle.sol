@@ -42,13 +42,11 @@ contract PeriodicAggregatorOracle is IPeriodic, AbstractAggregatorOracle {
         return interfaceId == type(IPeriodic).interfaceId || AbstractAggregatorOracle.supportsInterface(interfaceId);
     }
 
-    /// @inheritdoc AbstractAggregatorOracle
-    function minimumResponses(address) internal view virtual override returns (uint256) {
+    function _minimumResponses(address) internal view virtual override returns (uint256) {
         return 1;
     }
 
-    /// @inheritdoc AbstractAggregatorOracle
-    function calculateMaxAge(address) internal view override returns (uint256) {
+    function _maximumResponseAge(address) internal view virtual override returns (uint256) {
         if (period == 1) {
             // We don't want to subtract 1 from this and use 0 as the max age, because that would cause the oracle
             // to return data straight from the current block, which may not be secure.

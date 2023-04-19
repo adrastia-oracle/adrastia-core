@@ -79,7 +79,7 @@ contract PeriodicAggregatorOracleStub is PeriodicAggregatorOracle {
     }
 
     function stubCalculateMaxAge(address token) public view returns (uint256) {
-        return calculateMaxAge(token);
+        return _maximumResponseAge(token);
     }
 
     /* Overridden functions */
