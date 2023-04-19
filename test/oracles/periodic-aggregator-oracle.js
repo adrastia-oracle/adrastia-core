@@ -2748,7 +2748,7 @@ describe("PeriodicAggregatorOracle#calculateMaxAge", function () {
 
         const oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
-        expect(await oracle.stubCalculateMaxAge()).to.not.equal(0);
+        expect(await oracle.stubCalculateMaxAge(GRT)).to.not.equal(0);
     });
 
     const periods = [2, 100, 1000, 10000];
@@ -2763,7 +2763,7 @@ describe("PeriodicAggregatorOracle#calculateMaxAge", function () {
 
             const oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
-            expect(await oracle.stubCalculateMaxAge()).to.equal(period - 1);
+            expect(await oracle.stubCalculateMaxAge(GRT)).to.equal(period - 1);
         });
     }
 });

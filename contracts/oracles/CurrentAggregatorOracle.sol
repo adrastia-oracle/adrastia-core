@@ -59,13 +59,13 @@ contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracl
         uint256 changeThreshold
     ) public view virtual override returns (bool) {
         address token = abi.decode(data, (address));
-        uint256 maxAge = calculateMaxAge();
+        uint256 maxAge = calculateMaxAge(token);
         (ObservationLibrary.Observation memory currentObservation, uint256 responses) = aggregateUnderlying(
             token,
             maxAge
         );
 
-        uint256 requiredResponses = minimumResponses();
+        uint256 requiredResponses = minimumResponses(token);
         if (responses < requiredResponses) {
             // Not enough responses to update
             return false;
@@ -106,7 +106,12 @@ contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracl
     }
 
     /// @inheritdoc AbstractAggregatorOracle
-    function calculateMaxAge() internal view override returns (uint256) {
+    function minimumResponses(address) internal view virtual override returns (uint256) {
+        return 1;
+    }
+
+    /// @inheritdoc AbstractAggregatorOracle
+    function calculateMaxAge(address) internal view override returns (uint256) {
         return maxUpdateDelay + 30 minutes;
     }
 

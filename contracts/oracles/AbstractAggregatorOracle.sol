@@ -193,10 +193,10 @@ abstract contract AbstractAggregatorOracle is
 
         address token = abi.decode(data, (address));
 
-        (, uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge());
+        (, uint256 validResponses) = aggregateUnderlying(token, calculateMaxAge(token));
 
         // Only return true if we have reached the minimum number of valid underlying oracle consultations
-        return validResponses >= minimumResponses();
+        return validResponses >= minimumResponses(token);
     }
 
     /// @inheritdoc IOracle
@@ -287,10 +287,10 @@ abstract contract AbstractAggregatorOracle is
 
         (ObservationLibrary.Observation memory observation, uint256 validResponses) = aggregateUnderlying(
             token,
-            calculateMaxAge()
+            calculateMaxAge(token)
         );
 
-        if (validResponses >= minimumResponses()) {
+        if (validResponses >= minimumResponses(token)) {
             push(token, observation);
 
             return true;
@@ -301,18 +301,18 @@ abstract contract AbstractAggregatorOracle is
 
     /**
      * @notice The minimum number of valid underlying oracle consultations required to perform an update.
+     * @param token The token to calculate the minimum number of valid underlying oracle consultations for.
+     * @return The minimum number of valid underlying oracle consultations required to perform an update.
      */
-    function minimumResponses() internal view virtual returns (uint256) {
-        return 1;
-    }
+    function minimumResponses(address token) internal view virtual returns (uint256);
 
     /**
      * @notice Calculates the maximum age of the underlying oracles' responses when updating this oracle's observation.
-     * @dev We use this to prevent old data from skewing our observations. Underlying oracles must update at least as
-     *   frequently as this oracle does.
+     * @dev We use this to prevent old data from skewing our observations.
+     * @param token The token to calculate the maximum age for.
      * @return maxAge The maximum age of underlying oracles' responses, in seconds.
      */
-    function calculateMaxAge() internal view virtual returns (uint256);
+    function calculateMaxAge(address token) internal view virtual returns (uint256);
 
     function aggregateUnderlying(
         address token,
@@ -425,7 +425,7 @@ abstract contract AbstractAggregatorOracle is
     ) internal view virtual override returns (uint112 price, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         (ObservationLibrary.Observation memory result, uint256 validResponses) = aggregateUnderlying(token, 0);
 
-        uint256 minResponses = minimumResponses();
+        uint256 minResponses = minimumResponses(token);
         require(validResponses >= minResponses, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
 
         price = result.price;

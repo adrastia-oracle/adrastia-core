@@ -78,8 +78,8 @@ contract PeriodicAggregatorOracleStub is PeriodicAggregatorOracle {
         config.needsUpdate = needsUpdate_;
     }
 
-    function stubCalculateMaxAge() public view returns (uint256) {
-        return calculateMaxAge();
+    function stubCalculateMaxAge(address token) public view returns (uint256) {
+        return calculateMaxAge(token);
     }
 
     /* Overridden functions */

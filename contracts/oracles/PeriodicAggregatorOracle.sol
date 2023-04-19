@@ -42,13 +42,13 @@ contract PeriodicAggregatorOracle is IPeriodic, AbstractAggregatorOracle {
         return interfaceId == type(IPeriodic).interfaceId || AbstractAggregatorOracle.supportsInterface(interfaceId);
     }
 
-    /**
-     * @notice Calculates the maximum age of the underlying oracles' responses when updating this oracle's observation.
-     * @dev We use this to prevent old data from skewing our observations. Underlying oracles must update at least as
-     *   frequently as this oracle does.
-     * @return maxAge The maximum age of underlying oracles' responses, in seconds.
-     */
-    function calculateMaxAge() internal view override returns (uint256) {
+    /// @inheritdoc AbstractAggregatorOracle
+    function minimumResponses(address) internal view virtual override returns (uint256) {
+        return 1;
+    }
+
+    /// @inheritdoc AbstractAggregatorOracle
+    function calculateMaxAge(address) internal view override returns (uint256) {
         if (period == 1) {
             // We don't want to subtract 1 from this and use 0 as the max age, because that would cause the oracle
             // to return data straight from the current block, which may not be secure.
