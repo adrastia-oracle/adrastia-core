@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.8.13;
+pragma solidity >=0.5.0 <0.9.0;
 
 /// @title IAveragingStrategy
 /// @notice An interface defining a strategy for calculating weighted averages.
