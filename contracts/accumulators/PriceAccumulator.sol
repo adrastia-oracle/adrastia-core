@@ -29,10 +29,11 @@ abstract contract PriceAccumulator is
     IAveragingStrategy public immutable averagingStrategy;
 
     uint256 public immutable minUpdateDelay;
-    uint256 public immutable maxUpdateDelay;
 
     mapping(address => AccumulationLibrary.PriceAccumulator) public accumulations;
     mapping(address => ObservationLibrary.PriceObservation) public observations;
+
+    uint256 internal immutable maxUpdateDelay;
 
     /**
      * @notice Emitted when the observed price is validated against a user (updater) provided price.
@@ -68,7 +69,7 @@ abstract contract PriceAccumulator is
 
     /// @inheritdoc IAccumulator
     function heartbeat() external view virtual override returns (uint256) {
-        return maxUpdateDelay;
+        return _heartbeat();
     }
 
     /// @inheritdoc IPriceAccumulator
@@ -110,13 +111,13 @@ abstract contract PriceAccumulator is
         if (deltaTime < minUpdateDelay) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
-        } else if (deltaTime >= maxUpdateDelay) {
-            // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        } else if (deltaTime >= _heartbeat()) {
+            // Ensures updates occur (optimistically) at least once every heartbeat (seconds)
             return true;
         }
 
         /*
-         * maxUpdateDelay > deltaTime >= minUpdateDelay
+         * heartbeat > deltaTime >= minUpdateDelay
          *
          * Check if the % change in price warrants an update (saves gas vs. always updating on change)
          */
@@ -217,6 +218,10 @@ abstract contract PriceAccumulator is
         require(block.timestamp <= observation.timestamp + maxAge, "PriceAccumulator: RATE_TOO_OLD");
 
         return observation.price;
+    }
+
+    function _heartbeat() internal view virtual returns (uint256) {
+        return maxUpdateDelay;
     }
 
     function calculateTimeWeightedValue(uint256 value, uint256 time) internal view virtual returns (uint256) {

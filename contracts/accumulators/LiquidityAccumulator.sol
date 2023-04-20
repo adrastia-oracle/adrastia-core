@@ -29,10 +29,11 @@ abstract contract LiquidityAccumulator is
     IAveragingStrategy public immutable averagingStrategy;
 
     uint256 public immutable minUpdateDelay;
-    uint256 public immutable maxUpdateDelay;
 
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) public observations;
+
+    uint256 internal immutable maxUpdateDelay;
 
     /**
      * @notice Emitted when the observed liquidities are validated against user (updater) provided liquidities.
@@ -72,7 +73,7 @@ abstract contract LiquidityAccumulator is
 
     /// @inheritdoc IAccumulator
     function heartbeat() external view virtual override returns (uint256) {
-        return maxUpdateDelay;
+        return _heartbeat();
     }
 
     /// @inheritdoc ILiquidityAccumulator
@@ -121,13 +122,13 @@ abstract contract LiquidityAccumulator is
         if (deltaTime < minUpdateDelay) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
-        } else if (deltaTime >= maxUpdateDelay) {
-            // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        } else if (deltaTime >= _heartbeat()) {
+            // Ensures updates occur (optimistically) at least once every heartbeat (seconds)
             return true;
         }
 
         /*
-         * maxUpdateDelay > deltaTime >= minUpdateDelay
+         * heartbeat > deltaTime >= minUpdateDelay
          *
          * Check if the % change in liquidity warrants an update (saves gas vs. always updating on change)
          */
@@ -241,6 +242,10 @@ abstract contract LiquidityAccumulator is
 
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
+    }
+
+    function _heartbeat() internal view virtual returns (uint256) {
+        return maxUpdateDelay;
     }
 
     function calculateTimeWeightedValue(uint256 value, uint256 time) internal view virtual returns (uint256) {
