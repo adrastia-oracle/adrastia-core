@@ -28,11 +28,10 @@ abstract contract LiquidityAccumulator is
 
     IAveragingStrategy public immutable averagingStrategy;
 
-    uint256 public immutable minUpdateDelay;
-
     mapping(address => AccumulationLibrary.LiquidityAccumulator) public accumulations;
     mapping(address => ObservationLibrary.LiquidityObservation) public observations;
 
+    uint256 internal immutable minUpdateDelay;
     uint256 internal immutable maxUpdateDelay;
 
     /**
@@ -69,6 +68,11 @@ abstract contract LiquidityAccumulator is
         averagingStrategy = averagingStrategy_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
+    }
+
+    /// @inheritdoc IAccumulator
+    function updateDelay() external view virtual override returns (uint256) {
+        return _updateDelay();
     }
 
     /// @inheritdoc IAccumulator
@@ -119,7 +123,7 @@ abstract contract LiquidityAccumulator is
     /// @inheritdoc IUpdateable
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         uint256 deltaTime = timeSinceLastUpdate(data);
-        if (deltaTime < minUpdateDelay) {
+        if (deltaTime < _updateDelay()) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
         } else if (deltaTime >= _heartbeat()) {
@@ -242,6 +246,10 @@ abstract contract LiquidityAccumulator is
 
         tokenLiquidity = observation.tokenLiquidity;
         quoteTokenLiquidity = observation.quoteTokenLiquidity;
+    }
+
+    function _updateDelay() internal view virtual returns (uint256) {
+        return minUpdateDelay;
     }
 
     function _heartbeat() internal view virtual returns (uint256) {

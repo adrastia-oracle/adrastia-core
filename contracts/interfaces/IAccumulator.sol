@@ -15,6 +15,10 @@ abstract contract IAccumulator {
     /// @return A percentage scaled by the change precision.
     function updateThreshold() external view virtual returns (uint256);
 
+    /// @notice Gets the minimum delay between updates to the cumulative value(s).
+    /// @return The minimum delay between updates to the cumulative value(s), in seconds.
+    function updateDelay() external view virtual returns (uint256);
+
     /// @notice Gets the maximum delay (target) between updates to the cumulative value(s), without requiring a change
     ///   past the update threshold.
     /// @return The maximum delay (target) between updates to the cumulative value(s), in seconds.

@@ -11,10 +11,10 @@ import "../accumulators/AbstractAccumulator.sol";
  */
 contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracle {
     /// @notice The minimum delay between updates, in seconds.
-    uint256 public immutable minUpdateDelay;
+    uint256 internal immutable minUpdateDelay;
 
     /// @notice The (optimistic) maximum delay between updates, in seconds.
-    uint256 public immutable maxUpdateDelay;
+    uint256 internal immutable maxUpdateDelay;
 
     /// @notice An error that is thrown when the minimum update delay is greater than the maximum update delay.
     /// @param minUpdateDelay The minimum update delay.
@@ -39,6 +39,11 @@ contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracl
 
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
+    }
+
+    /// @inheritdoc IAccumulator
+    function updateDelay() external view virtual override returns (uint256) {
+        return minUpdateDelay;
     }
 
     /// @inheritdoc IAccumulator
