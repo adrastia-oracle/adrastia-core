@@ -4,6 +4,7 @@ pragma solidity >=0.5.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 import "../strategies/aggregation/IAggregationStrategy.sol";
+import "../strategies/validation/IValidationStrategy.sol";
 
 /**
  * @title IOracleAggregator
@@ -29,6 +30,15 @@ interface IOracleAggregator {
      * @return strategy The instance of the IAggregationStrategy being used.
      */
     function aggregationStrategy() external view returns (IAggregationStrategy strategy);
+
+    /**
+     * @notice Returns the validation strategy being used by the aggregator oracle.
+     * @dev The validation strategy is used to validate the data from the underlying oracles before it is aggregated.
+     * Results from the underlying oracles that do not pass validation will be ignored.
+     * @return strategy The instance of the IValidationStrategy being used, or the zero address if no validation
+     * strategy is being used.
+     */
+    function validationStrategy() external view returns (IValidationStrategy strategy);
 
     /**
      * @notice Returns an array of Oracle structs representing the underlying oracles for a given token.

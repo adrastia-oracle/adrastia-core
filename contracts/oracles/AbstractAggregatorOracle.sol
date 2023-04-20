@@ -21,7 +21,7 @@ abstract contract AbstractAggregatorOracle is
 
     IAggregationStrategy public immutable override aggregationStrategy;
 
-    IValidationStrategy public immutable validationStrategy;
+    IValidationStrategy public immutable override validationStrategy;
 
     /// @notice One whole unit of the quote token, in the quote token's smallest denomination.
     uint256 internal immutable _quoteTokenWholeUnit;
