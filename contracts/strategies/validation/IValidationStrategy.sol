@@ -17,8 +17,12 @@ interface IValidationStrategy {
 
     /**
      * @notice Validates the given observation data for a token pair.
+     * @param token The address of the token for which the observation data is being validated.
      * @param observation The observation data to be validated.
      * @return True if the observation passes validation; false otherwise.
      */
-    function validateObservation(ObservationLibrary.Observation calldata observation) external view returns (bool);
+    function validateObservation(
+        address token,
+        ObservationLibrary.MetaObservation calldata observation
+    ) external view returns (bool);
 }

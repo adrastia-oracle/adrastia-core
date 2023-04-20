@@ -32,7 +32,8 @@ contract MeanAggregator is AbstractAggregator {
      *   liquidity, and the current block timestamp.
      */
     function aggregateObservations(
-        ObservationLibrary.Observation[] calldata observations,
+        address,
+        ObservationLibrary.MetaObservation[] calldata observations,
         uint256 from,
         uint256 to
     ) external view override returns (ObservationLibrary.Observation memory) {
@@ -40,7 +41,7 @@ contract MeanAggregator is AbstractAggregator {
         uint256 length = observations.length;
         if (length <= to - from) revert InsufficientObservations(observations.length, to - from + 1);
         if (length == 1) {
-            ObservationLibrary.Observation memory observation = observations[from];
+            ObservationLibrary.Observation memory observation = observations[from].data;
             observation.timestamp = uint32(block.timestamp);
             return observation;
         }
@@ -50,12 +51,12 @@ contract MeanAggregator is AbstractAggregator {
         uint256 sumQuoteTokenLiquidity = 0;
 
         for (uint256 i = from; i <= to; ++i) {
-            uint256 weight = extractWeight(observations[i]);
+            uint256 weight = extractWeight(observations[i].data);
 
-            weightedSum += averagingStrategy.calculateWeightedValue(observations[i].price, weight);
+            weightedSum += averagingStrategy.calculateWeightedValue(observations[i].data.price, weight);
 
-            sumTokenLiquidity += observations[i].tokenLiquidity;
-            sumQuoteTokenLiquidity += observations[i].quoteTokenLiquidity;
+            sumTokenLiquidity += observations[i].data.tokenLiquidity;
+            sumQuoteTokenLiquidity += observations[i].data.quoteTokenLiquidity;
         }
 
         uint256 price = averagingStrategy.calculateWeightedAverage(weightedSum, sumQuoteTokenLiquidity);

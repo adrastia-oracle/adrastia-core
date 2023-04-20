@@ -321,14 +321,13 @@ abstract contract AbstractAggregatorOracle is
         uint256 lDecimals = liquidityDecimals();
 
         Oracle[] memory theOracles = _getOracles(token);
-        ObservationLibrary.Observation[] memory observations = new ObservationLibrary.Observation[](theOracles.length);
+        ObservationLibrary.MetaObservation[] memory observations = new ObservationLibrary.MetaObservation[](
+            theOracles.length
+        );
 
         uint256 oPrice;
         uint256 oTokenLiquidity;
         uint256 oQuoteTokenLiquidity;
-
-        uint256 oPriceDecimals;
-        uint256 oLiquidityDecimals;
 
         for (uint256 i = 0; i < theOracles.length; ++i) {
             // We don't want problematic underlying oracles to prevent us from calculating the aggregated
@@ -355,30 +354,28 @@ abstract contract AbstractAggregatorOracle is
             }
 
             // Fix differing quote token decimal places (for price)
-            oPriceDecimals = theOracles[i].priceDecimals;
-            if (oPriceDecimals < pDecimals) {
+            if (theOracles[i].priceDecimals < pDecimals) {
                 // Scale up
-                uint256 scalar = 10 ** (pDecimals - oPriceDecimals);
+                uint256 scalar = 10 ** (pDecimals - theOracles[i].priceDecimals);
 
                 oPrice *= scalar;
-            } else if (oPriceDecimals > pDecimals) {
+            } else if (theOracles[i].priceDecimals > pDecimals) {
                 // Scale down
-                uint256 scalar = 10 ** (oPriceDecimals - pDecimals);
+                uint256 scalar = 10 ** (theOracles[i].priceDecimals - pDecimals);
 
                 oPrice /= scalar;
             }
 
             // Fix differing liquidity decimal places
-            oLiquidityDecimals = theOracles[i].liquidityDecimals;
-            if (oLiquidityDecimals < lDecimals) {
+            if (theOracles[i].liquidityDecimals < lDecimals) {
                 // Scale up
-                uint256 scalar = 10 ** (lDecimals - oLiquidityDecimals);
+                uint256 scalar = 10 ** (lDecimals - theOracles[i].liquidityDecimals);
 
                 oTokenLiquidity *= scalar;
                 oQuoteTokenLiquidity *= scalar;
-            } else if (oLiquidityDecimals > lDecimals) {
+            } else if (theOracles[i].liquidityDecimals > lDecimals) {
                 // Scale down
-                uint256 scalar = 10 ** (oLiquidityDecimals - lDecimals);
+                uint256 scalar = 10 ** (theOracles[i].liquidityDecimals - lDecimals);
 
                 oTokenLiquidity /= scalar;
                 oQuoteTokenLiquidity /= scalar;
@@ -394,14 +391,20 @@ abstract contract AbstractAggregatorOracle is
                 oTokenLiquidity <= type(uint112).max &&
                 oQuoteTokenLiquidity <= type(uint112).max
             ) {
-                ObservationLibrary.Observation memory observation = ObservationLibrary.Observation({
-                    price: uint112(oPrice),
-                    tokenLiquidity: uint112(oTokenLiquidity),
-                    quoteTokenLiquidity: uint112(oQuoteTokenLiquidity),
-                    timestamp: 0 // Not used
+                ObservationLibrary.MetaObservation memory observation = ObservationLibrary.MetaObservation({
+                    metadata: ObservationLibrary.ObservationMetadata({oracle: theOracles[i].oracle}),
+                    data: ObservationLibrary.Observation({
+                        price: uint112(oPrice),
+                        tokenLiquidity: uint112(oTokenLiquidity),
+                        quoteTokenLiquidity: uint112(oQuoteTokenLiquidity),
+                        timestamp: 0 // Not used
+                    })
                 });
 
-                if (address(validationStrategy) == address(0) || validationStrategy.validateObservation(observation)) {
+                if (
+                    address(validationStrategy) == address(0) ||
+                    validationStrategy.validateObservation(token, observation)
+                ) {
                     // The observation is valid, so we add it to the array
                     observations[validResponses++] = observation;
                 }
@@ -415,7 +418,7 @@ abstract contract AbstractAggregatorOracle is
             );
         }
 
-        result = aggregationStrategy.aggregateObservations(observations, 0, validResponses - 1);
+        result = aggregationStrategy.aggregateObservations(token, observations, 0, validResponses - 1);
     }
 
     /// @inheritdoc AbstractOracle

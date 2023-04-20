@@ -24,7 +24,8 @@ interface IAggregationStrategy {
      * ensuring the provided range is valid (i.e., 'from' <= 'to'), and that the input
      * array of observations is not empty.
      *
-     * @param observations An array of Observation structs containing the data to aggregate.
+     * @param token The address of the token for which to aggregate observations.
+     * @param observations An array of MetaObservation structs containing the data to aggregate.
      * @param from The starting index (inclusive) of the range to aggregate from the observations array.
      * @param to The ending index (inclusive) of the range to aggregate from the observations array.
      *
@@ -32,7 +33,8 @@ interface IAggregationStrategy {
      * of the aggregation.
      */
     function aggregateObservations(
-        ObservationLibrary.Observation[] calldata observations,
+        address token,
+        ObservationLibrary.MetaObservation[] calldata observations,
         uint256 from,
         uint256 to
     ) external view returns (ObservationLibrary.Observation memory);

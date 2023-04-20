@@ -28,7 +28,10 @@ contract ValidationStub is IValidationStrategy {
         return config.quoteTokenDecimals;
     }
 
-    function validateObservation(ObservationLibrary.Observation calldata) external view override returns (bool) {
+    function validateObservation(
+        address,
+        ObservationLibrary.MetaObservation calldata
+    ) external view override returns (bool) {
         return config.isValid;
     }
 }

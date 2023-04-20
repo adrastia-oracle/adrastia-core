@@ -63,9 +63,10 @@ contract DefaultValidation is IValidationStrategy {
 
     /// @inheritdoc IValidationStrategy
     function validateObservation(
-        ObservationLibrary.Observation calldata observation
+        address,
+        ObservationLibrary.MetaObservation calldata observation
     ) external view override returns (bool) {
-        return validate(observation.price, observation.tokenLiquidity, observation.quoteTokenLiquidity);
+        return validate(observation.data.price, observation.data.tokenLiquidity, observation.data.quoteTokenLiquidity);
     }
 
     /**
