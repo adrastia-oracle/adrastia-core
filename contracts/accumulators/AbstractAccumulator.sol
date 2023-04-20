@@ -11,20 +11,28 @@ import "../interfaces/IAccumulator.sol";
 abstract contract AbstractAccumulator is IERC165, IAccumulator {
     uint256 public immutable override changePrecision = 10 ** 8;
 
-    uint256 public immutable override updateThreshold;
+    uint256 internal immutable theUpdateThreshold;
 
     constructor(uint256 updateThreshold_) {
-        updateThreshold = updateThreshold_;
+        theUpdateThreshold = updateThreshold_;
+    }
+
+    function updateThreshold() external view virtual override returns (uint256) {
+        return _updateThreshold();
     }
 
     /// @inheritdoc IAccumulator
     function updateThresholdSurpassed(bytes memory data) public view virtual override returns (bool) {
-        return changeThresholdSurpassed(data, updateThreshold);
+        return changeThresholdSurpassed(data, _updateThreshold());
     }
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IAccumulator).interfaceId;
+    }
+
+    function _updateThreshold() internal view virtual returns (uint256) {
+        return theUpdateThreshold;
     }
 
     function calculateChange(uint256 a, uint256 b) internal view virtual returns (uint256 change, bool isInfinite) {

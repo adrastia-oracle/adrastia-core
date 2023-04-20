@@ -288,7 +288,7 @@ abstract contract PriceAccumulator is
 
     function validateObservationAllowedChange(address) internal virtual returns (uint256) {
         // Allow the price to change by half of the update threshold
-        return updateThreshold / 2;
+        return _updateThreshold() / 2;
     }
 
     function validateAllowedTimeDifference() internal virtual returns (uint32) {

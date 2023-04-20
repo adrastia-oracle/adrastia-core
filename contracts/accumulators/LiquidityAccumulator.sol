@@ -321,7 +321,7 @@ abstract contract LiquidityAccumulator is
 
     function validateObservationAllowedChange(address) internal virtual returns (uint256) {
         // Allow the liquidity levels to change by half of the update threshold
-        return updateThreshold / 2;
+        return _updateThreshold() / 2;
     }
 
     function validateAllowedTimeDifference() internal virtual returns (uint32) {
