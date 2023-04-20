@@ -43,12 +43,12 @@ contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracl
 
     /// @inheritdoc IAccumulator
     function updateDelay() external view virtual override returns (uint256) {
-        return minUpdateDelay;
+        return _updateDelay();
     }
 
     /// @inheritdoc IAccumulator
     function heartbeat() external view virtual override returns (uint256) {
-        return maxUpdateDelay;
+        return _heartbeat();
     }
 
     /// @inheritdoc AbstractOracle
@@ -90,11 +90,11 @@ contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracl
      */
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         uint256 deltaTime = timeSinceLastUpdate(data);
-        if (deltaTime < minUpdateDelay) {
+        if (deltaTime < _updateDelay()) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
-        } else if (deltaTime >= maxUpdateDelay) {
-            // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        } else if (deltaTime >= _heartbeat()) {
+            // Ensures updates occur (optimistically) at least once every heartbeat (seconds)
             return true;
         }
 
@@ -110,12 +110,20 @@ contract CurrentAggregatorOracle is AbstractAccumulator, AbstractAggregatorOracl
             AbstractAggregatorOracle.supportsInterface(interfaceId);
     }
 
+    function _updateDelay() internal view virtual returns (uint256) {
+        return minUpdateDelay;
+    }
+
+    function _heartbeat() internal view virtual returns (uint256) {
+        return maxUpdateDelay;
+    }
+
     function _minimumResponses(address) internal view virtual override returns (uint256) {
         return 1;
     }
 
     function _maximumResponseAge(address) internal view virtual override returns (uint256) {
-        return maxUpdateDelay + 30 minutes;
+        return _heartbeat() + 30 minutes;
     }
 
     /// @inheritdoc AbstractAggregatorOracle
