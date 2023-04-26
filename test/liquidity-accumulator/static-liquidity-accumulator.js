@@ -34,6 +34,15 @@ async function createDefaultAccumulator(
     return accumulator;
 }
 
+async function createDefaultAccumulatorStub(
+    quoteToken,
+    tokenLiquidity,
+    quoteTokenLiquidity,
+    contractName = "StaticLiquidityAccumulatorStub"
+) {
+    return await createDefaultAccumulator(quoteToken, tokenLiquidity, quoteTokenLiquidity, contractName);
+}
+
 describe("StaticLiquidityAccumulator#constructor", function () {
     var accumulator;
     var quoteToken;
@@ -52,6 +61,7 @@ describe("StaticLiquidityAccumulator#constructor", function () {
         expect(await accumulator.averagingStrategy()).to.equal(AddressZero);
         expect(await accumulator.quoteToken()).to.equal(quoteToken);
         expect(await accumulator.liquidityDecimals()).to.equal(DEFAULT_DECIMALS);
+        expect(await accumulator.quoteTokenDecimals()).to.equal(DEFAULT_DECIMALS);
 
         expect(await accumulator.updateThreshold()).to.not.equal(0);
         expect(await accumulator.updateDelay()).to.not.equal(0);
@@ -344,6 +354,30 @@ describe("StaticLiquidityAccumulator#consultLiquidity(token, maxAge = 1)", funct
                         const liquidity = [tokenLiquidity, quoteTokenLiquidity];
                         const accumulator = await createDefaultAccumulator(token, tokenLiquidity, quoteTokenLiquidity);
                         expect(await accumulator["consultLiquidity(address,uint256)"](token, 1)).to.deep.eq(liquidity);
+                    });
+                }
+            }
+        });
+    }
+});
+
+describe("StaticLiquidityAccumulator#fetchLiquidity", function () {
+    const tokens = [AddressZero, USDC, GRT];
+    const liquidities = [BigNumber.from(0), BigNumber.from(1), BigNumber.from(2), ethers.utils.parseUnits("1.0", 18)];
+
+    for (const token of tokens) {
+        describe("token = " + token.toString(), function () {
+            for (const tokenLiquidity of liquidities) {
+                for (const quoteTokenLiquidity of liquidities) {
+                    it(`Returns tokenLiquidity=${tokenLiquidity.toString()} and quoteTokenLiquidity=${quoteTokenLiquidity.toString()} for the zero address`, async function () {
+                        const updateData = ethers.utils.defaultAbiCoder.encode(["address"], [token]);
+                        const liquidity = [tokenLiquidity, quoteTokenLiquidity];
+                        const accumulator = await createDefaultAccumulatorStub(
+                            token,
+                            tokenLiquidity,
+                            quoteTokenLiquidity
+                        );
+                        expect(await accumulator.stubFetchLiquidity(updateData)).to.deep.eq(liquidity);
                     });
                 }
             }

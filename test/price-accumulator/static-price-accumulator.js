@@ -27,6 +27,10 @@ async function createDefaultAccumulator(quoteToken, price, contractName = "Stati
     return accumulator;
 }
 
+async function createDefaultAccumulatorStub(quoteToken, price, contractName = "StaticPriceAccumulatorStub") {
+    return await createDefaultAccumulator(quoteToken, price, contractName);
+}
+
 describe("StaticPriceAccumulator#constructor", function () {
     var accumulator;
     var quoteToken;
@@ -307,6 +311,23 @@ describe("StaticPriceAccumulator#consultPrice(token, maxAge = 1)", function () {
                 it(`Returns ${price.toString()} for the zero address`, async function () {
                     const accumulator = await createDefaultAccumulator(token, price);
                     expect(await accumulator["consultPrice(address,uint256)"](token, 1)).to.equal(price);
+                });
+            }
+        });
+    }
+});
+
+describe("StaticPriceAccumulator#fetchPrice", function () {
+    const tokens = [AddressZero, USDC, GRT];
+    const prices = [BigNumber.from(0), BigNumber.from(1), BigNumber.from(2), ethers.utils.parseUnits("1.0", 18)];
+
+    for (const token of tokens) {
+        describe("token = " + token.toString(), function () {
+            for (const price of prices) {
+                it(`Returns ${price.toString()} for the zero address`, async function () {
+                    const updateData = ethers.utils.defaultAbiCoder.encode(["address"], [token]);
+                    const accumulator = await createDefaultAccumulatorStub(token, price);
+                    expect(await accumulator.stubFetchPrice(updateData)).to.equal(price);
                 });
             }
         });

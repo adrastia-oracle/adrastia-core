@@ -66,6 +66,7 @@ describe("OffchainLiquidityAccumulator#constructor", function () {
         expect(await accumulator.updateDelay()).to.equal(DEFAULT_UPDATE_DELAY);
         expect(await accumulator.heartbeat()).to.equal(DEFAULT_HEARTBEAT);
         expect(await accumulator.liquidityDecimals()).to.equal(DEFAULT_DECIMALS);
+        expect(await accumulator.quoteTokenDecimals()).to.equal(DEFAULT_DECIMALS);
     });
 });
 
