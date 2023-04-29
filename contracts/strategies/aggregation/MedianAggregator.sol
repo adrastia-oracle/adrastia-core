@@ -30,8 +30,8 @@ contract MedianAggregator is AbstractAggregator {
         uint256 to
     ) external view override returns (ObservationLibrary.Observation memory) {
         if (from > to) revert BadInput();
-        uint256 length = observations.length;
-        if (length <= to - from) revert InsufficientObservations(observations.length, to - from + 1);
+        if (observations.length <= to) revert InsufficientObservations(observations.length, to - from + 1);
+        uint256 length = to - from + 1;
         if (length == 1) {
             ObservationLibrary.Observation memory observation = observations[from].data;
             observation.timestamp = uint32(block.timestamp);

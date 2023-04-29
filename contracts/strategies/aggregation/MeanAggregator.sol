@@ -38,28 +38,30 @@ contract MeanAggregator is AbstractAggregator {
         uint256 to
     ) external view override returns (ObservationLibrary.Observation memory) {
         if (from > to) revert BadInput();
-        uint256 length = observations.length;
-        if (length <= to - from) revert InsufficientObservations(observations.length, to - from + 1);
+        if (observations.length <= to) revert InsufficientObservations(observations.length, to - from + 1);
+        uint256 length = to - from + 1;
         if (length == 1) {
             ObservationLibrary.Observation memory observation = observations[from].data;
             observation.timestamp = uint32(block.timestamp);
             return observation;
         }
 
-        uint256 weightedSum;
+        uint256 sumWeightedPrice;
+        uint256 sumWeight;
         uint256 sumTokenLiquidity = 0;
         uint256 sumQuoteTokenLiquidity = 0;
 
         for (uint256 i = from; i <= to; ++i) {
             uint256 weight = extractWeight(observations[i].data);
 
-            weightedSum += averagingStrategy.calculateWeightedValue(observations[i].data.price, weight);
+            sumWeightedPrice += averagingStrategy.calculateWeightedValue(observations[i].data.price, weight);
+            sumWeight += weight;
 
             sumTokenLiquidity += observations[i].data.tokenLiquidity;
             sumQuoteTokenLiquidity += observations[i].data.quoteTokenLiquidity;
         }
 
-        uint256 price = averagingStrategy.calculateWeightedAverage(weightedSum, sumQuoteTokenLiquidity);
+        uint256 price = averagingStrategy.calculateWeightedAverage(sumWeightedPrice, sumWeight);
 
         return prepareResult(price, sumTokenLiquidity, sumQuoteTokenLiquidity);
     }
