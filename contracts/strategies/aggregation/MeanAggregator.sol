@@ -14,6 +14,9 @@ import "../averaging/IAveragingStrategy.sol";
 contract MeanAggregator is AbstractAggregator {
     IAveragingStrategy public immutable averagingStrategy;
 
+    /// @notice An error thrown when the total weight of the observations is zero.
+    error ZeroWeight();
+
     /**
      * @notice Constructor for the MeanAggregator contract.
      * @param averagingStrategy_ The averaging strategy to use for calculating the weighted mean.
@@ -30,6 +33,9 @@ contract MeanAggregator is AbstractAggregator {
      * @param to The index of the last observation to aggregate.
      * @return observation The aggregated observation with the weighted mean price, the sum of the token and quote token
      *   liquidity, and the current block timestamp.
+     * @custom:throws BadInput if the `from` index is greater than the `to` index.
+     * @custom:throws InsufficientObservations if the `to` index is greater than the length of the observations array.
+     * @custom:throws ZeroWeight if the total weight of the observations is zero.
      */
     function aggregateObservations(
         address,
@@ -39,12 +45,6 @@ contract MeanAggregator is AbstractAggregator {
     ) external view override returns (ObservationLibrary.Observation memory) {
         if (from > to) revert BadInput();
         if (observations.length <= to) revert InsufficientObservations(observations.length, to - from + 1);
-        uint256 length = to - from + 1;
-        if (length == 1) {
-            ObservationLibrary.Observation memory observation = observations[from].data;
-            observation.timestamp = uint32(block.timestamp);
-            return observation;
-        }
 
         uint256 sumWeightedPrice;
         uint256 sumWeight;
@@ -60,6 +60,8 @@ contract MeanAggregator is AbstractAggregator {
             sumTokenLiquidity += observations[i].data.tokenLiquidity;
             sumQuoteTokenLiquidity += observations[i].data.quoteTokenLiquidity;
         }
+
+        if (sumWeight == 0) revert ZeroWeight();
 
         uint256 price = averagingStrategy.calculateWeightedAverage(sumWeightedPrice, sumWeight);
 
