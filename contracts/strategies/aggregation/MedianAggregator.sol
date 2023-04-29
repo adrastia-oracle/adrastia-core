@@ -81,7 +81,9 @@ contract MedianAggregator is AbstractAggregator {
 
         int256 i = left;
         int256 j = right;
-        if (i == j) return;
+
+        // The following is commented out because it is not possible for i to be equal to j at this point.
+        // if (i == j) return;
 
         uint256 pivotIndex = uint256(left + (right - left) / 2);
         uint256 pivotPrice = prices[pivotIndex];
