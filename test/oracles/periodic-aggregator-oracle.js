@@ -307,6 +307,90 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
             )
         ).to.be.revertedWith("AbstractAggregatorOracle: DUPLICATE_ORACLE");
     });
+
+    it("Should revert if the period is 0", async function () {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
+        const validationStrategyAddress = AddressZero;
+
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
+
+        await expect(
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [oracle1.address],
+                    tokenSpecificOracles: [],
+                },
+                0,
+                GRANULARITY
+            )
+        ).to.be.revertedWith("PeriodicAggregatorOracle: INVALID_PERIOD");
+    });
+
+    it("Should revert if the granularity is 0", async function () {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
+        const validationStrategyAddress = AddressZero;
+
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
+
+        await expect(
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [oracle1.address],
+                    tokenSpecificOracles: [],
+                },
+                PERIOD,
+                0
+            )
+        ).to.be.revertedWith("PeriodicAggregatorOracle: INVALID_GRANULARITY");
+    });
+
+    it("Should revert if period is not a multiple of granularity", async function () {
+        const aggregationStrategy = await aggregationStrategyFactory.deploy();
+        await aggregationStrategy.deployed();
+
+        const validationStrategyAddress = AddressZero;
+
+        const oracle1 = await underlyingOracleFactory.deploy(USDC);
+        await oracle1.deployed();
+
+        await expect(
+            oracleFactory.deploy(
+                {
+                    aggregationStrategy: aggregationStrategy.address,
+                    validationStrategy: validationStrategyAddress,
+                    quoteTokenName: "NAME",
+                    quoteTokenAddress: USDC,
+                    quoteTokenSymbol: "NIL",
+                    quoteTokenDecimals: 18,
+                    liquidityDecimals: 0,
+                    oracles: [oracle1.address],
+                    tokenSpecificOracles: [],
+                },
+                3,
+                2
+            )
+        ).to.be.revertedWith("PeriodicAggregatorOracle: INVALID_PERIOD_GRANULARITY");
+    });
 });
 
 describe("PeriodicAggregatorOracle#needsUpdate", function () {
@@ -1936,6 +2020,69 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
         expect(oTokenLiquidity).to.equal(poTokenLiquidity);
         expect(oQuoteTokenLiquidity).to.equal(poQuoteTokenLiquidity);
         expect(oTimestamp).to.equal(poTimestamp);
+    });
+
+    it("Shouldn't update when the period hasn't been passed", async () => {
+        const observationTime = await currentBlockTimestamp();
+        const checkTime = observationTime + PERIOD - 2;
+
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("3", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("5", 18);
+
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, checkTime);
+        await oracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, observationTime);
+
+        // Fast forward to the check time
+        await hre.timeAndMine.setTime(checkTime);
+
+        // Check that update returns false
+        expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(token, 32))).to.equal(false);
+
+        const tx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+        const receipt = await tx.wait();
+
+        // Expect that no event was emitted
+        expect(receipt.events).to.be.empty;
+
+        // Expect that the last update time hasn't changed
+        expect(await oracle.lastUpdateTime(ethers.utils.hexZeroPad(token, 32))).to.equal(observationTime);
+    });
+
+    it("Should update when the period has been passed", async () => {
+        const observationTime = await currentBlockTimestamp();
+        const checkTime = observationTime + PERIOD + 2;
+
+        const price = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("3", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("5", 18);
+
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, checkTime);
+        await oracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, observationTime);
+
+        // Fast forward to the check time
+        await hre.timeAndMine.setTime(checkTime);
+
+        // Check that update returns true
+        expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(token, 32))).to.equal(true);
+
+        const tx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+        const receipt = await tx.wait();
+
+        // Expect that `Updated` was emitted
+        expect(receipt)
+            .to.emit(oracle, "Updated")
+            .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, observationTime);
+
+        const updateTime = await blockTimestamp(receipt.blockNumber);
+
+        // Expect that the new observation is what we expect
+        expect(await oracle.getLatestObservation(token)).to.deep.equal([
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            updateTime,
+        ]);
     });
 });
 
