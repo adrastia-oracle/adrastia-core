@@ -75,6 +75,42 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
     /// @param priceTimestamp The timestamp of the cumulative price.
     event AccumulationPushed(address indexed token, uint256 priceCumulative, uint256 priceTimestamp);
 
+    /// @notice An error that is thrown if the update is this oracle is blocked because the price accumulator needs
+    /// to be updated.
+    /// @param token The token for which the price accumulator needs to be updated.
+    error PriceAccumulatorNeedsUpdate(address token);
+
+    /// @notice An error that is thrown if we try to initialize an accumulation buffer that has already been
+    ///   initialized.
+    /// @param token The token for which we tried to initialize the accumulation buffer.
+    error BufferAlreadyInitialized(address token);
+
+    /// @notice An error that is thrown if we try to retrieve a accumulation at an invalid index.
+    /// @param token The token for which we tried to retrieve the accumulation.
+    /// @param index The index of the accumulation that we tried to retrieve.
+    /// @param size The size of the accumulation buffer.
+    error InvalidIndex(address token, uint256 index, uint256 size);
+
+    /// @notice An error that is thrown if we try to decrease the capacity of a accumulation buffer.
+    /// @param token The token for which we tried to decrease the capacity of the accumulation buffer.
+    /// @param amount The capacity that we tried to decrease the accumulation buffer to.
+    /// @param currentCapacity The current capacity of the accumulation buffer.
+    error CapacityCannotBeDecreased(address token, uint256 amount, uint256 currentCapacity);
+
+    /// @notice An error that is thrown if we try to increase the capacity of a accumulation buffer past the maximum
+    ///   capacity.
+    /// @param token The token for which we tried to increase the capacity of the accumulation buffer.
+    /// @param amount The capacity that we tried to increase the accumulation buffer to.
+    /// @param maxCapacity The maximum capacity of the accumulation buffer.
+    error CapacityTooLarge(address token, uint256 amount, uint256 maxCapacity);
+
+    /// @notice An error that is thrown if we try to retrieve more accumulations than are available in the accumulation
+    ///   buffer.
+    /// @param token The token for which we tried to retrieve the accumulations.
+    /// @param size The size of the accumulation buffer.
+    /// @param minSizeRequired The minimum size of the accumulation buffer that we require.
+    error InsufficientData(address token, uint256 size, uint256 minSizeRequired);
+
     constructor(
         address priceAccumulator_,
         address quoteToken_,
@@ -97,7 +133,9 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
     ) external view virtual override returns (AccumulationLibrary.PriceAccumulator memory) {
         BufferMetadata memory meta = accumulationBufferMetadata[token];
 
-        require(index < meta.size, "PeriodicAccumulationOracle: INVALID_INDEX");
+        if (index >= meta.size) {
+            revert InvalidIndex(token, index, meta.size);
+        }
 
         uint256 bufferIndex = meta.end < index ? meta.end + meta.size - index : meta.end - index;
 
@@ -223,8 +261,8 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
             initializeBuffers(token);
         }
 
-        require(amount >= meta.maxSize, "PeriodicAccumulationOracle: CAPACITY_CANNOT_BE_DECREASED");
-        require(amount <= type(uint16).max, "PeriodicAccumulationOracle: CAPACITY_TOO_LARGE");
+        if (amount < meta.maxSize) revert CapacityCannotBeDecreased(token, amount, meta.maxSize);
+        if (amount > type(uint8).max) revert CapacityTooLarge(token, amount, type(uint8).max);
 
         AccumulationLibrary.PriceAccumulator[] storage priceAccumulationBuffer = priceAccumulationBuffers[token];
 
@@ -252,7 +290,8 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
         if (amount == 0) return new AccumulationLibrary.PriceAccumulator[](0);
 
         BufferMetadata memory meta = accumulationBufferMetadata[token];
-        require(meta.size > (amount - 1) * increment + offset, "PeriodicAccumulationOracle: INSUFFICIENT_DATA");
+        if (meta.size <= (amount - 1) * increment + offset)
+            revert InsufficientData(token, meta.size, (amount - 1) * increment + offset + 1);
 
         AccumulationLibrary.PriceAccumulator[] memory accumulations = new AccumulationLibrary.PriceAccumulator[](
             amount
@@ -272,7 +311,9 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
     }
 
     function initializeBuffers(address token) internal virtual {
-        require(priceAccumulationBuffers[token].length == 0, "PeriodicAccumulationOracle: ALREADY_INITIALIZED");
+        if (priceAccumulationBuffers[token].length != 0) {
+            revert BufferAlreadyInitialized(token);
+        }
 
         BufferMetadata storage meta = accumulationBufferMetadata[token];
 
@@ -378,17 +419,15 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
         // If they are not up-to-date, the oracle will not update.
         // It is expected that oracle consumers will check the last update time before using the data as to avoid using
         // stale data.
-        {
-            uint256 gracePeriod = accumulatorUpdateDelayTolerance();
-
-            require(
-                IUpdateable(priceAccumulator).timeSinceLastUpdate(data) <
-                    IAccumulator(priceAccumulator).heartbeat() + gracePeriod,
-                "PeriodicAccumulationOracle: PRICE_ACCUMULATOR_NEEDS_UPDATE"
-            );
-        }
-
         address token = abi.decode(data, (address));
+        uint256 gracePeriod = accumulatorUpdateDelayTolerance();
+
+        if (
+            IUpdateable(priceAccumulator).timeSinceLastUpdate(data) >=
+            IAccumulator(priceAccumulator).heartbeat() + gracePeriod
+        ) {
+            revert PriceAccumulatorNeedsUpdate(token);
+        }
 
         AccumulationLibrary.PriceAccumulator memory priceAccumulation = IPriceAccumulator(priceAccumulator)
             .getCurrentAccumulation(token);
