@@ -2938,4 +2938,9 @@ describe("CurrentAggregatorOracle#supportsInterface(interfaceId)", function () {
         const interfaceId = await interfaceIds.iHistoricalOracle();
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
+
+    it("Should support IAccumulator", async () => {
+        const interfaceId = await interfaceIds.iAccumulator();
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
 });
