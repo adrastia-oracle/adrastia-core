@@ -1916,23 +1916,47 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
     it("Shouldn't update when the underlying oracle's price is 0", async () => {
         const price = BigNumber.from(0);
-        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
-        const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("2", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("2", 18);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        await underlyingOracle.stubSetObservation(
-            token,
-            price,
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            await currentBlockTimestamp()
-        );
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
         const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
             token
         );
 
-        await hre.timeAndMine.setTimeNextBlock(timestamp);
+        await hre.timeAndMine.setTime(timestamp);
+
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+            .to.emit(oracle, "UpdateErrorWithReason")
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
+
+        expect(oPrice).to.equal(poPrice);
+        expect(oTokenLiquidity).to.equal(poTokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(poQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(poTimestamp);
+    });
+
+    it("Shouldn't update when the underlying oracle's token liquidity is 0", async () => {
+        const price = ethers.utils.parseUnits("2", 18);
+        const tokenLiquidity = BigNumber.from(0);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("2", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
+
+        await hre.timeAndMine.setTime(timestamp);
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
@@ -1951,24 +1975,18 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
     });
 
     it("Shouldn't update when the underlying oracle's quote token liquidity is 0", async () => {
-        const price = ethers.utils.parseUnits("1", 18);
-        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const price = ethers.utils.parseUnits("2", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("2", 18);
         const quoteTokenLiquidity = BigNumber.from(0);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        await underlyingOracle.stubSetObservation(
-            token,
-            price,
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            await currentBlockTimestamp()
-        );
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
         const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
             token
         );
 
-        await hre.timeAndMine.setTimeNextBlock(timestamp);
+        await hre.timeAndMine.setTime(timestamp);
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
@@ -1988,23 +2006,77 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
     it("Shouldn't update when the underlying oracle's price and quote token liquidity is 0", async () => {
         const price = BigNumber.from(0);
-        const tokenLiquidity = ethers.utils.parseUnits("1", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("2", 18);
         const quoteTokenLiquidity = BigNumber.from(0);
         const timestamp = (await currentBlockTimestamp()) + 10;
 
-        await underlyingOracle.stubSetObservation(
-            token,
-            price,
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            await currentBlockTimestamp()
-        );
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
 
         const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
             token
         );
 
-        await hre.timeAndMine.setTimeNextBlock(timestamp);
+        await hre.timeAndMine.setTime(timestamp);
+
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+            .to.emit(oracle, "UpdateErrorWithReason")
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
+
+        expect(oPrice).to.equal(poPrice);
+        expect(oTokenLiquidity).to.equal(poTokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(poQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(poTimestamp);
+    });
+
+    it("Shouldn't update when the underlying oracle's price and token liquidity is 0", async () => {
+        const price = BigNumber.from(0);
+        const tokenLiquidity = BigNumber.from(0);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("2", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
+
+        await hre.timeAndMine.setTime(timestamp);
+
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+            .to.emit(oracle, "UpdateErrorWithReason")
+            .withArgs(oracle.address, token, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
+
+        expect(oPrice).to.equal(poPrice);
+        expect(oTokenLiquidity).to.equal(poTokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(poQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(poTimestamp);
+    });
+
+    it("Shouldn't update when the underlying oracle's price, token liquidity, and quote token liquidity is 0", async () => {
+        const price = BigNumber.from(0);
+        const tokenLiquidity = BigNumber.from(0);
+        const quoteTokenLiquidity = BigNumber.from(0);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        const [poPrice, poTokenLiquidity, poQuoteTokenLiquidity, poTimestamp] = await oracle.getLatestObservation(
+            token
+        );
+
+        await hre.timeAndMine.setTime(timestamp);
 
         await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
             .to.emit(oracle, "UpdateErrorWithReason")
