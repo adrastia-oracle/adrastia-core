@@ -26,19 +26,22 @@ interface IOracleAggregator {
     }
 
     /**
-     * @notice Returns the aggregation strategy being used by the aggregator oracle.
+     * @notice Returns the aggregation strategy being used by the aggregator oracle for a given token.
+     * @dev The aggregation strategy is used to aggregate the data from the underlying oracles.
+     * @param token The address of the token for which the aggregation strategy is being requested.
      * @return strategy The instance of the IAggregationStrategy being used.
      */
-    function aggregationStrategy() external view returns (IAggregationStrategy strategy);
+    function aggregationStrategy(address token) external view returns (IAggregationStrategy strategy);
 
     /**
-     * @notice Returns the validation strategy being used by the aggregator oracle.
+     * @notice Returns the validation strategy being used by the aggregator oracle for a given token.
      * @dev The validation strategy is used to validate the data from the underlying oracles before it is aggregated.
      * Results from the underlying oracles that do not pass validation will be ignored.
+     * @param token The address of the token for which the validation strategy is being requested.
      * @return strategy The instance of the IValidationStrategy being used, or the zero address if no validation
      * strategy is being used.
      */
-    function validationStrategy() external view returns (IValidationStrategy strategy);
+    function validationStrategy(address token) external view returns (IValidationStrategy strategy);
 
     /**
      * @notice Returns an array of Oracle structs representing the underlying oracles for a given token.

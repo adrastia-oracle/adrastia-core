@@ -19,9 +19,9 @@ abstract contract AbstractAggregatorOracle is
         address oracle;
     }
 
-    IAggregationStrategy public immutable override aggregationStrategy;
+    IAggregationStrategy internal immutable generalAggregationStrategy;
 
-    IValidationStrategy public immutable override validationStrategy;
+    IValidationStrategy internal immutable generalValidationStrategy;
 
     /// @notice One whole unit of the quote token, in the quote token's smallest denomination.
     uint256 internal immutable _quoteTokenWholeUnit;
@@ -81,8 +81,8 @@ abstract contract AbstractAggregatorOracle is
             revert("AbstractAggregatorOracle: QUOTE_TOKEN_DECIMALS_MISMATCH");
         }
 
-        aggregationStrategy = params.aggregationStrategy;
-        validationStrategy = params.validationStrategy;
+        generalAggregationStrategy = params.aggregationStrategy;
+        generalValidationStrategy = params.validationStrategy;
 
         _quoteTokenWholeUnit = 10 ** params.quoteTokenDecimals;
 
@@ -120,6 +120,16 @@ abstract contract AbstractAggregatorOracle is
                 })
             );
         }
+    }
+
+    /// @inheritdoc IOracleAggregator
+    function aggregationStrategy(address token) external view virtual override returns (IAggregationStrategy) {
+        return _aggregationStrategy(token);
+    }
+
+    /// @inheritdoc IOracleAggregator
+    function validationStrategy(address token) external view virtual override returns (IValidationStrategy) {
+        return _validationStrategy(token);
     }
 
     /// @inheritdoc IOracleAggregator
@@ -313,6 +323,18 @@ abstract contract AbstractAggregatorOracle is
 
     function _maximumResponseAge(address token) internal view virtual returns (uint256);
 
+    function _aggregationStrategy(address token) internal view virtual returns (IAggregationStrategy) {
+        token; // silence unused variable warning. We let subclasses override this function to use the token parameter.
+
+        return generalAggregationStrategy;
+    }
+
+    function _validationStrategy(address token) internal view virtual returns (IValidationStrategy) {
+        token; // silence unused variable warning. We let subclasses override this function to use the token parameter.
+
+        return generalValidationStrategy;
+    }
+
     function aggregateUnderlying(
         address token,
         uint256 maxAge
@@ -328,6 +350,8 @@ abstract contract AbstractAggregatorOracle is
         uint256 oPrice;
         uint256 oTokenLiquidity;
         uint256 oQuoteTokenLiquidity;
+
+        IValidationStrategy validation = _validationStrategy(token);
 
         for (uint256 i = 0; i < theOracles.length; ++i) {
             // We don't want problematic underlying oracles to prevent us from calculating the aggregated
@@ -401,10 +425,7 @@ abstract contract AbstractAggregatorOracle is
                     })
                 });
 
-                if (
-                    address(validationStrategy) == address(0) ||
-                    validationStrategy.validateObservation(token, observation)
-                ) {
+                if (address(validation) == address(0) || validation.validateObservation(token, observation)) {
                     // The observation is valid, so we add it to the array
                     observations[validResponses++] = observation;
                 }
@@ -418,7 +439,7 @@ abstract contract AbstractAggregatorOracle is
             );
         }
 
-        result = aggregationStrategy.aggregateObservations(token, observations, 0, validResponses - 1);
+        result = _aggregationStrategy(token).aggregateObservations(token, observations, 0, validResponses - 1);
     }
 
     /// @inheritdoc AbstractOracle

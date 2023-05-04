@@ -174,8 +174,8 @@ describe("CurrentAggregatorOracle#constructor", async function () {
             [oracle2.address, await oracle2.quoteTokenDecimals(), await oracle2.liquidityDecimals()],
         ];
 
-        expect(await oracle.aggregationStrategy()).to.equal(aggregationStrategy.address);
-        expect(await oracle.validationStrategy()).to.equal(validationStrategyAddress);
+        expect(await oracle.aggregationStrategy(BAT)).to.equal(aggregationStrategy.address);
+        expect(await oracle.validationStrategy(BAT)).to.equal(validationStrategyAddress);
         expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
         expect(await oracle.quoteTokenAddress()).to.equal(quoteTokenAddress);
         expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);

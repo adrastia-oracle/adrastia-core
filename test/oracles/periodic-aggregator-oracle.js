@@ -175,8 +175,8 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
             [oracle2.address, await oracle2.quoteTokenDecimals(), await oracle2.liquidityDecimals()],
         ];
 
-        expect(await oracle.aggregationStrategy()).to.equal(aggregationStrategy.address);
-        expect(await oracle.validationStrategy()).to.equal(validationStrategyAddress);
+        expect(await oracle.aggregationStrategy(BAT)).to.equal(aggregationStrategy.address);
+        expect(await oracle.validationStrategy(BAT)).to.equal(validationStrategyAddress);
         expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
         expect(await oracle.quoteTokenAddress()).to.equal(quoteTokenAddress);
         expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);
@@ -2517,7 +2517,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum t
             minimumQuoteTokenLiquidity
         );
 
-        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategyAddress = await oracle.validationStrategy(token);
         const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
 
         await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
@@ -2632,7 +2632,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum q
             minimumQuoteTokenLiquidity
         );
 
-        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategyAddress = await oracle.validationStrategy(token);
         const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
 
         await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
@@ -2739,7 +2739,7 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and an allowed 
 
         oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
-        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategyAddress = await oracle.validationStrategy(token);
         const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
 
         await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
@@ -2885,7 +2885,7 @@ describe("PeriodicAggregatorOracle#update w/ 2 underlying oracles but one failin
 
         oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
 
-        const validationStrategyAddress = await oracle.validationStrategy();
+        const validationStrategyAddress = await oracle.validationStrategy(token);
         const validationStrategy = await ethers.getContractAt("DefaultValidationStub", validationStrategyAddress);
 
         await validationStrategy.overrideValidateUnderlyingConsultation(false, false);
