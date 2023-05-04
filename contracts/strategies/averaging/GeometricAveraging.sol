@@ -3,11 +3,11 @@ pragma solidity =0.8.13;
 
 import "@prb/math/contracts/PRBMathUD60x18.sol";
 
-import "./IAveragingStrategy.sol";
+import "./AbstractAveraging.sol";
 
 /// @title GeometricAveraging
 /// @notice A strategy for calculating weighted averages using the geometric mean.
-contract GeometricAveraging is IAveragingStrategy {
+contract GeometricAveraging is AbstractAveraging {
     using PRBMathUD60x18 for uint256;
 
     /// @inheritdoc IAveragingStrategy
@@ -26,6 +26,11 @@ contract GeometricAveraging is IAveragingStrategy {
         uint256 totalWeightedValues,
         uint256 totalWeight
     ) external pure override returns (uint256) {
+        if (totalWeight == 0) {
+            // Ambiguous result, so we revert
+            revert TotalWeightCannotBeZero();
+        }
+
         return (totalWeightedValues / totalWeight).exp().toUint();
     }
 }
