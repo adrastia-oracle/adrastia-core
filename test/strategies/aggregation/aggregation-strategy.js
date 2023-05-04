@@ -223,6 +223,25 @@ function testAggregationStrategy(contractName, deployFunction, aggregateObservat
                 aggregator.aggregateObservations(AddressZero, observations, numObservations + 1, numObservations + 1)
             ).to.be.revertedWith("InsufficientObservations");
         });
+
+        describe(contractName + "#supportsInterface", function () {
+            var interfaceIds;
+
+            beforeEach(async function () {
+                const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+                interfaceIds = await interfaceIdsFactory.deploy();
+            });
+
+            it("Should support IERC165", async function () {
+                const interfaceId = await interfaceIds.iERC165();
+                expect(await aggregator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+            });
+
+            it("Should support IAggregationStrategy", async function () {
+                const interfaceId = await interfaceIds.iAggregationStrategy();
+                expect(await aggregator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+            });
+        });
     });
 }
 
