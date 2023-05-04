@@ -20,6 +20,7 @@ import "../interfaces/IHistoricalPriceAccumulationOracle.sol";
 import "../interfaces/IHistoricalLiquidityAccumulationOracle.sol";
 import "../strategies/averaging/IAveragingStrategy.sol";
 import "../strategies/aggregation/IAggregationStrategy.sol";
+import "../strategies/validation/IValidationStrategy.sol";
 
 contract InterfaceIds {
     function iOracleAggregator() external pure returns (bytes4) {
@@ -92,5 +93,9 @@ contract InterfaceIds {
 
     function iAggregationStrategy() external pure returns (bytes4) {
         return type(IAggregationStrategy).interfaceId;
+    }
+
+    function iValidationStrategy() external pure returns (bytes4) {
+        return type(IValidationStrategy).interfaceId;
     }
 }
