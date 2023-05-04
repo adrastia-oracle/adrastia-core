@@ -338,7 +338,7 @@ abstract contract AbstractAggregatorOracle is
     function aggregateUnderlying(
         address token,
         uint256 maxAge
-    ) internal view returns (ObservationLibrary.Observation memory result, uint256 validResponses) {
+    ) internal view virtual returns (ObservationLibrary.Observation memory result, uint256 validResponses) {
         uint256 pDecimals = quoteTokenDecimals();
         uint256 lDecimals = liquidityDecimals();
 
