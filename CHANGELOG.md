@@ -1,5 +1,75 @@
 # Changelog
 
+## v4.0.0
+### Interfaces
+- Update IAccumulator
+  - Add updateDelay function: Returns the minimum delay between updates.
+  - Change signatures of changeThresholdSurpassed and updateThresholdSurpassed: Takes update data bytes instead of token addresses.
+- Remove IAggregatedOracle: Replaced by IOracleAggregator
+- Update IOracle: Removed the Updated event.
+- Update ILiquidityAccumulator: The calculateLiquidity function is now a view function instead of pure.
+- Update IPriceAccumulator: The calculatePrice function is now a view function instead of pure.
+- Add IOracleAggregator interface in replace of IOracleAggregator (stored under contracts/oracles)
+  - Adds an Oracle struct that stores decimal information and the oracle address.
+  - The getOracles function now returns an array of Oracle structs for a given token. This function is no longer overloaded - the concept of general oracles and token-specific oracles has been hidden.
+  - Adds an aggregationStrategy function: It's possible to have a different aggregation strategy for each different token rather than a hardcoded strategy for every token.
+  - Adds a validationStrategy function: It's possible to have a different validation strategy for each different token rather than a hardcoded strategy for every token.
+  - Adds a minimumResponses function: It's possible to define a minimum number of underlying oracle responses for each different token rather than a hardcoded value for every token. 
+  - Adds a maximumResponseAge function: It's possible to define a maximum response age of underlying oracle observations rather than a hardcoded value for every token.
+- Add IAggregationStrategy (stored under contracts/strategies/aggregation): Allows aggregation logic to be delegated to implementation contracts.
+- Add IAveragingStrategy (stored under contracts/strategies/averaging): Allows averaging logic to be delegated to implementation contracts.
+- Add IValidationStrategy (stored under contracts/strategies/validation): Allows for observation validation logic (of aggregators) to be delegated to implementation contracts.
+
+### Libraries
+- Update ObservationLibrary
+  - Adds an ObservationMetadata struct: Includes the oracle address.
+  - Adds a MetaObservation struct: Combines ObservationMetadata and Observation.
+
+### Accumulators
+- Update AbstractAccumulator
+  - Conforms to the updated IAccumulator interface.
+  - The updateThreshold function can now be easily overridden (override _updateThreshold).
+- Update LiquidityAccumulator and PriceAccumulator
+  - Replace the hardcoded averaging strategy with delegation to an IAveragingStrategy interface implementation.
+  - Added timestamp verification to updates and updated the ValidationPerformed event to include the provided timestamp.
+  - Conforms to the updated IAccumulator interface.
+  - The minUpdateDelay function has been renamed to updateDelay to conform with the updated IAccumulator interface
+  - The maxUpdateDelay function has been removed (replaced) in favor of the existing heartbeat function.
+  - The heartbeat function can now be easily overridden (override _heartbeat).
+- Remove GeometricPriceAccumulator, GeometricLiquidityAccumulator, HarmonicPriceAccumulator, HarmonicLiquidityAccumulator, and all subclasses, in favor of delegating to IAveragingStrategy interface implementations.
+- Add OffchainPriceAccumulator and OffchainLiquidityAccumulator: Allows for offchain data-feeds.
+- Add StaticPriceAccumulator and StaticLiquidityAccumulator: Allows accumulators to report constant values while remaining up-to-date without needing updates.
+
+### Oracles
+- Add HistoricalOracle: An abstract implementation of IHistoricalOracle, pulled out of AggregatedOracle for improved readability and extension.
+- Rename AggregatedOracle to PeriodicAggregatorOracle
+- Add CurrentAggregatorOracle: An IOracleAggregator implementation that functions similarly to accumulators, updating based on price change percentages and heartbeats.
+- Add PeriodicPriceAccumulationOracle: An oracle contract similar to PeriodicAccumulationOracle, but with liquidity as constants to save gas.
+- Add AbstractAggregatorOracle: An abstract implementation of IOracleAggregator, pulled out of AggregatedOracle so that different aggregator contracts can share common logic.
+####  Oracle views
+- Add AccumulatorOracleView: An oracle contract that delegates to the oracle functionality of underlying price and liquidity accumulators.
+- Add VolatilityOracleView: A volatility oracle view contract that uses data from an IHistoricalOracle implementation to calculate metrics relating to historical price volatility.
+
+### Strategies
+#### Aggregation strategies
+- Add AbstractAggregator: A common base for aggregation strategies.
+- Add MedianAggregator: Aggregates observations to form a median price and total liquidity.
+- Add MeanAggregator: Aggregates observations to form a mean price and total liquidity. It delegates the averaging logic to an IAveragingStrategy implementation.
+- Add TokenWeightedMeanAggregator: Aggregates observations to form a token-weighted mean price and total liquidity.
+- Add QuoteTokenWeightedMeanAggregator: Aggregates observations to form a quote token-weighted mean price and total liquidity. This is the same strategy that the old AggregatedOracle contract used.
+#### Averaging strategies
+- Add AbstractAveraging: A common base for averaging strategies.
+- Add ArithmeticAveraging: Computes averages using the arithmetic mean.
+- Add GeometricAveraging: Computes averages using the geometric mean.
+- Add HarmonicAveraging: Computes averages using the harmonic mean.
+- Add HarmonicAveragingWS80: Like HarmonicAveraging, but shifts weights to the left by 80 bits.
+- Add HarmonicAveragingWS140: Like HarmonicAveraging, but shifts weights to the left by 140 bits.
+- Add HarmonicAveragingWS192: Like HarmonicAveraging, but shifts weights to the left by 192 bits.
+#### Validation strategies
+- Add DefaultValidation: Validates observations against three conditions - minimum token liquidity value, minimum quote token liquidity, and liquidity distribution. It uses the same validation as the old AggregatedOracle contract.
+
+Note: Delegation refers to the software engineering _delegation pattern_ rather than the EVM's delegation functionality.
+
 ## v3.0.0
 ### Interfaces
 - Add IHistoricalOracle interface
