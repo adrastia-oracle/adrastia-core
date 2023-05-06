@@ -13,6 +13,7 @@ import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
 import "../libraries/SafeCastExt.sol";
 import "../utils/SimpleQuotationMetadata.sol";
+import "../strategies/averaging/IAveragingStrategy.sol";
 
 abstract contract PriceAccumulator is
     IERC165,
@@ -25,11 +26,13 @@ abstract contract PriceAccumulator is
     using SafeCast for uint256;
     using SafeCastExt for uint256;
 
-    uint256 public immutable minUpdateDelay;
-    uint256 public immutable maxUpdateDelay;
+    IAveragingStrategy public immutable averagingStrategy;
 
     mapping(address => AccumulationLibrary.PriceAccumulator) public accumulations;
     mapping(address => ObservationLibrary.PriceObservation) public observations;
+
+    uint256 internal immutable minUpdateDelay;
+    uint256 internal immutable maxUpdateDelay;
 
     /**
      * @notice Emitted when the observed price is validated against a user (updater) provided price.
@@ -37,6 +40,7 @@ abstract contract PriceAccumulator is
      * @param observedPrice The observed price from the on-chain data source.
      * @param providedPrice The price provided externally by the user (updater).
      * @param timestamp The timestamp of the block that the validation was performed in.
+     * @param providedTimestamp The timestamp of the block that the provided price was observed in.
      * @param succeeded True if the observed price closely matches the provided price; false otherwise.
      */
     event ValidationPerformed(
@@ -44,10 +48,12 @@ abstract contract PriceAccumulator is
         uint256 observedPrice,
         uint256 providedPrice,
         uint256 timestamp,
+        uint256 providedTimestamp,
         bool succeeded
     );
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address quoteToken_,
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
@@ -55,43 +61,45 @@ abstract contract PriceAccumulator is
     ) AbstractAccumulator(updateThreshold_) SimpleQuotationMetadata(quoteToken_) {
         require(maxUpdateDelay_ >= minUpdateDelay_, "PriceAccumulator: INVALID_UPDATE_DELAYS");
 
+        averagingStrategy = averagingStrategy_;
         minUpdateDelay = minUpdateDelay_;
         maxUpdateDelay = maxUpdateDelay_;
     }
 
     /// @inheritdoc IAccumulator
+    function updateDelay() external view virtual override returns (uint256) {
+        return _updateDelay();
+    }
+
+    /// @inheritdoc IAccumulator
     function heartbeat() external view virtual override returns (uint256) {
-        return maxUpdateDelay;
+        return _heartbeat();
     }
 
     /// @inheritdoc IPriceAccumulator
     function calculatePrice(
         AccumulationLibrary.PriceAccumulator calldata firstAccumulation,
         AccumulationLibrary.PriceAccumulator calldata secondAccumulation
-    ) external pure virtual override returns (uint112 price) {
+    ) external view virtual override returns (uint112 price) {
         require(firstAccumulation.timestamp != 0, "PriceAccumulator: TIMESTAMP_CANNOT_BE_ZERO");
 
-        uint32 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
+        uint256 deltaTime = secondAccumulation.timestamp - firstAccumulation.timestamp;
         require(deltaTime != 0, "PriceAccumulator: DELTA_TIME_CANNOT_BE_ZERO");
 
-        unchecked {
-            // Underflow is desired and results in correct functionality
-            price = uint256((secondAccumulation.cumulativePrice - firstAccumulation.cumulativePrice) / deltaTime)
-                .toUint112();
-        }
+        price = calculateTimeWeightedAverage(
+            secondAccumulation.cumulativePrice,
+            firstAccumulation.cumulativePrice,
+            deltaTime
+        ).toUint112();
     }
 
-    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
-    /// @dev Calculates the change from the stored observation to the current observation.
-    /// @param token The token to check.
-    /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
-    ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
-    /// @return surpassed True if the update threshold has been surpassed; false otherwise.
+    /// @inheritdoc IAccumulator
     function changeThresholdSurpassed(
-        address token,
+        bytes memory data,
         uint256 changeThreshold
     ) public view virtual override returns (bool) {
-        uint256 price = fetchPrice(token);
+        uint256 price = fetchPrice(data);
+        address token = abi.decode(data, (address));
 
         ObservationLibrary.PriceObservation storage lastObservation = observations[token];
 
@@ -104,22 +112,20 @@ abstract contract PriceAccumulator is
     /// @inheritdoc IUpdateable
     function needsUpdate(bytes memory data) public view virtual override returns (bool) {
         uint256 deltaTime = timeSinceLastUpdate(data);
-        if (deltaTime < minUpdateDelay) {
+        if (deltaTime < _updateDelay()) {
             // Ensures updates occur at most once every minUpdateDelay (seconds)
             return false;
-        } else if (deltaTime >= maxUpdateDelay) {
-            // Ensures updates occur (optimistically) at least once every maxUpdateDelay (seconds)
+        } else if (deltaTime >= _heartbeat()) {
+            // Ensures updates occur (optimistically) at least once every heartbeat (seconds)
             return true;
         }
 
         /*
-         * maxUpdateDelay > deltaTime >= minUpdateDelay
+         * heartbeat > deltaTime >= minUpdateDelay
          *
          * Check if the % change in price warrants an update (saves gas vs. always updating on change)
          */
-        address token = abi.decode(data, (address));
-
-        return updateThresholdSurpassed(token);
+        return updateThresholdSurpassed(data);
     }
 
     /// @param data The encoded address of the token for which to perform the update.
@@ -168,14 +174,12 @@ abstract contract PriceAccumulator is
 
         accumulation = accumulations[token]; // Load last accumulation
 
-        uint32 deltaTime = (block.timestamp - lastObservation.timestamp).toUint32();
-
+        uint256 deltaTime = block.timestamp - lastObservation.timestamp;
         if (deltaTime != 0) {
             // The last observation price has existed for some time, so we add that
-            uint224 timeWeightedPrice = uint224(lastObservation.price) * deltaTime;
+            uint224 timeWeightedPrice = calculateTimeWeightedValue(lastObservation.price, deltaTime).toUint224();
             unchecked {
                 // Overflow is desired and results in correct functionality
-                // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += timeWeightedPrice;
             }
             accumulation.timestamp = block.timestamp.toUint32();
@@ -210,7 +214,7 @@ abstract contract PriceAccumulator is
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10 ** quoteTokenDecimals());
 
-        if (maxAge == 0) return fetchPrice(token);
+        if (maxAge == 0) return fetchPrice(abi.encode(token));
 
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
@@ -220,10 +224,34 @@ abstract contract PriceAccumulator is
         return observation.price;
     }
 
-    function performUpdate(bytes memory data) internal virtual returns (bool) {
-        address token = abi.decode(data, (address));
+    function _updateDelay() internal view virtual returns (uint256) {
+        return minUpdateDelay;
+    }
 
-        uint112 price = fetchPrice(token);
+    function _heartbeat() internal view virtual returns (uint256) {
+        return maxUpdateDelay;
+    }
+
+    function calculateTimeWeightedValue(uint256 value, uint256 time) internal view virtual returns (uint256) {
+        return averagingStrategy.calculateWeightedValue(value, time);
+    }
+
+    function calculateTimeWeightedAverage(
+        uint224 cumulativeNew,
+        uint224 cumulativeOld,
+        uint256 deltaTime
+    ) internal view virtual returns (uint256) {
+        uint256 totalWeightedValues;
+        unchecked {
+            // Underflow is desired and results in correct functionality
+            totalWeightedValues = cumulativeNew - cumulativeOld;
+        }
+        return averagingStrategy.calculateWeightedAverage(totalWeightedValues, deltaTime);
+    }
+
+    function performUpdate(bytes memory data) internal virtual returns (bool) {
+        uint112 price = fetchPrice(data);
+        address token = abi.decode(data, (address));
 
         // If the observation fails validation, do not update anything
         if (!validateObservation(data, price)) return false;
@@ -246,14 +274,11 @@ abstract contract PriceAccumulator is
         /*
          * Update
          */
-
-        uint32 deltaTime = (block.timestamp - observation.timestamp).toUint32();
-
+        uint256 deltaTime = block.timestamp - observation.timestamp;
         if (deltaTime != 0) {
-            uint224 timeWeightedPrice = uint224(observation.price) * deltaTime;
+            uint224 timeWeightedPrice = calculateTimeWeightedValue(observation.price, deltaTime).toUint224();
             unchecked {
                 // Overflow is desired and results in correct functionality
-                // We add the last price multiplied by the time that price was active
                 accumulation.cumulativePrice += timeWeightedPrice;
             }
             observation.price = price;
@@ -276,7 +301,19 @@ abstract contract PriceAccumulator is
 
     function validateObservationAllowedChange(address) internal virtual returns (uint256) {
         // Allow the price to change by half of the update threshold
-        return updateThreshold / 2;
+        return _updateThreshold() / 2;
+    }
+
+    function validateAllowedTimeDifference() internal virtual returns (uint32) {
+        return 5 minutes; // Allow time for the update to be mined
+    }
+
+    function validateObservationTime(uint32 providedTimestamp) internal virtual returns (bool) {
+        uint32 allowedTimeDifference = validateAllowedTimeDifference();
+
+        return
+            block.timestamp <= providedTimestamp + allowedTimeDifference &&
+            block.timestamp >= providedTimestamp - 10 seconds; // Allow for some clock drift
     }
 
     function validateObservation(bytes memory updateData, uint112 price) internal virtual returns (bool) {
@@ -286,18 +323,21 @@ abstract contract PriceAccumulator is
         // The message sender should call consultPrice immediately before calling the update function, passing
         //   the returned value into the update data.
         // We could also use this to anchor the price to an off-chain price
-        (address token, uint112 pPrice) = abi.decode(updateData, (address, uint112));
+        (address token, uint112 pPrice, uint32 pTimestamp) = abi.decode(updateData, (address, uint112, uint32));
 
         uint256 allowedChangeThreshold = validateObservationAllowedChange(token);
 
         // We require the price to not change by more than the threshold above
         // This check limits the ability of MEV and flashbots from manipulating data
-        bool validated = !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
+        bool priceValidated = !changeThresholdSurpassed(price, pPrice, allowedChangeThreshold);
+        bool timeValidated = validateObservationTime(pTimestamp);
 
-        emit ValidationPerformed(token, price, pPrice, block.timestamp, validated);
+        bool validated = priceValidated && timeValidated;
+
+        emit ValidationPerformed(token, price, pPrice, block.timestamp, pTimestamp, validated);
 
         return validated;
     }
 
-    function fetchPrice(address token) internal view virtual returns (uint112 price);
+    function fetchPrice(bytes memory data) internal view virtual returns (uint112 price);
 }

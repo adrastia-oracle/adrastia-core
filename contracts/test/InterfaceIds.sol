@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
-import "../interfaces/IAggregatedOracle.sol";
+import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+
+import "../oracles/IOracleAggregator.sol";
 import "../interfaces/IHasLiquidityAccumulator.sol";
 import "../interfaces/IHasPriceAccumulator.sol";
 import "../interfaces/ILiquidityAccumulator.sol";
@@ -16,10 +18,13 @@ import "../interfaces/IAccumulator.sol";
 import "../interfaces/IHistoricalOracle.sol";
 import "../interfaces/IHistoricalPriceAccumulationOracle.sol";
 import "../interfaces/IHistoricalLiquidityAccumulationOracle.sol";
+import "../strategies/averaging/IAveragingStrategy.sol";
+import "../strategies/aggregation/IAggregationStrategy.sol";
+import "../strategies/validation/IValidationStrategy.sol";
 
 contract InterfaceIds {
-    function iAggregatedOracle() external pure returns (bytes4) {
-        return type(IAggregatedOracle).interfaceId;
+    function iOracleAggregator() external pure returns (bytes4) {
+        return type(IOracleAggregator).interfaceId;
     }
 
     function iHasLiquidityAccumulator() external pure returns (bytes4) {
@@ -76,5 +81,21 @@ contract InterfaceIds {
 
     function iHistoricalLiquidityAccumulationOracle() external pure returns (bytes4) {
         return type(IHistoricalLiquidityAccumulationOracle).interfaceId;
+    }
+
+    function iERC165() external pure returns (bytes4) {
+        return type(IERC165).interfaceId;
+    }
+
+    function iAveragingStrategy() external pure returns (bytes4) {
+        return type(IAveragingStrategy).interfaceId;
+    }
+
+    function iAggregationStrategy() external pure returns (bytes4) {
+        return type(IAggregationStrategy).interfaceId;
+    }
+
+    function iValidationStrategy() external pure returns (bytes4) {
+        return type(IValidationStrategy).interfaceId;
     }
 }

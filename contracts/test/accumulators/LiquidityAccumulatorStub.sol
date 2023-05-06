@@ -25,11 +25,12 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     Config public config;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address quoteToken_,
         uint256 updateThreshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
+    ) LiquidityAccumulator(averagingStrategy_, quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
     /* Stub functions */
 
@@ -44,6 +45,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         config.liquidityDecimals = decimals;
     }
 
+    function stubPushObservation(address token, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) public {
+        stubSetObservation(token, tokenLiquidity, quoteTokenLiquidity, uint32(block.timestamp));
+    }
+
     function stubSetObservation(
         address token,
         uint112 tokenLiquidity,
@@ -55,6 +60,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         observation.tokenLiquidity = tokenLiquidity;
         observation.quoteTokenLiquidity = quoteTokenLiquidity;
         observation.timestamp = timestamp;
+    }
+
+    function stubPushAccumulation(address token, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) public {
+        stubSetAccumulation(token, tokenLiquidity, quoteTokenLiquidity, uint32(block.timestamp));
     }
 
     function stubSetAccumulation(
@@ -100,7 +109,7 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     function stubFetchLiquidity(
         address token
     ) public view returns (uint256 tokenLiquidity, uint256 quoteTokenLiquidity) {
-        return fetchLiquidity(token);
+        return fetchLiquidity(abi.encode(token));
     }
 
     function harnessChangeThresholdSurpassed(uint256 a, uint256 b, uint256 updateThreshold) public view returns (bool) {
@@ -128,8 +137,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     }
 
     function fetchLiquidity(
-        address token
+        bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        address token = abi.decode(data, (address));
+
         MockLiquidity storage liquidity = mockLiquidity[token];
 
         return (liquidity.tokenLiquidity, liquidity.quoteTokenLiquidity);

@@ -7,6 +7,7 @@ import "../../accumulators/proto/uniswap/UniswapV2LiquidityAccumulator.sol";
 
 contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         address quoteToken_,
@@ -16,6 +17,7 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
         uint256 maxUpdateDelay_
     )
         UniswapV2LiquidityAccumulator(
+            averagingStrategy_,
             uniswapFactory_,
             initCodeHash_,
             quoteToken_,
@@ -29,7 +31,7 @@ contract UniswapV2LiquidityAccumulatorStub is UniswapV2LiquidityAccumulator {
     function harnessFetchLiquidity(
         address token
     ) public view returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
-        return super.fetchLiquidity(token);
+        return super.fetchLiquidity(abi.encode(token));
     }
 
     function validateObservation(bytes memory, uint112, uint112) internal virtual override returns (bool) {

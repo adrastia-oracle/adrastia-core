@@ -109,8 +109,12 @@ describe("PeriodicAccumulationOracle#constructor", async function () {
 
 describe("PeriodicAccumulationOracle#liquidityDecimals", function () {
     async function doTest(liquidityDecimals) {
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
         const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
-        const la = await laFactory.deploy(USDC, 100, 100, 100);
+        const la = await laFactory.deploy(averagingStrategy.address, USDC, 100, 100, 100);
         await la.deployed();
 
         await la.stubSetLiquidityDecimals(liquidityDecimals);
@@ -219,8 +223,24 @@ describe("PeriodicAccumulationOracle#canUpdate", function () {
         const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracleStub");
 
-        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
-        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
+        priceAccumulator = await paFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        liquidityAccumulator = await laFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
 
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
@@ -657,8 +677,24 @@ describe("PeriodicAccumulationOracle#consultPrice(token, maxAge = 0)", function 
         const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
 
-        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
-        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
+        priceAccumulator = await paFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        liquidityAccumulator = await laFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
 
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
@@ -872,8 +908,24 @@ describe("PeriodicAccumulationOracle#consultLiquidity(token, maxAge = 0)", funct
         const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
 
-        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
-        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
+        priceAccumulator = await paFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        liquidityAccumulator = await laFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
 
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
@@ -1155,8 +1207,24 @@ describe("PeriodicAccumulationOracle#consult(token, maxAge = 0)", function () {
         const laFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
         const oracleFactory = await ethers.getContractFactory("PeriodicAccumulationOracle");
 
-        priceAccumulator = await paFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
-        liquidityAccumulator = await laFactory.deploy(USDC, TWO_PERCENT_CHANGE, MIN_UPDATE_DELAY, MAX_UPDATE_DELAY);
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
+        priceAccumulator = await paFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
+        liquidityAccumulator = await laFactory.deploy(
+            averagingStrategy.address,
+            USDC,
+            TWO_PERCENT_CHANGE,
+            MIN_UPDATE_DELAY,
+            MAX_UPDATE_DELAY
+        );
 
         await priceAccumulator.deployed();
         await liquidityAccumulator.deployed();
@@ -1398,9 +1466,14 @@ describe("PeriodicAccumulationOracle#update", function () {
     });
 
     async function deployAdrastiaContracts() {
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
         // Deploy liquidity accumulator
         const liquidityAccumulatorFactory = await ethers.getContractFactory("CurveLiquidityAccumulatorStub");
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+            averagingStrategy.address,
             curvePool.address,
             2,
             quoteToken.address,
@@ -1415,6 +1488,7 @@ describe("PeriodicAccumulationOracle#update", function () {
         // Deploy price accumulator
         const priceAccumulatorFactory = await ethers.getContractFactory("CurvePriceAccumulatorStub");
         priceAccumulator = await priceAccumulatorFactory.deploy(
+            averagingStrategy.address,
             curvePool.address,
             2,
             quoteToken.address,
@@ -1460,11 +1534,16 @@ describe("PeriodicAccumulationOracle#update", function () {
 
     describe("Reverts when", function () {
         beforeEach(async () => {
+            const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+            const averagingStrategy = await averagingStrategyFactory.deploy();
+            await averagingStrategy.deployed();
+
             // We need PriceAccumulatorStub and LiquidityAccumulatorStub rather than the curve accumulator stubs
 
             // Deploy liquidity accumulator
             const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
             liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 quoteToken.address,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -1475,6 +1554,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             // Deploy price accumulator
             const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
             priceAccumulator = await priceAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 quoteToken.address,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -1560,11 +1640,16 @@ describe("PeriodicAccumulationOracle#update", function () {
 
     describe("Doesn't revert when", function () {
         beforeEach(async () => {
+            const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+            const averagingStrategy = await averagingStrategyFactory.deploy();
+            await averagingStrategy.deployed();
+
             // We need PriceAccumulatorStub and LiquidityAccumulatorStub rather than the curve accumulator stubs
 
             // Deploy liquidity accumulator
             const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
             liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 quoteToken.address,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -1575,6 +1660,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             // Deploy price accumulator
             const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
             priceAccumulator = await priceAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 quoteToken.address,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -1667,9 +1753,14 @@ describe("PeriodicAccumulationOracle#update", function () {
         beforeEach(async () => {
             // We need PriceAccumulatorStub and LiquidityAccumulatorStub rather than the curve accumulator stubs
 
+            const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+            const averagingStrategy = await averagingStrategyFactory.deploy();
+            await averagingStrategy.deployed();
+
             // Deploy liquidity accumulator
             const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
             liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 quoteToken.address,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -1680,6 +1771,7 @@ describe("PeriodicAccumulationOracle#update", function () {
             // Deploy price accumulator
             const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
             priceAccumulator = await priceAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 quoteToken.address,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -2455,9 +2547,14 @@ describe("PeriodicAccumulationOracle#push w/ higher granularity", function () {
     var oracle;
 
     beforeEach(async () => {
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await averagingStrategy.deployed();
+
         // Deploy liquidity accumulator
         const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
         liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+            averagingStrategy.address,
             USDC,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
@@ -2468,6 +2565,7 @@ describe("PeriodicAccumulationOracle#push w/ higher granularity", function () {
         // Deploy price accumulator
         const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
         priceAccumulator = await priceAccumulatorFactory.deploy(
+            averagingStrategy.address,
             USDC,
             TWO_PERCENT_CHANGE,
             MIN_UPDATE_DELAY,
@@ -2655,9 +2753,14 @@ function describeHistoricalAccumulationOracleTests(type) {
         var oracle;
 
         beforeEach(async () => {
+            const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+            const averagingStrategy = await averagingStrategyFactory.deploy();
+            await averagingStrategy.deployed();
+
             // Deploy liquidity accumulator
             const liquidityAccumulatorFactory = await ethers.getContractFactory("LiquidityAccumulatorStub");
             liquidityAccumulator = await liquidityAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 USDC,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,
@@ -2668,6 +2771,7 @@ function describeHistoricalAccumulationOracleTests(type) {
             // Deploy price accumulator
             const priceAccumulatorFactory = await ethers.getContractFactory("PriceAccumulatorStub");
             priceAccumulator = await priceAccumulatorFactory.deploy(
+                averagingStrategy.address,
                 USDC,
                 TWO_PERCENT_CHANGE,
                 MIN_UPDATE_DELAY,

@@ -19,13 +19,14 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
     bytes32 public immutable initCodeHash;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         address quoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) PriceAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
     }
@@ -58,11 +59,13 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
     /**
      * @notice Calculates the price of a token.
      * @dev When the price equals 0, a price of 1 is actually returned.
-     * @param token The token to get the price for.
+     * @param data The address of the token to calculate the price of, encoded as bytes.
      * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
      *   places.
      */
-    function fetchPrice(address token) internal view virtual override returns (uint112 price) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+        address token = abi.decode(data, (address));
+
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);
 
         require(pairAddress.isContract(), "UniswapV2PriceAccumulator: POOL_NOT_FOUND");
@@ -86,7 +89,7 @@ contract UniswapV2PriceAccumulator is PriceAccumulator {
     }
 
     function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {
-        amount = uint256(10)**IERC20Metadata(token).decimals();
+        amount = uint256(10) ** IERC20Metadata(token).decimals();
     }
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order

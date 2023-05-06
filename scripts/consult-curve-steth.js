@@ -27,13 +27,33 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period, granularity, liquidityDecimals) {
+async function currentBlockTimestamp() {
+    const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+    return await blockTimestamp(currentBlockNumber);
+}
+
+async function blockTimestamp(blockNum) {
+    return (await ethers.provider.getBlock(blockNum)).timestamp;
+}
+
+async function createCurveOracle(
+    priceAveragingStrategy,
+    liquidityAveragingStrategy,
+    pool,
+    poolQuoteToken,
+    ourQuoteToken,
+    period,
+    granularity,
+    liquidityDecimals
+) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
 
     const liquidityAccumulator = await createContract(
         "CurveLiquidityAccumulator",
+        liquidityAveragingStrategy,
         pool,
         2,
         poolQuoteToken,
@@ -46,6 +66,7 @@ async function createCurveOracle(pool, poolQuoteToken, ourQuoteToken, period, gr
 
     const priceAccumulator = await createContract(
         "CurvePriceAccumulator",
+        priceAveragingStrategy,
         pool,
         2,
         poolQuoteToken,
@@ -84,7 +105,12 @@ async function main() {
 
     const liquidityDecimals = 4;
 
+    const priceAveragingStrategy = await createContract("GeometricAveraging");
+    const liquidityAveragingStrategy = await createContract("HarmonicAveragingWS80");
+
     const curve = await createCurveOracle(
+        priceAveragingStrategy.address,
+        liquidityAveragingStrategy.address,
         poolAddress,
         poolQuoteToken,
         ourQuoteToken,
@@ -110,10 +136,11 @@ async function main() {
                 const [tokenLiquidity, quoteTokenLiquidity] = await curve.liquidityAccumulator[
                     "consultLiquidity(address,uint256)"
                 ](token, 0);
+                const currentTime = await currentBlockTimestamp();
 
                 const laUpdateData = ethers.utils.defaultAbiCoder.encode(
-                    ["address", "uint", "uint"],
-                    [token, tokenLiquidity, quoteTokenLiquidity]
+                    ["address", "uint", "uint", "uint"],
+                    [token, tokenLiquidity, quoteTokenLiquidity, currentTime]
                 );
 
                 const updateTx = await curve.liquidityAccumulator.update(laUpdateData);
@@ -131,8 +158,12 @@ async function main() {
 
             if (await curve.priceAccumulator.canUpdate(updateData)) {
                 const price = await curve.priceAccumulator["consultPrice(address,uint256)"](token, 0);
+                const currentTime = await currentBlockTimestamp();
 
-                const paUpdateData = ethers.utils.defaultAbiCoder.encode(["address", "uint"], [token, price]);
+                const paUpdateData = ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint", "uint"],
+                    [token, price, currentTime]
+                );
 
                 const updateTx = await curve.priceAccumulator.update(paUpdateData);
                 const updateReceipt = await updateTx.wait();

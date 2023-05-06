@@ -15,22 +15,27 @@ abstract contract IAccumulator {
     /// @return A percentage scaled by the change precision.
     function updateThreshold() external view virtual returns (uint256);
 
+    /// @notice Gets the minimum delay between updates to the cumulative value(s).
+    /// @return The minimum delay between updates to the cumulative value(s), in seconds.
+    function updateDelay() external view virtual returns (uint256);
+
     /// @notice Gets the maximum delay (target) between updates to the cumulative value(s), without requiring a change
     ///   past the update threshold.
     /// @return The maximum delay (target) between updates to the cumulative value(s), in seconds.
     function heartbeat() external view virtual returns (uint256);
 
-    /// @notice Determines whether the specified change threshold has been surpassed for the specified token.
+    /// @notice Determines whether the specified change threshold has been surpassed with respect to the specified
+    ///   data.
     /// @dev Calculates the change from the stored observation to the current observation.
-    /// @param token The token to check.
+    /// @param data Amy data relating to the update.
     /// @param changeThreshold The change threshold as a percentage multiplied by the change precision
     ///   (`changePrecision`). Ex: a 1% change is respresented as 0.01 * `changePrecision`.
     /// @return surpassed True if the update threshold has been surpassed; false otherwise.
-    function changeThresholdSurpassed(address token, uint256 changeThreshold) public view virtual returns (bool);
+    function changeThresholdSurpassed(bytes memory data, uint256 changeThreshold) public view virtual returns (bool);
 
-    /// @notice Determines whether the update threshold has been surpassed for the specified token.
+    /// @notice Determines whether the update threshold has been surpassed with respect to the specified data.
     /// @dev Calculates the change from the stored observation to the current observation.
-    /// @param token The token to check.
+    /// @param data Amy data relating to the update.
     /// @return surpassed True if the update threshold has been surpassed; false otherwise.
-    function updateThresholdSurpassed(address token) public view virtual returns (bool);
+    function updateThresholdSurpassed(bytes memory data) public view virtual returns (bool);
 }

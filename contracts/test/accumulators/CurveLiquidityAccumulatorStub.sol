@@ -7,6 +7,7 @@ import "../../accumulators/proto/curve/CurveLiquidityAccumulator.sol";
 
 contract CurveLiquidityAccumulatorStub is CurveLiquidityAccumulator {
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address pool_,
         uint8 nCoins_,
         address poolQuoteToken_,
@@ -17,6 +18,7 @@ contract CurveLiquidityAccumulatorStub is CurveLiquidityAccumulator {
         uint256 maxUpdateDelay_
     )
         CurveLiquidityAccumulator(
+            averagingStrategy_,
             pool_,
             nCoins_,
             poolQuoteToken_,
@@ -31,7 +33,7 @@ contract CurveLiquidityAccumulatorStub is CurveLiquidityAccumulator {
     function harnessFetchLiquidity(
         address token
     ) public view returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
-        return super.fetchLiquidity(token);
+        return super.fetchLiquidity(abi.encode(token));
     }
 
     function validateObservation(bytes memory, uint112, uint112) internal virtual override returns (bool) {

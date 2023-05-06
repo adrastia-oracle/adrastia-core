@@ -30,6 +30,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
     uint24[] public poolFees;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         uint24[] memory poolFees_,
@@ -37,7 +38,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) PriceAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         uniswapFactory = uniswapFactory_;
         initCodeHash = initCodeHash_;
         poolFees = poolFees_;
@@ -136,7 +137,9 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         return (true, numerator / denominator);
     }
 
-    function fetchPrice(address token) internal view virtual override returns (uint112) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        address token = abi.decode(data, (address));
+
         require(token != quoteToken, "UniswapV3PriceAccumulator: IDENTICAL_ADDRESSES");
         require(token != address(0), "UniswapV3PriceAccumulator: ZERO_ADDRESS");
 
@@ -153,11 +156,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
     /// @param tokenB The second token of a pool, unsorted
     /// @param fee The fee level of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function getPoolKey(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) internal pure returns (PoolKey memory) {
+    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure returns (PoolKey memory) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
     }
@@ -189,6 +188,6 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
     }
 
     function computeWholeUnitAmount(address token) internal view returns (uint128 amount) {
-        amount = uint128(10)**IERC20Metadata(token).decimals();
+        amount = uint128(10) ** IERC20Metadata(token).decimals();
     }
 }

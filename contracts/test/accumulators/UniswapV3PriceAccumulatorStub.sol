@@ -7,6 +7,7 @@ import "../../accumulators/proto/uniswap/UniswapV3PriceAccumulator.sol";
 
 contract UniswapV3PriceAccumulatorStub is UniswapV3PriceAccumulator {
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
         bytes32 initCodeHash_,
         uint24[] memory poolFees_,
@@ -16,6 +17,7 @@ contract UniswapV3PriceAccumulatorStub is UniswapV3PriceAccumulator {
         uint256 maxUpdateDelay_
     )
         UniswapV3PriceAccumulator(
+            averagingStrategy_,
             uniswapFactory_,
             initCodeHash_,
             poolFees_,
@@ -27,7 +29,7 @@ contract UniswapV3PriceAccumulatorStub is UniswapV3PriceAccumulator {
     {}
 
     function stubFetchPrice(address token) public view returns (uint256 price) {
-        return super.fetchPrice(token);
+        return super.fetchPrice(abi.encode(token));
     }
 
     function stubComputeWholeUnitAmount(address token) public view returns (uint128 amount) {

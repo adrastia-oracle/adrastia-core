@@ -25,6 +25,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
     mapping(address => TokenConfig) public tokenIndices;
 
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address curvePool_,
         int8 nCoins_,
         address poolQuoteToken_,
@@ -32,7 +33,7 @@ contract CurvePriceAccumulator is PriceAccumulator {
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) PriceAccumulator(ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) PriceAccumulator(averagingStrategy_, ourQuoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         curvePool = curvePool_;
 
         int128 quoteTokenIndex_ = -1;
@@ -70,15 +71,17 @@ contract CurvePriceAccumulator is PriceAccumulator {
     /**
      * @notice Calculates the price of a token.
      * @dev When the price equals 0, a price of 1 is actually returned.
-     * @param token The token to get the price for.
+     * @param data The address of the token to calculate the price of, encoded as bytes.
      * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
      *   places.
      */
-    function fetchPrice(address token) internal view virtual override returns (uint112 price) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+        address token = abi.decode(data, (address));
+
         TokenConfig memory config = tokenIndices[token];
         require(config.index != 0, "CurvePriceAccumulator: INVALID_TOKEN");
 
-        uint256 wholeTokenAmount = 10**config.decimals;
+        uint256 wholeTokenAmount = 10 ** config.decimals;
 
         (bool success, bytes memory result) = curvePool.staticcall(
             abi.encodeWithSignature(

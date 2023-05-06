@@ -41,6 +41,20 @@ contract PeriodicAccumulationOracle is
 
     mapping(address => ObservationLibrary.Observation) internal observations;
 
+    /// @notice Emitted when a stored quotation is updated.
+    /// @param token The address of the token that the quotation is for.
+    /// @param price The quote token denominated price for a whole token.
+    /// @param tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
+    /// @param quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
+    /// @param timestamp The epoch timestamp of the quotation (in seconds).
+    event Updated(
+        address indexed token,
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity,
+        uint256 timestamp
+    );
+
     /// @notice Event emitted when an accumulation buffer's capacity is increased past the initial capacity.
     /// @dev Buffer initialization does not emit an event.
     /// @param token The token for which the accumulation buffer's capacity was increased.

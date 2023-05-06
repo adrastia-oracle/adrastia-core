@@ -7,6 +7,7 @@ import "../../accumulators/proto/curve/CurvePriceAccumulator.sol";
 
 contract CurvePriceAccumulatorStub is CurvePriceAccumulator {
     constructor(
+        IAveragingStrategy averagingStrategy_,
         address pool_,
         int8 nCoins_,
         address poolQuoteToken_,
@@ -16,6 +17,7 @@ contract CurvePriceAccumulatorStub is CurvePriceAccumulator {
         uint256 maxUpdateDelay_
     )
         CurvePriceAccumulator(
+            averagingStrategy_,
             pool_,
             nCoins_,
             poolQuoteToken_,
@@ -27,7 +29,7 @@ contract CurvePriceAccumulatorStub is CurvePriceAccumulator {
     {}
 
     function harnessFetchPrice(address token) public view returns (uint112 price) {
-        return super.fetchPrice(token);
+        return super.fetchPrice(abi.encode(token));
     }
 
     function validateObservation(bytes memory, uint112) internal virtual override returns (bool) {
