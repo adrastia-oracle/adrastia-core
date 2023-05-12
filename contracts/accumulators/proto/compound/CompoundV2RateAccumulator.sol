@@ -8,8 +8,6 @@ abstract contract ICToken {
     function supplyRatePerBlock() external view virtual returns (uint256);
 
     function borrowRatePerBlock() external view virtual returns (uint256);
-
-    function underlying() external view virtual returns (address);
 }
 
 contract CompoundV2RateAccumulator is PriceAccumulator {
