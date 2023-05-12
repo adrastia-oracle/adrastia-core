@@ -35,25 +35,25 @@ abstract contract IAaveV2Pool {
 contract AaveV2RateAccumulator is PriceAccumulator {
     using SafeCastExt for uint256;
 
-    address public immutable aaveV3Pool;
+    address public immutable aaveV2Pool;
 
     error InvalidRateType(uint256 rateType);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
-        address aaveV3Pool_,
+        address aaveV2Pool_,
         address quoteToken_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) PriceAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
-        aaveV3Pool = aaveV3Pool_;
+        aaveV2Pool = aaveV2Pool_;
     }
 
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 rate) {
         uint256 rateType = abi.decode(data, (uint256));
 
-        IAaveV2Pool.ReserveData memory reserveData = IAaveV2Pool(aaveV3Pool).getReserveData(quoteTokenAddress());
+        IAaveV2Pool.ReserveData memory reserveData = IAaveV2Pool(aaveV2Pool).getReserveData(quoteTokenAddress());
 
         if (rateType == 16) {
             rate = uint112(reserveData.currentLiquidityRate);
