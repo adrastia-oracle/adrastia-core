@@ -21,6 +21,8 @@ contract CompoundV2RateAccumulator is PriceAccumulator {
 
     error InvalidRateType(uint256 rateType);
 
+    error InvalidBlocksPerYear(uint256 blocksPerYear);
+
     constructor(
         IAveragingStrategy averagingStrategy_,
         uint256 blocksPerYear_,
@@ -30,7 +32,7 @@ contract CompoundV2RateAccumulator is PriceAccumulator {
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     ) PriceAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
-        // Throw error if blocksPerYear is 0 or >= 2^112
+        if (blocksPerYear_ == 0 || blocksPerYear_ > type(uint112).max) revert InvalidBlocksPerYear(blocksPerYear_);
         blocksPerYear = blocksPerYear_;
         cToken = cToken_;
     }
