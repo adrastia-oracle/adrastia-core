@@ -67,6 +67,19 @@ async function createOracle(averagingStrategy, aave, quoteToken, period, granula
     };
 }
 
+function decimalToEthereumAddress(decimalNumber) {
+    // Convert the decimal number to a hexadecimal string
+    const hexString = decimalNumber.toString(16);
+
+    // Pad the hexadecimal string with leading zeros to get 40 characters
+    const paddedHexString = hexString.padStart(40, "0");
+
+    // Add the '0x' prefix to get the Ethereum address
+    const ethereumAddress = ethers.utils.getAddress("0x" + paddedHexString);
+
+    return ethereumAddress;
+}
+
 async function main() {
     // Periodic oracle parameters
     const period = 10; // 10 seconds
@@ -78,7 +91,7 @@ async function main() {
     const quoteToken = usdcAddress;
 
     // Type of rate we want to consult
-    const rateType = 1; // 1 = supply rate, 2 = borrow rate (variable), 3 = borrow rate (stable)
+    const rateType = 18; // 16 = supply rate, 17 = borrow rate (variable), 18 = borrow rate (stable)
 
     const oracle = await createOracle(averagingStrategy.address, aave, quoteToken, period, granularity);
 
@@ -86,7 +99,7 @@ async function main() {
     const updateData = ethers.utils.defaultAbiCoder.encode(["uint256"], [rateType]);
 
     // Encode rateType as address
-    const rateTypeAsToken = "0x000000000000000000000000000000000000000" + rateType.toString(16);
+    const rateTypeAsToken = decimalToEthereumAddress(rateType);
 
     while (true) {
         try {

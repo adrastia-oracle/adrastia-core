@@ -40,9 +40,9 @@ contract CompoundV2RateAccumulator is PriceAccumulator {
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 rate) {
         uint256 rateType = abi.decode(data, (uint256));
 
-        if (rateType == 1) {
+        if (rateType == 16) {
             rate = uint112(ICToken(cToken).supplyRatePerBlock());
-        } else if (rateType == 2) {
+        } else if (rateType == 17) {
             rate = uint112(ICToken(cToken).borrowRatePerBlock());
         } else {
             revert InvalidRateType(rateType);

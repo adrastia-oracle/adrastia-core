@@ -64,11 +64,11 @@ contract AaveV3RateAccumulator is PriceAccumulator {
 
         IAaveV3Pool.ReserveData memory reserveData = IAaveV3Pool(aaveV3Pool).getReserveData(quoteTokenAddress());
 
-        if (rateType == 1) {
+        if (rateType == 16) {
             rate = uint112(reserveData.currentLiquidityRate);
-        } else if (rateType == 2) {
+        } else if (rateType == 17) {
             rate = uint112(reserveData.currentVariableBorrowRate);
-        } else if (rateType == 3) {
+        } else if (rateType == 18) {
             rate = uint112(reserveData.currentStableBorrowRate);
         } else {
             revert InvalidRateType(rateType);

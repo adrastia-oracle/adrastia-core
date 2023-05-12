@@ -44,9 +44,9 @@ contract CometRateAccumulator is PriceAccumulator {
 
         uint256 utilization = IComet(comet).getUtilization();
 
-        if (rateType == 1) {
+        if (rateType == 16) {
             rate = uint112(IComet(comet).getSupplyRate(utilization));
-        } else if (rateType == 2) {
+        } else if (rateType == 17) {
             rate = uint112(IComet(comet).getBorrowRate(utilization));
         } else {
             revert InvalidRateType(rateType);
