@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
-import "./IAveragingStrategy.sol";
+import "./AbstractAveraging.sol";
 
 /// @title HarmonicAveraging
 /// @notice A strategy for calculating weighted averages using the harmonic mean.
-contract HarmonicAveraging is IAveragingStrategy {
+contract HarmonicAveraging is AbstractAveraging {
     /// @inheritdoc IAveragingStrategy
     /// @dev Zero values are replaced with one as we cannot divide by zero.
     function calculateWeightedValue(uint256 value, uint256 weight) external pure override returns (uint256) {
@@ -33,6 +33,17 @@ contract HarmonicAveraging is IAveragingStrategy {
         uint256 totalWeightedValues,
         uint256 totalWeight
     ) internal pure virtual returns (uint256) {
+        if (totalWeight == 0) {
+            // Ambiguous result, so we revert
+            revert TotalWeightCannotBeZero();
+        }
+
+        if (totalWeightedValues == 0) {
+            // If the total weighted values are 0, then the average must be zero as we know that the total weight is not
+            // zero. i.e. all of the values are zero so the average must be zero.
+            return 0;
+        }
+
         return totalWeight / totalWeightedValues;
     }
 }

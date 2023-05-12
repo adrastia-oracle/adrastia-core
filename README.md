@@ -1,7 +1,7 @@
 # Adrastia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![3291 out of 3291 tests passing](https://img.shields.io/badge/tests-3291/3291%20passing-brightgreen.svg?style=flat-square)
+![4999 out of 4999 tests passing](https://img.shields.io/badge/tests-4999/4999%20passing-brightgreen.svg?style=flat-square)
 ![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
 
 Adrastia Core is a set of Solidity smart contracts for building EVM oracle solutions.

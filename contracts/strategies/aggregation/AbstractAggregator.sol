@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
+import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+
 import "./IAggregationStrategy.sol";
 
 /**
@@ -15,7 +17,7 @@ import "./IAggregationStrategy.sol";
  * All inheriting contracts must implement the aggregateObservations function as required
  * by the IAggregationStrategy interface.
  */
-abstract contract AbstractAggregator is IAggregationStrategy {
+abstract contract AbstractAggregator is IERC165, IAggregationStrategy {
     /// @notice An error thrown when the price value exceeds the maximum allowed value for uint112.
     error PriceTooHigh(uint256 price);
 
@@ -24,6 +26,11 @@ abstract contract AbstractAggregator is IAggregationStrategy {
 
     /// @notice An error thrown when the from index is greater than the to index.
     error BadInput();
+
+    // @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IAggregationStrategy).interfaceId || interfaceId == type(IERC165).interfaceId;
+    }
 
     /**
      * @notice Prepares the aggregated result by validating and converting the calculated

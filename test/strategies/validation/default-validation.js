@@ -381,3 +381,37 @@ describe("DefaultValidation#validate", function () {
         });
     }
 });
+
+describe("DefaultValidation#supportsInterface", function () {
+    var interfaceIds;
+    var validationStrategy;
+
+    beforeEach(async () => {
+        const factory = await ethers.getContractFactory("DefaultValidationStub");
+        validationStrategy = await factory.deploy(
+            6, // quoteTokenDecimals
+            MINIMUM_TOKEN_LIQUIDITY_VALUE,
+            MINIMUM_QUOTE_TOKEN_LIQUIDITY,
+            MINIMUM_LIQUIDITY_RATIO,
+            MAXIMUM_LIQUIDITY_RATIO
+        );
+
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    beforeEach(async function () {
+        const interfaceIdsFactory = await ethers.getContractFactory("InterfaceIds");
+        interfaceIds = await interfaceIdsFactory.deploy();
+    });
+
+    it("Should support IERC165", async function () {
+        const interfaceId = await interfaceIds.iERC165();
+        expect(await validationStrategy["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+
+    it("Should support IValidationStrategy", async function () {
+        const interfaceId = await interfaceIds.iValidationStrategy();
+        expect(await validationStrategy["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+    });
+});
