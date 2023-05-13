@@ -28,6 +28,9 @@ contract PeriodicPriceAccumulationOracle is IHistoricalPriceAccumulationOracle, 
         uint16 end;
         uint16 size;
         uint16 maxSize;
+        uint16 flags; // Bit flags for future use
+        uint112 __reserved; // Reserved for future use
+        uint64 extra; // For user extensions
     }
 
     address public immutable override priceAccumulator;
