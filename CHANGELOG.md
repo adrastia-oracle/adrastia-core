@@ -39,6 +39,7 @@
 - Remove GeometricPriceAccumulator, GeometricLiquidityAccumulator, HarmonicPriceAccumulator, HarmonicLiquidityAccumulator, and all subclasses, in favor of delegating to IAveragingStrategy interface implementations.
 - Add OffchainPriceAccumulator and OffchainLiquidityAccumulator: Allows for offchain data-feeds.
 - Add StaticPriceAccumulator and StaticLiquidityAccumulator: Allows accumulators to report constant values while remaining up-to-date without needing updates.
+- Add lending protocol interest rate accumulators for Compound v2, Compound III (Comet), Aave v2, and Aave v3: Allows for calculations of time-weighted average interest rates.
 
 ### Oracles
 - Add HistoricalOracle: An abstract implementation of IHistoricalOracle, pulled out of AggregatedOracle for improved readability and extension.
@@ -49,6 +50,7 @@
 ####  Oracle views
 - Add AccumulatorOracleView: An oracle contract that delegates to the oracle functionality of underlying price and liquidity accumulators.
 - Add VolatilityOracleView: A volatility oracle view contract that uses data from an IHistoricalOracle implementation to calculate metrics relating to historical price volatility.
+- Fill buffer metadata space to allow for extension and future use.
 
 ### Strategies
 #### Aggregation strategies
