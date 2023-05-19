@@ -18,6 +18,9 @@ interface IVault {
 
 interface IStablePool {
     function getAmplificationParameter() external view returns (uint256 amp, bool isUpdating);
+
+    /// @dev This isn't implemented by MetaStablePool, but it is implemented by ComposableStablePool
+    function getBptIndex() external view returns (uint256);
 }
 
 interface IBasePool {
@@ -44,6 +47,9 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     bytes32 public immutable poolId;
     uint256 public immutable quoteTokenIndex;
 
+    bool internal immutable hasBpt;
+    uint256 internal immutable bptIndex;
+
     error TokenNotFound(address token);
 
     constructor(
@@ -67,6 +73,20 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         }
 
         quoteTokenIndex = _quoteTokenIndex;
+
+        bool _hasBpt = false;
+        uint256 _bptIndex = 0;
+
+        (bool success, bytes memory bptIndexData) = poolAddress.staticcall(
+            abi.encodeWithSelector(IStablePool.getBptIndex.selector)
+        );
+        if (success && bptIndexData.length == 32) {
+            _hasBpt = true;
+            _bptIndex = abi.decode(bptIndexData, (uint256));
+        }
+
+        hasBpt = _hasBpt;
+        bptIndex = _bptIndex;
     }
 
     /// @inheritdoc PriceAccumulator
@@ -131,12 +151,27 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         _upscaleArray(balances, scalingFactors, balances.length);
         amount = _upscale(amount, scalingFactors[tokenIndex]);
 
-        uint256[] memory newBalances = new uint256[](2);
-        newBalances[0] = balances[tokenIndex];
-        newBalances[1] = balances[quoteTokenIndex];
+        uint256 _quoteTokenIndex = quoteTokenIndex;
 
-        uint256 invariant = StableMath._calculateInvariant(amp, newBalances);
-        uint256 amountOut = StableMath._calcOutGivenIn(amp, newBalances, 0, 1, amount, invariant);
+        // Filter out the BPT if the pool contains it
+        if (hasBpt) {
+            uint256 _bptIndex = bptIndex;
+            // Remove the BPT from the balances
+            uint256[] memory newBalances = new uint256[](balances.length - 1);
+            for (uint256 i = 0; i < balances.length; ++i) {
+                if (i != _bptIndex) {
+                    newBalances[i < _bptIndex ? i : i - 1] = balances[i];
+                }
+            }
+            balances = newBalances;
+
+            // Re-index the token indices if they were shifted by the removal of the BPT
+            if (tokenIndex > _bptIndex) --tokenIndex;
+            if (_quoteTokenIndex > _bptIndex) --_quoteTokenIndex;
+        }
+
+        uint256 invariant = StableMath._calculateInvariant(amp, balances);
+        uint256 amountOut = StableMath._calcOutGivenIn(amp, balances, tokenIndex, _quoteTokenIndex, amount, invariant);
 
         price = _downscaleDown(amountOut, scalingFactors[quoteTokenIndex]).toUint112();
 
