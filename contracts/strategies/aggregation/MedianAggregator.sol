@@ -30,8 +30,8 @@ contract MedianAggregator is AbstractAggregator {
         uint256 to
     ) external view override returns (ObservationLibrary.Observation memory) {
         if (from > to) revert BadInput();
-        uint256 length = observations.length;
-        if (length <= to - from) revert InsufficientObservations(observations.length, to - from + 1);
+        if (observations.length <= to) revert InsufficientObservations(observations.length, to - from + 1);
+        uint256 length = to - from + 1;
         if (length == 1) {
             ObservationLibrary.Observation memory observation = observations[from].data;
             observation.timestamp = uint32(block.timestamp);
@@ -81,7 +81,9 @@ contract MedianAggregator is AbstractAggregator {
 
         int256 i = left;
         int256 j = right;
-        if (i == j) return;
+
+        // The following is commented out because it is not possible for i to be equal to j at this point.
+        // if (i == j) return;
 
         uint256 pivotIndex = uint256(left + (right - left) / 2);
         uint256 pivotPrice = prices[pivotIndex];

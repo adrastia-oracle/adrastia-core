@@ -14,6 +14,8 @@ const TWO_PERCENT_CHANGE = 2000000;
 const MAX_CUMULATIVE_VALUE = BigNumber.from(2).pow(112).sub(1);
 const MAX_SUPPORTED_LIQUIDITY = BigNumber.from(10).pow(9); // 1 billion
 
+const MAX_UINT112 = BigNumber.from(2).pow(112).sub(1);
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -293,10 +295,10 @@ function describeLiquidityAccumulatorTests(
                 { args: [102, 100, TWO_PERCENT_CHANGE], expected: true },
                 { args: [103, 100, TWO_PERCENT_CHANGE], expected: true },
                 { args: [1000000, 100, TWO_PERCENT_CHANGE], expected: true },
-                { args: [BigNumber.from(2).pow(256).sub(1), 100, TWO_PERCENT_CHANGE], expected: true },
-                { args: [100, BigNumber.from(2).pow(256).sub(1), TWO_PERCENT_CHANGE], expected: true },
+                { args: [MAX_UINT112, 100, TWO_PERCENT_CHANGE], expected: true },
+                { args: [100, MAX_UINT112, TWO_PERCENT_CHANGE], expected: true },
                 {
-                    args: [BigNumber.from(2).pow(256).sub(1), BigNumber.from(2).pow(256).sub(1), TWO_PERCENT_CHANGE],
+                    args: [MAX_UINT112, MAX_UINT112, TWO_PERCENT_CHANGE],
                     expected: false,
                 },
                 {
@@ -342,13 +344,45 @@ function describeLiquidityAccumulatorTests(
             });
 
             tests.forEach(({ args, expected }) => {
-                it(`Should evaluate to ${expected} with liquidities {${args[0]}, ${args[1]}} and update threshold ${args[3]}`, async () => {
+                it(`Should evaluate to ${expected} with liquidities {${args[0]}, ${args[1]}} and update threshold ${args[2]}`, async () => {
                     const received = await liquidityAccumulator.harnessChangeThresholdSurpassed(
                         args[0],
                         args[1],
                         args[2]
                     );
                     expect(received).to.equal(expected);
+                });
+            });
+
+            tests.forEach(({ args, expected }) => {
+                it(`Should evaluate to ${expected} with token liquidity constant and quote token liquidity changing from ${args[0]} to ${args[1]}, with update threshold ${args[2]}`, async () => {
+                    // Set observed token liquidity and quote token liquidity to args[0]
+                    await liquidityAccumulator.stubPushObservation(GRT, args[0], args[0]);
+
+                    // Set current liquidity to args[0] and current quote token liquidity to args[1]
+                    await liquidityAccumulator.setLiquidity(GRT, args[0], args[1]);
+
+                    // Encode GRT to be used for the update data
+                    const updateData = ethers.utils.hexZeroPad(GRT, 32);
+
+                    const surpassed = await liquidityAccumulator.changeThresholdSurpassed(updateData, args[2]);
+                    expect(surpassed, "Change threshold surpassed").to.equal(expected);
+                });
+            });
+
+            tests.forEach(({ args, expected }) => {
+                it(`Should evaluate to ${expected} with quote token liquidity constant and token liquidity changing from ${args[0]} to ${args[1]}, with update threshold ${args[2]}`, async () => {
+                    // Set observed token liquidity and quote token liquidity to args[0]
+                    await liquidityAccumulator.stubPushObservation(GRT, args[0], args[0]);
+
+                    // Set current liquidity to args[0] and current quote token liquidity to args[1]
+                    await liquidityAccumulator.setLiquidity(GRT, args[1], args[0]);
+
+                    // Encode GRT to be used for the update data
+                    const updateData = ethers.utils.hexZeroPad(GRT, 32);
+
+                    const surpassed = await liquidityAccumulator.changeThresholdSurpassed(updateData, args[2]);
+                    expect(surpassed, "Change threshold surpassed").to.equal(expected);
                 });
             });
         });

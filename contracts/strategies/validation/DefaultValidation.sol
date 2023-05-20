@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.8.13;
 
+import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
+
 import "./IValidationStrategy.sol";
 
 /**
@@ -14,7 +16,7 @@ import "./IValidationStrategy.sol";
  * the units for both the token and the quote token liquidity must be the same. Validation results may vary depending on
  * the units used by the caller.
  */
-contract DefaultValidation is IValidationStrategy {
+contract DefaultValidation is IERC165, IValidationStrategy {
     /// @notice The number of decimals of the quote token.
     /// @dev This is used to scale the quote token liquidity value.
     uint8 public immutable override quoteTokenDecimals;
@@ -67,6 +69,11 @@ contract DefaultValidation is IValidationStrategy {
         ObservationLibrary.MetaObservation calldata observation
     ) external view override returns (bool) {
         return validate(observation.data.price, observation.data.tokenLiquidity, observation.data.quoteTokenLiquidity);
+    }
+
+    // @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IValidationStrategy).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     /**

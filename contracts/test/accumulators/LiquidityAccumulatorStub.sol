@@ -45,6 +45,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         config.liquidityDecimals = decimals;
     }
 
+    function stubPushObservation(address token, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) public {
+        stubSetObservation(token, tokenLiquidity, quoteTokenLiquidity, uint32(block.timestamp));
+    }
+
     function stubSetObservation(
         address token,
         uint112 tokenLiquidity,
@@ -56,6 +60,10 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
         observation.tokenLiquidity = tokenLiquidity;
         observation.quoteTokenLiquidity = quoteTokenLiquidity;
         observation.timestamp = timestamp;
+    }
+
+    function stubPushAccumulation(address token, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) public {
+        stubSetAccumulation(token, tokenLiquidity, quoteTokenLiquidity, uint32(block.timestamp));
     }
 
     function stubSetAccumulation(
