@@ -15,6 +15,12 @@ const wstETHrETHsfrxETH = "0x5aee1e99fe86960377de9f88689616916d5dcabe00000000000
 const usddFraxUsdc = "0xf93579002dbe8046c43fefe86ec78b1112247bb80000000000000000000002bc"; // Stable Pool
 const busdDaiUsdcUsdt = "0x81b7f92c7b7d9349b989b4982588761bfa1aa6270000000000000000000003e9"; // Composable Stable Pool
 
+const boostedAaveV3Usd = "0xfebb0bbf162e64fb9d0dfe186e517d84c395f016000000000000000000000502";
+const boostedAaveV2Usd = "0xa13a9247ea42d743238089903570127dda72fe4400000000000000000000035d";
+const boostedAaveV3wStEthWeth = "0xe0fcbf4d98f0ad982db260f86cf28b49845403c5000000000000000000000504";
+
+const waDaiAddress = "0x098256c06ab24F5655C5506A6488781BD711c14b"; // Wrapped Aave V3 DAI
+
 const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const rethAddress = "0xae78736Cd615f374D3085123A210448E74Fc6393";
 const wstethAddress = "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0";
@@ -104,7 +110,7 @@ async function createBalancerOracle(
 }
 
 async function main() {
-    const poolId = wstETHwETH;
+    const poolId = boostedAaveV3wStEthWeth;
 
     const token = wstethAddress;
     const quoteToken = wethAddress;

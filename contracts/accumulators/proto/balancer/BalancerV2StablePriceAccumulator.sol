@@ -37,6 +37,24 @@ interface IBasePool {
     function getScalingFactors() external view returns (uint256[] memory);
 }
 
+interface ILinearPool {
+    function getMainIndex() external view returns (uint256);
+
+    function getMainToken() external view returns (address);
+
+    function getWrappedIndex() external view returns (uint256);
+
+    function getWrappedToken() external view returns (address);
+
+    function getWrappedTokenRate() external view returns (uint256);
+
+    function getVirtualSupply() external view returns (uint256);
+
+    function inRecoveryMode() external view returns (bool);
+
+    function getRate() external view returns (uint256);
+}
+
 contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     using AddressLibrary for address;
     using SafeCastExt for uint256;
@@ -45,7 +63,10 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     address public immutable balancerVault;
     address public immutable poolAddress;
     bytes32 public immutable poolId;
+
     uint256 public immutable quoteTokenIndex;
+    uint256 public immutable quoteTokenSubIndex;
+    bool public immutable quoteTokenIsWrapped;
 
     bool internal immutable hasBpt;
     uint256 internal immutable bptIndex;
@@ -67,12 +88,17 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
 
         // Get the quote token index
         (address[] memory tokens, , ) = IVault(balancerVault_).getPoolTokens(poolId_);
-        uint256 _quoteTokenIndex = findTokenIndex(tokens, quoteToken_);
-        if (_quoteTokenIndex == type(uint256).max) {
+        (bool containsToken, uint256 index, bool isInsideLinearPool, uint256 linearPoolIndex) = findTokenIndex(
+            tokens,
+            quoteToken_
+        );
+        if (!containsToken) {
             revert TokenNotFound(quoteToken_);
         }
 
-        quoteTokenIndex = _quoteTokenIndex;
+        quoteTokenIndex = index;
+        quoteTokenSubIndex = linearPoolIndex;
+        quoteTokenIsWrapped = isInsideLinearPool;
 
         bool _hasBpt = false;
         uint256 _bptIndex = 0;
@@ -99,8 +125,8 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         }
 
         (address[] memory tokens, , ) = IVault(balancerVault).getPoolTokens(poolId);
-        uint256 tokenIndex = findTokenIndex(tokens, token);
-        if (tokenIndex == type(uint256).max) {
+        (bool containsToken, , , ) = findTokenIndex(tokens, token);
+        if (!containsToken) {
             // The pool doesn't contain the token
             return false;
         }
@@ -108,15 +134,31 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         return super.canUpdate(data);
     }
 
-    function findTokenIndex(address[] memory tokens, address token) internal pure returns (uint256) {
+    function findTokenIndex(
+        address[] memory tokens,
+        address token
+    ) internal view returns (bool, uint256, bool, uint256) {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
             if (tokens[i] == token) {
-                return i;
+                return (true, i, false, 0);
+            }
+
+            // Check if tokens[i] is a linear pool with the token as the main token
+            (bool success, bytes memory data) = tokens[i].staticcall(
+                abi.encodeWithSelector(ILinearPool.getMainToken.selector)
+            );
+            if (success && data.length == 32) {
+                address mainToken = abi.decode(data, (address));
+                if (mainToken == token) {
+                    // Get the main token index
+                    uint256 mainTokenIndex = ILinearPool(tokens[i]).getMainIndex();
+                    return (true, i, true, mainTokenIndex);
+                }
             }
         }
 
-        return type(uint256).max;
+        return (false, 0, false, 0);
     }
 
     /**
@@ -133,8 +175,8 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         (address[] memory tokens, uint256[] memory balances, ) = IVault(balancerVault).getPoolTokens(poolId);
 
         // Get the token index
-        uint256 tokenIndex = findTokenIndex(tokens, token);
-        if (tokenIndex == type(uint256).max) {
+        (bool hasToken, uint256 tokenIndex, bool tokenIsWrapped, uint256 tokenSubIndex) = findTokenIndex(tokens, token);
+        if (!hasToken) {
             // The pool doesn't contain the token
             revert TokenNotFound(token);
         }
@@ -143,6 +185,12 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         uint256[] memory scalingFactors = IBasePool(poolAddress).getScalingFactors();
 
         uint256 amount = computeWholeUnitAmount(token);
+        if (tokenIsWrapped) {
+            // The token is inside a linear pool, so we need to convert the amount of the token to the amount of BPT
+            ILinearPool linearPool = ILinearPool(tokens[tokenIndex]);
+            uint256[] memory linearPoolScalingFactors = IBasePool(tokens[tokenIndex]).getScalingFactors();
+            amount = (amount * linearPoolScalingFactors[tokenSubIndex]) / linearPool.getRate();
+        }
 
         // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
         amount -= amount.mulUp(IBasePool(poolAddress).getSwapFeePercentage());
@@ -173,7 +221,17 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         uint256 invariant = StableMath._calculateInvariant(amp, balances);
         uint256 amountOut = StableMath._calcOutGivenIn(amp, balances, tokenIndex, _quoteTokenIndex, amount, invariant);
 
-        price = _downscaleDown(amountOut, scalingFactors[quoteTokenIndex]).toUint112();
+        amountOut = _downscaleDown(amountOut, scalingFactors[quoteTokenIndex]);
+
+        if (quoteTokenIsWrapped) {
+            // The quote token is inside a linear pool, so we need to convert the amount of BPT to the amount of the
+            // quote token
+            ILinearPool linearPool = ILinearPool(tokens[quoteTokenIndex]);
+            uint256[] memory linearPoolScalingFactors = IBasePool(tokens[quoteTokenIndex]).getScalingFactors();
+            amountOut = (amountOut * linearPool.getRate()) / linearPoolScalingFactors[quoteTokenSubIndex];
+        }
+
+        price = amountOut.toUint112();
 
         if (price == 0) return 1;
     }

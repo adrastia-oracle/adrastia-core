@@ -14,6 +14,28 @@ interface IVault {
     function getPool(bytes32 poolId) external view returns (address poolAddress, uint8 numTokens);
 }
 
+interface IBasePool {
+    function getPoolId() external view returns (bytes32);
+}
+
+interface ILinearPool {
+    function getMainIndex() external view returns (uint256);
+
+    function getMainToken() external view returns (address);
+
+    function getWrappedIndex() external view returns (uint256);
+
+    function getWrappedToken() external view returns (address);
+
+    function getWrappedTokenRate() external view returns (uint256);
+
+    function getVirtualSupply() external view returns (uint256);
+
+    function inRecoveryMode() external view returns (bool);
+
+    function getRate() external view returns (uint256);
+}
+
 contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
     using SafeCastExt for uint256;
@@ -21,7 +43,11 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
     address public immutable balancerVault;
     address public immutable poolAddress;
     bytes32 public immutable poolId;
+
     uint256 public immutable quoteTokenIndex;
+    uint256 public immutable quoteTokenSubIndex;
+    bool public immutable quoteTokenIsWrapped;
+    bytes32 public immutable quoteTokenWrapperPoolId;
 
     uint8 internal immutable _liquidityDecimals;
     uint256 internal immutable _decimalFactor;
@@ -45,12 +71,23 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
         // Get the quote token index
         (address[] memory tokens, , ) = IVault(balancerVault_).getPoolTokens(poolId_);
-        uint256 _quoteTokenIndex = findTokenIndex(tokens, quoteToken_);
-        if (_quoteTokenIndex == type(uint256).max) {
+        (bool containsToken, uint256 index, bool isInsideLinearPool, uint256 linearPoolIndex) = findTokenIndex(
+            tokens,
+            quoteToken_
+        );
+        if (!containsToken) {
             revert TokenNotFound(quoteToken_);
         }
 
-        quoteTokenIndex = _quoteTokenIndex;
+        quoteTokenIndex = index;
+        quoteTokenSubIndex = linearPoolIndex;
+        quoteTokenIsWrapped = isInsideLinearPool;
+
+        // Resolve the quote token wrapper pool ID (if it has one)
+        bytes32 quoteTokenWrapperPoolId_;
+        if (quoteTokenIsWrapped) quoteTokenWrapperPoolId_ = IBasePool(tokens[index]).getPoolId();
+        quoteTokenWrapperPoolId = quoteTokenWrapperPoolId_;
+
         _liquidityDecimals = decimals_;
         _decimalFactor = 10 ** decimals_;
         _quoteTokenWholeUnit = 10 ** super.quoteTokenDecimals();
@@ -66,8 +103,8 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         }
 
         (address[] memory tokens, , ) = IVault(balancerVault).getPoolTokens(poolId);
-        uint256 tokenIndex = findTokenIndex(tokens, token);
-        if (tokenIndex == type(uint256).max) {
+        (bool containsToken, , , ) = findTokenIndex(tokens, token);
+        if (!containsToken) {
             // The pool doesn't contain the token
             return false;
         }
@@ -83,15 +120,31 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         return _liquidityDecimals;
     }
 
-    function findTokenIndex(address[] memory tokens, address token) internal pure returns (uint256) {
+    function findTokenIndex(
+        address[] memory tokens,
+        address token
+    ) internal view returns (bool, uint256, bool, uint256) {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
             if (tokens[i] == token) {
-                return i;
+                return (true, i, false, 0);
+            }
+
+            // Check if tokens[i] is a linear pool with the token as the main token
+            (bool success, bytes memory data) = tokens[i].staticcall(
+                abi.encodeWithSelector(ILinearPool.getMainToken.selector)
+            );
+            if (success && data.length == 32) {
+                address mainToken = abi.decode(data, (address));
+                if (mainToken == token) {
+                    // Get the main token index
+                    uint256 mainTokenIndex = ILinearPool(tokens[i]).getMainIndex();
+                    return (true, i, true, mainTokenIndex);
+                }
             }
         }
 
-        return type(uint256).max;
+        return (false, 0, false, 0);
     }
 
     function fetchLiquidity(
@@ -103,8 +156,8 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         (address[] memory tokens, uint256[] memory balances, ) = IVault(balancerVault).getPoolTokens(poolId);
 
         // Get the token index
-        uint256 tokenIndex = findTokenIndex(tokens, token);
-        if (tokenIndex == type(uint256).max) {
+        (bool hasToken, uint256 tokenIndex, bool tokenIsWrapped, uint256 tokenSubIndex) = findTokenIndex(tokens, token);
+        if (!hasToken) {
             // The pool doesn't contain the token
             revert TokenNotFound(token);
         }
@@ -112,6 +165,37 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         // Get the token balance
         uint256 tokenBalance = balances[tokenIndex];
         uint256 quoteTokenBalance = balances[quoteTokenIndex];
+
+        if (tokenIsWrapped) {
+            // Token balance is for the wrapped token, get the balance of the underlying token
+
+            // Get the token wrapper pool ID
+            bytes32 tokenWrapperPoolId = IBasePool(tokens[tokenIndex]).getPoolId();
+
+            // Get the balances of the wrapper pool
+            (, uint256[] memory wrapperBalances, ) = IVault(balancerVault).getPoolTokens(tokenWrapperPoolId);
+            // Get the underlying token balance
+            tokenBalance = wrapperBalances[tokenSubIndex];
+            // Note: We purposely ignore the wrapped token balance and only use the main token balance
+            // This is to help the aggregator filter out innaccurate prices in the case where the underlying protocol
+            // has a bug that causes users to sell the wrapped token for the main token at a price that is not
+            // representative of the actual price of the main token.
+            // In such cases, the balance of the main token will approach 0, while the balance of the wrapped token
+            // will approach infinity.
+        }
+
+        if (quoteTokenIsWrapped) {
+            // Token balance is for the wrapped token, get the balance of the underlying token
+
+            // Get the token wrapper pool ID
+            bytes32 tokenWrapperPoolId = IBasePool(tokens[quoteTokenIndex]).getPoolId();
+
+            // Get the balances of the wrapper pool
+            (, uint256[] memory wrapperBalances, ) = IVault(balancerVault).getPoolTokens(tokenWrapperPoolId);
+            // Get the underlying token balance
+            quoteTokenBalance = wrapperBalances[quoteTokenSubIndex];
+            // Note: The note above applies here as well.
+        }
 
         tokenLiquidity = ((tokenBalance * _decimalFactor) / 10 ** IERC20Metadata(token).decimals()).toUint112();
         quoteTokenLiquidity = ((quoteTokenBalance * _decimalFactor) / _quoteTokenWholeUnit).toUint112();
