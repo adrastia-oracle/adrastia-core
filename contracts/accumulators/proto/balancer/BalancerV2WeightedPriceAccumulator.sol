@@ -14,6 +14,10 @@ interface IVault {
     function getPool(bytes32 poolId) external view returns (address poolAddress, uint8 numTokens);
 }
 
+interface IBasePool {
+    function inRecoveryMode() external view returns (bool);
+}
+
 interface IWeightedPool {
     function getNormalizedWeights() external view returns (uint256[] memory normalizedWeights);
 }
@@ -31,6 +35,8 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
     uint256 internal immutable weightDescaler = 1e14;
 
     error TokenNotFound(address token);
+
+    error PoolInRecoveryMode(address pool);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -64,6 +70,11 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
             return false;
         }
 
+        if (IBasePool(poolAddress).inRecoveryMode()) {
+            // The pool is in recovery mode
+            return false;
+        }
+
         (address[] memory tokens, , ) = IVault(balancerVault).getPoolTokens(poolId);
         uint256 tokenIndex = findTokenIndex(tokens, token);
         if (tokenIndex == type(uint256).max) {
@@ -93,6 +104,11 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
      *   places.
      */
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+        // Ensure that the pool is not in recovery mode
+        if (IBasePool(poolAddress).inRecoveryMode()) {
+            revert PoolInRecoveryMode(poolAddress);
+        }
+
         address token = abi.decode(data, (address));
 
         // Get the pool tokens and balances

@@ -35,6 +35,8 @@ interface IBasePool {
      * not relevant for outside parties, but which might be useful for some types of Pools.
      */
     function getScalingFactors() external view returns (uint256[] memory);
+
+    function inRecoveryMode() external view returns (bool);
 }
 
 interface ILinearPool {
@@ -49,8 +51,6 @@ interface ILinearPool {
     function getWrappedTokenRate() external view returns (uint256);
 
     function getVirtualSupply() external view returns (uint256);
-
-    function inRecoveryMode() external view returns (bool);
 
     function getRate() external view returns (uint256);
 }
@@ -72,6 +72,8 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     uint256 internal immutable bptIndex;
 
     error TokenNotFound(address token);
+
+    error PoolInRecoveryMode(address pool);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -124,11 +126,32 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
             return false;
         }
 
+        if (IBasePool(poolAddress).inRecoveryMode()) {
+            // The pool is in recovery mode
+            return false;
+        }
+
         (address[] memory tokens, , ) = IVault(balancerVault).getPoolTokens(poolId);
-        (bool containsToken, , , ) = findTokenIndex(tokens, token);
+        (bool containsToken, uint256 tokenIndex, bool tokenIsWrapped, ) = findTokenIndex(tokens, token);
         if (!containsToken) {
             // The pool doesn't contain the token
             return false;
+        }
+
+        if (quoteTokenIsWrapped) {
+            // Check if the quote token linear pool is in recovery mode
+            if (IBasePool(tokens[quoteTokenIndex]).inRecoveryMode()) {
+                // The quote token linear pool is in recovery mode
+                return false;
+            }
+        }
+
+        if (tokenIsWrapped) {
+            // Check if the token linear pool is in recovery mode
+            if (IBasePool(tokens[tokenIndex]).inRecoveryMode()) {
+                // The token linear pool is in recovery mode
+                return false;
+            }
         }
 
         return super.canUpdate(data);
@@ -169,6 +192,11 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
      *   places.
      */
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+        // Ensure that the pool is not in recovery mode
+        if (IBasePool(poolAddress).inRecoveryMode()) {
+            revert PoolInRecoveryMode(poolAddress);
+        }
+
         address token = abi.decode(data, (address));
 
         // Get the pool tokens and balances
@@ -187,6 +215,12 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         uint256 amount = computeWholeUnitAmount(token);
         if (tokenIsWrapped) {
             // The token is inside a linear pool, so we need to convert the amount of the token to the amount of BPT
+
+            // Ensure that the token linear pool is not in recovery mode
+            if (IBasePool(tokens[tokenIndex]).inRecoveryMode()) {
+                revert PoolInRecoveryMode(tokens[tokenIndex]);
+            }
+
             ILinearPool linearPool = ILinearPool(tokens[tokenIndex]);
             uint256[] memory linearPoolScalingFactors = IBasePool(tokens[tokenIndex]).getScalingFactors();
             amount = (amount * linearPoolScalingFactors[tokenSubIndex]) / linearPool.getRate();
@@ -226,6 +260,12 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         if (quoteTokenIsWrapped) {
             // The quote token is inside a linear pool, so we need to convert the amount of BPT to the amount of the
             // quote token
+
+            // Ensure that the quote token linear pool is not in recovery mode
+            if (IBasePool(tokens[quoteTokenIndex]).inRecoveryMode()) {
+                revert PoolInRecoveryMode(tokens[quoteTokenIndex]);
+            }
+
             ILinearPool linearPool = ILinearPool(tokens[quoteTokenIndex]);
             uint256[] memory linearPoolScalingFactors = IBasePool(tokens[quoteTokenIndex]).getScalingFactors();
             amountOut = (amountOut * linearPool.getRate()) / linearPoolScalingFactors[quoteTokenSubIndex];
