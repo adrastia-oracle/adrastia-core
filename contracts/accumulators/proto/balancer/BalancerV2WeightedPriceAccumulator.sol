@@ -75,10 +75,15 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        (address[] memory tokens, , ) = IVault(balancerVault).getPoolTokens(poolId);
+        (address[] memory tokens, uint256[] memory balances, ) = IVault(balancerVault).getPoolTokens(poolId);
         uint256 tokenIndex = findTokenIndex(tokens, token);
         if (tokenIndex == type(uint256).max) {
             // The pool doesn't contain the token
+            return false;
+        }
+
+        if (balances[tokenIndex] == 0) {
+            // The token has no balance in the pool
             return false;
         }
 
