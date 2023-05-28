@@ -24,18 +24,6 @@ interface ILinearPool {
     function getMainIndex() external view returns (uint256);
 
     function getMainToken() external view returns (address);
-
-    function getWrappedIndex() external view returns (uint256);
-
-    function getWrappedToken() external view returns (address);
-
-    function getWrappedTokenRate() external view returns (uint256);
-
-    function getVirtualSupply() external view returns (uint256);
-
-    function inRecoveryMode() external view returns (bool);
-
-    function getRate() external view returns (uint256);
 }
 
 contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
