@@ -47,8 +47,8 @@ module.exports = {
     },
     networks: {
         hardhat: {
-            hardfork: "london",
-            gasPrice: "auto",
+            gas: 10000000,
+            hardfork: "berlin", // EIP 1559 leads to some gas cost issues with test cases
             forking: {
                 url: "https://eth-mainnet.alchemyapi.io/v2/VCgYDancQJkTUUroC021s8qizSktMDQJ",
                 //blockNumber: 13567142,
@@ -58,6 +58,10 @@ module.exports = {
                 mempool: {
                     order: "fifo",
                 },
+            },
+            blockGasLimit: 20000000000,
+            accounts: {
+                accountsBalance: "1000000000000000000000000", // 1M ETH
             },
         },
     },
