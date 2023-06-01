@@ -1,4 +1,6 @@
-node_modules
+# Secrets
+.env
+.env.*
 
 # Hardhat files
 cache
@@ -10,6 +12,15 @@ coverage
 
 # IDEs
 .vscode
+
+# Generated files
+node_modules
+dist
+typechain
+cache
+
+# OS files
+.DS_Store
 
 # Compilers
 soljson-*

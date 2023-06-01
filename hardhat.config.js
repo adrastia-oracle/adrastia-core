@@ -1,9 +1,11 @@
+require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-tracer");
 require("@atixlabs/hardhat-time-n-mine");
 require("hardhat-contract-sizer");
+require("@nomiclabs/hardhat-etherscan");
 
 const SOLC_8 = {
     version: "0.8.13",
@@ -50,8 +52,7 @@ module.exports = {
             gas: 10000000,
             hardfork: "berlin", // EIP 1559 leads to some gas cost issues with test cases
             forking: {
-                url: "https://eth-mainnet.alchemyapi.io/v2/VCgYDancQJkTUUroC021s8qizSktMDQJ",
-                //blockNumber: 13567142,
+                url: process.env.ETHEREUM_URL || "",
             },
             mining: {
                 auto: true,
@@ -63,6 +64,16 @@ module.exports = {
             accounts: {
                 accountsBalance: "1000000000000000000000000", // 1M ETH
             },
+        },
+        polygon: {
+            chainId: 137,
+            url: process.env.POLYGON_URL || "",
+        },
+    },
+    etherscan: {
+        apiKey: {
+            etherscan: process.env.ETHERSCAN_API_KEY,
+            polygon: process.env.POLYGONSCAN_API_KEY,
         },
     },
 };
