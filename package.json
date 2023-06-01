@@ -24,7 +24,7 @@
     "!artifacts/contracts/**/*.dbg.json"
   ],
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "publishConfig": {
     "access": "public"
