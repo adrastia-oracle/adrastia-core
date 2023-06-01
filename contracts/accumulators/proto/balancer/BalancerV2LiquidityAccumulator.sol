@@ -215,11 +215,8 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
                 revert PoolInRecoveryMode(tokens[quoteTokenIndex]);
             }
 
-            // Get the token wrapper pool ID
-            bytes32 tokenWrapperPoolId = IBasePool(tokens[quoteTokenIndex]).getPoolId();
-
             // Get the balances of the wrapper pool
-            (, uint256[] memory wrapperBalances, ) = IVault(balancerVault).getPoolTokens(tokenWrapperPoolId);
+            (, uint256[] memory wrapperBalances, ) = IVault(balancerVault).getPoolTokens(quoteTokenWrapperPoolId);
             // Get the underlying token balance
             quoteTokenBalance = wrapperBalances[quoteTokenSubIndex];
             // Note: The note above applies here as well.
