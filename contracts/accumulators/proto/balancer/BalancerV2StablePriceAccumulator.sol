@@ -66,6 +66,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     error TokenNotFound(address token);
 
     error PoolInRecoveryMode(address pool);
+    error AmplificationParameterUpdating();
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -123,7 +124,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        (address[] memory tokens, , ) = IVault(balancerVault).getPoolTokens(poolId);
+        (address[] memory tokens, uint256[] memory balances, ) = IVault(balancerVault).getPoolTokens(poolId);
         (bool containsToken, uint256 tokenIndex, bool tokenIsWrapped, ) = findTokenIndex(tokens, token);
         if (!containsToken) {
             // The pool doesn't contain the token
@@ -142,6 +143,14 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
             // Check if the token linear pool is in recovery mode
             if (IBasePool(tokens[tokenIndex]).inRecoveryMode()) {
                 // The token linear pool is in recovery mode
+                return false;
+            }
+        }
+
+        // Return false if any of the balances are zero
+        uint256 length = tokens.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (balances[i] == 0) {
                 return false;
             }
         }
