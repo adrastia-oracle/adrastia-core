@@ -72,6 +72,7 @@ Assuming the presence of arbitrageurs, MEV, on/off ramps and bridges, and someon
 ### Recommendations
 
 - Operating system: Linux (Fedora is used for development and testing)
+- RAM: 16GB or more (running the full test suite can consume up to 8GB of RAM)
 
 ### Procedure
 
@@ -98,7 +99,14 @@ yarn install --lock-file
 ```console
 cp .env.example .env
 ```
-Rember to fill out the `.env` file with the correct values.
+Remember to fill out the `.env` file with the correct values.
+
+5. (Optional) Configure Node.js to use up to 8GB of RAM for the test suite
+
+```console
+export NODE_OPTIONS="--max-old-space-size=8192"
+```
+Note: This command must be run with every new terminal instance. It's only needed for running the full test suite.
 
 ## Usage
 
