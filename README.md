@@ -93,6 +93,13 @@ cd adrastia-core
 yarn install --lock-file
 ```
 
+4. Configure the environment variables
+
+```console
+cp .env.example .env
+```
+Rember to fill out the `.env` file with the correct values.
+
 ## Usage
 
 ### Using Solidity interfaces
