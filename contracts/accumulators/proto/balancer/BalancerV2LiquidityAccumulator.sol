@@ -34,10 +34,10 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
     address public immutable poolAddress;
     bytes32 public immutable poolId;
 
-    uint256 public immutable quoteTokenIndex;
-    uint256 public immutable quoteTokenSubIndex;
-    bool public immutable quoteTokenIsWrapped;
-    bytes32 public immutable quoteTokenWrapperPoolId;
+    uint256 internal immutable quoteTokenIndex;
+    uint256 internal immutable quoteTokenSubIndex;
+    bool internal immutable quoteTokenIsWrapped;
+    bytes32 internal immutable quoteTokenWrapperPoolId;
 
     uint8 internal immutable _liquidityDecimals;
     uint256 internal immutable _decimalFactor;

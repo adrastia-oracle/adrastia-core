@@ -56,9 +56,9 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     address public immutable poolAddress;
     bytes32 public immutable poolId;
 
-    uint256 public immutable quoteTokenIndex;
-    uint256 public immutable quoteTokenSubIndex;
-    bool public immutable quoteTokenIsWrapped;
+    uint256 internal immutable quoteTokenIndex;
+    uint256 internal immutable quoteTokenSubIndex;
+    bool internal immutable quoteTokenIsWrapped;
 
     bool internal immutable hasBpt;
     uint256 internal immutable bptIndex;

@@ -29,7 +29,8 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
     address public immutable balancerVault;
     address public immutable poolAddress;
     bytes32 public immutable poolId;
-    uint256 public immutable quoteTokenIndex;
+
+    uint256 internal immutable quoteTokenIndex;
 
     /// @dev 1e18 = 100%, so dividing weights by this allows for a percentage with 2 decimal places of precision.
     uint256 internal immutable weightDescaler = 1e14;
