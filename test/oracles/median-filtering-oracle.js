@@ -67,18 +67,18 @@ describe("MedianFilteringOracle#constructor", async function () {
         );
 
         expect(await oracle.source()).to.equal(underlyingOracle.address);
-        expect(await oracle.filterAmount()).to.equal(DEFAULT_FILTER_AMOUNT);
-        expect(await oracle.filterOffset()).to.equal(DEFAULT_FILTER_OFFSET);
-        expect(await oracle.filterIncrement()).to.equal(DEFAULT_FILTER_INCREMENT);
+        expect(await oracle.observationAmount()).to.equal(DEFAULT_FILTER_AMOUNT);
+        expect(await oracle.observationOffset()).to.equal(DEFAULT_FILTER_OFFSET);
+        expect(await oracle.observationIncrement()).to.equal(DEFAULT_FILTER_INCREMENT);
     });
 
-    it("Reverts if filterAmount is 0", async function () {
+    it("Reverts if observationAmount is 0", async function () {
         await expect(
             oracleFactory.deploy(underlyingOracle.address, 0, DEFAULT_FILTER_OFFSET, DEFAULT_FILTER_INCREMENT)
         ).to.be.revertedWith("InvalidAmount");
     });
 
-    it("Reverts if filterIncrement is 0", async function () {
+    it("Reverts if observationIncrement is 0", async function () {
         await expect(
             oracleFactory.deploy(underlyingOracle.address, DEFAULT_FILTER_AMOUNT, DEFAULT_FILTER_OFFSET, 0)
         ).to.be.revertedWith("InvalidIncrement");

@@ -103,27 +103,27 @@ contract MedianFilteringOracleStub is MedianFilteringOracle {
         return super._source();
     }
 
-    function _filterAmount() internal view virtual override returns (uint256) {
+    function _observationAmount() internal view virtual override returns (uint256) {
         if (config.filterAmountOverridden) {
             return config.filterAmount;
         }
 
-        return super._filterAmount();
+        return super._observationAmount();
     }
 
-    function _filterOffset() internal view virtual override returns (uint256) {
+    function _observationOffset() internal view virtual override returns (uint256) {
         if (config.filterOffsetOverridden) {
             return config.filterOffset;
         }
 
-        return super._filterOffset();
+        return super._observationOffset();
     }
 
-    function _filterIncrement() internal view virtual override returns (uint256) {
+    function _observationIncrement() internal view virtual override returns (uint256) {
         if (config.filterIncrementOverridden) {
             return config.filterIncrement;
         }
 
-        return super._filterIncrement();
+        return super._observationIncrement();
     }
 }
