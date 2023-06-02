@@ -98,7 +98,7 @@ describe("MedianFilteringOracle#needsUpdate", async function () {
         underlyingOracle = await historicalOracleFactory.deploy(USDC);
         await underlyingOracle.deployed();
 
-        await underlyingOracle.setObservationsCapacity(GRT, DEFAULT_FILTER_AMOUNT);
+        await underlyingOracle.setObservationsCapacity(GRT, 100);
 
         oracle = await oracleFactory.deploy(
             underlyingOracle.address,
@@ -224,6 +224,44 @@ describe("MedianFilteringOracle#needsUpdate", async function () {
         await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
 
         expect(await oracle.needsUpdate(updateData)).to.equal(true);
+    });
+
+    it("Doesn't need an update after an update has been pushed", async function () {
+        const timestamp1 = 1000;
+        const timestamp2 = 2000;
+        const timestamp3 = 3000;
+
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp1);
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp2);
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp3);
+
+        // Sanity check that the oracle needs an update
+        expect(await oracle.needsUpdate(updateData)).to.equal(true);
+
+        await oracle.stubPush(GRT, 2, 3, 5, timestamp3);
+
+        expect(await oracle.needsUpdate(updateData)).to.equal(false);
+    });
+
+    it("Doesn't need an update after an update has been pushed (with an offset of 1)", async function () {
+        await oracle.stubOverrideFilterOffset(true, 1);
+
+        const timestamp1 = 1000;
+        const timestamp2 = 2000;
+        const timestamp3 = 3000;
+        const timestamp4 = 4000;
+
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp1);
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp2);
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp3);
+        await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp4);
+
+        // Sanity check that the oracle needs an update
+        expect(await oracle.needsUpdate(updateData)).to.equal(true);
+
+        await oracle.stubPush(GRT, 2, 3, 5, timestamp3); // Offset of 1
+
+        expect(await oracle.needsUpdate(updateData)).to.equal(false);
     });
 });
 

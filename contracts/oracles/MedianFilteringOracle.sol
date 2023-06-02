@@ -70,7 +70,7 @@ contract MedianFilteringOracle is AbstractOracle, HistoricalOracle {
         }
 
         // Get the latest observation from the source oracle
-        ObservationLibrary.Observation memory sourceObservation = sourceOracle.getObservationAt(token, 0);
+        ObservationLibrary.Observation memory sourceObservation = sourceOracle.getObservationAt(token, offset);
 
         // Get our latest observation
         ObservationLibrary.Observation memory observation = getLatestObservation(token);
