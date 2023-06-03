@@ -24,6 +24,7 @@
 - Update ObservationLibrary
   - Adds an ObservationMetadata struct: Includes the oracle address.
   - Adds a MetaObservation struct: Combines ObservationMetadata and Observation.
+- Add SortingLibrary: A library for sorting uint112 arrays.
 
 ### Accumulators
 - Update AbstractAccumulator
@@ -40,6 +41,10 @@
 - Add OffchainPriceAccumulator and OffchainLiquidityAccumulator: Allows for offchain data-feeds.
 - Add StaticPriceAccumulator and StaticLiquidityAccumulator: Allows accumulators to report constant values while remaining up-to-date without needing updates.
 - Add lending protocol interest rate accumulators for Compound v2, Compound III (Comet), Aave v2, and Aave v3: Allows for calculations of time-weighted average interest rates.
+- Add BalancerV2LiquidityAccumulator
+- Add BalancerV2WeightedPriceAccumulator
+- Add BalancerV2StablePriceAccumulator
+
 
 ### Oracles
 - Add HistoricalOracle: An abstract implementation of IHistoricalOracle, pulled out of AggregatedOracle for improved readability and extension.
@@ -47,10 +52,13 @@
 - Add CurrentAggregatorOracle: An IOracleAggregator implementation that functions similarly to accumulators, updating based on price change percentages and heartbeats.
 - Add PeriodicPriceAccumulationOracle: An oracle contract similar to PeriodicAccumulationOracle, but with liquidity as constants to save gas.
 - Add AbstractAggregatorOracle: An abstract implementation of IOracleAggregator, pulled out of AggregatedOracle so that different aggregator contracts can share common logic.
+- Fill buffer metadata space to allow for extension and future use.
+- Add HistoricalAggregatorOracle: An abstract oracle that aggregates historical observations from another oracle that implements IHistoricalOracle.
+- Add MedianFilteringOracle: An oracle that performs median filtering on the price and liquidity of another oracle that implements IHistoricalOracle.
+- Add PriceVolatilityOracle: An oracle that calculates and stores the historical price volatility (using log returns) of another oracle implementing IHistoricalOracle, with the help of VolatilityOracleView.
 ####  Oracle views
 - Add AccumulatorOracleView: An oracle contract that delegates to the oracle functionality of underlying price and liquidity accumulators.
 - Add VolatilityOracleView: A volatility oracle view contract that uses data from an IHistoricalOracle implementation to calculate metrics relating to historical price volatility.
-- Fill buffer metadata space to allow for extension and future use.
 
 ### Strategies
 #### Aggregation strategies
