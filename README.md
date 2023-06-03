@@ -1,8 +1,8 @@
 # Adrastia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![5129 out of 5129 tests passing](https://img.shields.io/badge/tests-5129/5129%20passing-brightgreen.svg?style=flat-square)
-![test-coverage 100%](https://img.shields.io/badge/test%20coverage-100%25-brightgreen.svg?style=flat-square)
+![5698 out of 5698 tests passing](https://img.shields.io/badge/tests-5698/5698%20passing-brightgreen.svg?style=flat-square)
+![test-coverage >99%](https://img.shields.io/badge/test%20coverage-%3E99%25-brightgreen.svg?style=flat-square)
 
 Adrastia Core is a set of Solidity smart contracts for building EVM oracle solutions.
 
@@ -65,13 +65,14 @@ Assuming the presence of arbitrageurs, MEV, on/off ramps and bridges, and someon
 
 ### Requirements
 
-- node: v14 or later
+- node: v16 or later
 - yarn
 - git
 
 ### Recommendations
 
 - Operating system: Linux (Fedora is used for development and testing)
+- RAM: 16GB or more (running the full test suite can consume up to 8GB of RAM)
 
 ### Procedure
 
@@ -92,6 +93,20 @@ cd adrastia-core
 ```console
 yarn install --lock-file
 ```
+
+4. Configure the environment variables
+
+```console
+cp .env.example .env
+```
+Remember to fill out the `.env` file with the correct values.
+
+5. (Optional) Configure Node.js to use up to 8GB of RAM for the test suite
+
+```console
+export NODE_OPTIONS="--max-old-space-size=8192"
+```
+Note: This command must be run with every new terminal instance. It's only needed for running the full test suite.
 
 ## Usage
 

@@ -2,6 +2,7 @@
 pragma solidity =0.8.13;
 
 import "./AbstractAggregator.sol";
+import "../../libraries/SortingLibrary.sol";
 
 /**
  * @title MedianAggregator
@@ -12,6 +13,8 @@ import "./AbstractAggregator.sol";
  * median-based aggregation.
  */
 contract MedianAggregator is AbstractAggregator {
+    using SortingLibrary for uint112[];
+
     /**
      * @notice Aggregates the observations by taking the median price and the sum of the token and quote token
      * liquidity.
@@ -49,7 +52,7 @@ contract MedianAggregator is AbstractAggregator {
             sumQuoteTokenLiquidity += observations[i].data.quoteTokenLiquidity;
         }
 
-        quickSort(prices, 0, int256(length - 1));
+        prices.quickSort(0, int256(length - 1));
 
         // Take the median price
         uint256 medianIndex = length / 2;
@@ -62,73 +65,5 @@ contract MedianAggregator is AbstractAggregator {
         }
 
         return prepareResult(medianPrice, sumTokenLiquidity, sumQuoteTokenLiquidity);
-    }
-
-    /**
-     * @notice Sorts the array of prices using the quick sort algorithm.
-     *
-     * @dev This function is used internally by the aggregateObservations function.
-     *
-     * @param prices The array of prices to sort.
-     * @param left The left boundary of the sorting range.
-     * @param right The right boundary of the sorting range.
-     */
-    function quickSort(uint112[] memory prices, int256 left, int256 right) internal pure {
-        if (right - left <= 10) {
-            insertionSort(prices, left, right);
-            return;
-        }
-
-        int256 i = left;
-        int256 j = right;
-
-        // The following is commented out because it is not possible for i to be equal to j at this point.
-        // if (i == j) return;
-
-        uint256 pivotIndex = uint256(left + (right - left) / 2);
-        uint256 pivotPrice = prices[pivotIndex];
-
-        while (i <= j) {
-            while (prices[uint256(i)] < pivotPrice) {
-                i = i + 1;
-            }
-            while (pivotPrice < prices[uint256(j)]) {
-                j = j - 1;
-            }
-            if (i <= j) {
-                (prices[uint256(i)], prices[uint256(j)]) = (prices[uint256(j)], prices[uint256(i)]);
-                i = i + 1;
-                j = j - 1;
-            }
-        }
-
-        if (left < j) {
-            quickSort(prices, left, j);
-        }
-        if (i < right) {
-            quickSort(prices, i, right);
-        }
-    }
-
-    /**
-     * @notice Sorts the array of prices using the insertion sort algorithm.
-     *
-     * @dev This function is used internally by the quickSort function for smaller sorting ranges.
-     *
-     * @param prices The array of prices to sort.
-     * @param left The left boundary of the sorting range.
-     * @param right The right boundary of the sorting range.
-     */
-    function insertionSort(uint112[] memory prices, int256 left, int256 right) internal pure {
-        for (int256 i = left + 1; i <= right; i = i + 1) {
-            uint112 key = prices[uint256(i)];
-            int256 j = i - 1;
-
-            while (j >= left && prices[uint256(j)] > key) {
-                prices[uint256(j + 1)] = prices[uint256(j)];
-                j = j - 1;
-            }
-            prices[uint256(j + 1)] = key;
-        }
     }
 }
