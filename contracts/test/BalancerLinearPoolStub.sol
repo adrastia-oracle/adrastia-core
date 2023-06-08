@@ -6,6 +6,8 @@ import {ILinearPool, IBasePool} from "../accumulators/proto/balancer/BalancerV2L
 contract BalancerLinearPoolStub is IBasePool, ILinearPool {
     bool internal recoveryMode;
 
+    bool internal supportsRecoveryMode;
+
     uint256 internal rate;
 
     uint256[] internal scalingFactors;
@@ -20,6 +22,8 @@ contract BalancerLinearPoolStub is IBasePool, ILinearPool {
         poolId = poolId_;
         mainToken = mainToken_;
         mainIndex = mainIndex_;
+
+        supportsRecoveryMode = true;
     }
 
     function getPoolId() external view returns (bytes32) {
@@ -27,6 +31,8 @@ contract BalancerLinearPoolStub is IBasePool, ILinearPool {
     }
 
     function inRecoveryMode() external view returns (bool) {
+        if (!supportsRecoveryMode) revert();
+
         return recoveryMode;
     }
 
@@ -56,5 +62,9 @@ contract BalancerLinearPoolStub is IBasePool, ILinearPool {
 
     function stubSetRate(uint256 newRate) external {
         rate = newRate;
+    }
+
+    function stubSetRecoveryModeSupported(bool supported) external {
+        supportsRecoveryMode = supported;
     }
 }

@@ -367,6 +367,12 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
+                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
                 it("Should return false when the token is the zero address", async function () {
                     expect(
                         await accumulator.canUpdate(ethers.utils.hexZeroPad(ethers.constants.AddressZero, 32))
@@ -459,6 +465,12 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
+                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
                 it("Should return false when the token is the zero address", async function () {
                     expect(
                         await accumulator.canUpdate(ethers.utils.hexZeroPad(ethers.constants.AddressZero, 32))
@@ -541,6 +553,12 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                 });
 
                 it("Should return true when given a token that's in the pool", async function () {
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
@@ -1023,6 +1041,44 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
 
                 it("Reverts if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchPrice(BAL)).to.be.revertedWith("TokenNotFound");
+                });
+
+                it("Doesn't revert if none of the pools supports recovery mode", async function () {
+                    const wethBalance = ethers.utils.parseUnits("1000.0", 18);
+                    const usdcBalance = ethers.utils.parseUnits("1000.0", 6);
+
+                    await vault.stubSetBalance(wethPoolId, WETH, wethBalance);
+                    await vault.stubSetBalance(usdcPoolId, USDC, usdcBalance);
+
+                    await pool.stubSetRecoveryModeSupported(false);
+
+                    if (wethLinearPool !== undefined) {
+                        const linearPoolId = await wethLinearPool.getPoolId();
+
+                        await wethLinearPool.stubSetRecoveryModeSupported(false);
+
+                        await wethLinearPool.stubSetRate(wethLinearPoolRate);
+                        await vault.stubSetBalance(linearPoolId, WETH, wethBalance);
+                        await vault.stubSetBalance(poolId, wethLinearPool.address, wethBalance);
+                    }
+                    if (usdcLinearPool !== undefined) {
+                        const linearPoolId = await usdcLinearPool.getPoolId();
+
+                        await usdcLinearPool.stubSetRecoveryModeSupported(false);
+
+                        await usdcLinearPool.stubSetRate(usdcLinearPoolRate);
+                        await vault.stubSetBalance(linearPoolId, USDC, usdcBalance);
+                        // Note: We multiply the balance by 10^12 because the linear pool has 18 decimals
+                        await vault.stubSetBalance(
+                            poolId,
+                            usdcLinearPool.address,
+                            usdcBalance.mul(BigNumber.from(10).pow(12))
+                        );
+                    }
+
+                    await pool.stubSetAmplificationParameter(DEFAULT_AMPLIFICATION, false);
+
+                    await expect(accumulator.stubFetchPrice(WETH)).to.not.be.reverted;
                 });
             }
 

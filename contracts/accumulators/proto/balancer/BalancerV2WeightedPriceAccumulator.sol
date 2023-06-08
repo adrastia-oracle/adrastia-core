@@ -71,7 +71,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        if (IBasePool(poolAddress).inRecoveryMode()) {
+        if (inRecoveryMode(poolAddress)) {
             // The pool is in recovery mode
             return false;
         }
@@ -89,6 +89,15 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         }
 
         return super.canUpdate(data);
+    }
+
+    function inRecoveryMode(address pool) internal view returns (bool) {
+        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
+        if (success && data.length == 32) {
+            return abi.decode(data, (bool));
+        }
+
+        return false; // Doesn't implement the function
     }
 
     function findTokenIndex(address[] memory tokens, address token) internal pure returns (uint256) {
@@ -111,7 +120,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
      */
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
         // Ensure that the pool is not in recovery mode
-        if (IBasePool(poolAddress).inRecoveryMode()) {
+        if (inRecoveryMode(poolAddress)) {
             revert PoolInRecoveryMode(poolAddress);
         }
 

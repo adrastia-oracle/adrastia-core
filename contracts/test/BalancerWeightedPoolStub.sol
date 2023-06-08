@@ -6,6 +6,8 @@ import {IBasePool, IWeightedPool} from "../accumulators/proto/balancer/BalancerV
 contract BalancerWeightedPoolStub is IBasePool, IWeightedPool {
     bool internal recoveryMode;
 
+    bool internal supportsRecoveryMode;
+
     bytes32 internal immutable poolId;
 
     uint256[] internal weights;
@@ -14,6 +16,8 @@ contract BalancerWeightedPoolStub is IBasePool, IWeightedPool {
         recoveryMode = false;
         weights = weights_;
         poolId = poolId_;
+
+        supportsRecoveryMode = true;
     }
 
     function getPoolId() external view returns (bytes32) {
@@ -21,6 +25,8 @@ contract BalancerWeightedPoolStub is IBasePool, IWeightedPool {
     }
 
     function inRecoveryMode() external view returns (bool) {
+        if (!supportsRecoveryMode) revert();
+
         return recoveryMode;
     }
 
@@ -30,5 +36,9 @@ contract BalancerWeightedPoolStub is IBasePool, IWeightedPool {
 
     function stubSetRecoveryMode(bool active) external {
         recoveryMode = active;
+    }
+
+    function stubSetRecoveryModeSupported(bool supported) external {
+        supportsRecoveryMode = supported;
     }
 }

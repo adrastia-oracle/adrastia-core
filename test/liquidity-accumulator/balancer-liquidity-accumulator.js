@@ -314,6 +314,12 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
+                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
                 it("Should return false when the token is the zero address", async function () {
                     expect(
                         await accumulator.canUpdate(ethers.utils.hexZeroPad(ethers.constants.AddressZero, 32))
@@ -388,6 +394,12 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                 });
 
                 it("Should return true when given a token that's in the pool", async function () {
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
@@ -474,6 +486,12 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                 });
 
                 it("Should return true when given a token that's in the pool", async function () {
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
@@ -687,6 +705,19 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     const liquidity = await accumulator.stubFetchLiquidity(WETH);
                     expect(liquidity[0]).to.equal(wethWholeTokenLiquidity);
                     expect(liquidity[1]).to.equal(usdcWholeTokenLiquidity);
+                });
+
+                it("Doesn't revert if the pool doesn't support recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+                    await vault.stubSetBalance(poolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(poolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
                 });
             });
 
@@ -1028,6 +1059,23 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                 it("Should revert if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchLiquidity(BAL)).to.be.revertedWith("TokenNotFound");
                 });
+
+                it("Doesn't revert if none of the pools support recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+                    await linearPool.stubSetRecoveryModeSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const wethLinearPoolId = await linearPool.getPoolId();
+
+                    await vault.stubSetBalance(wethLinearPoolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(poolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
             });
 
             describe("Using a 50/50 pool with the quote token being inside of a linear pool", function () {
@@ -1220,6 +1268,23 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
 
                 it("Should revert if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchLiquidity(BAL)).to.be.revertedWith("TokenNotFound");
+                });
+
+                it("Doesn't revert if none of the pools support recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+                    await linearPool.stubSetRecoveryModeSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const usdcLinearPoolId = await linearPool.getPoolId();
+
+                    await vault.stubSetBalance(poolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(usdcLinearPoolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
                 });
             });
 
@@ -1449,6 +1514,25 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
 
                 it("Should revert if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchLiquidity(BAL)).to.be.revertedWith("TokenNotFound");
+                });
+
+                it("Doesn't revert if none of the pools support recovery mode", async function () {
+                    await pool.stubSetRecoveryModeSupported(false);
+                    await wethLinearPool.stubSetRecoveryModeSupported(false);
+                    await usdcLinearPool.stubSetRecoveryModeSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const wethLinearPoolId = await wethLinearPool.getPoolId();
+                    const usdcLinearPoolId = await usdcLinearPool.getPoolId();
+
+                    await vault.stubSetBalance(wethLinearPoolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(usdcLinearPoolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
                 });
             });
 

@@ -94,7 +94,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
             return false;
         }
 
-        if (IBasePool(poolAddress).inRecoveryMode()) {
+        if (inRecoveryMode(poolAddress)) {
             // The pool is in recovery mode
             return false;
         }
@@ -108,7 +108,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
         if (quoteTokenIsWrapped) {
             // Check if the quote token linear pool is in recovery mode
-            if (IBasePool(tokens[quoteTokenIndex]).inRecoveryMode()) {
+            if (inRecoveryMode(tokens[quoteTokenIndex])) {
                 // The quote token linear pool is in recovery mode
                 return false;
             }
@@ -116,7 +116,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
         if (tokenIsWrapped) {
             // Check if the token linear pool is in recovery mode
-            if (IBasePool(tokens[tokenIndex]).inRecoveryMode()) {
+            if (inRecoveryMode(tokens[tokenIndex])) {
                 // The token linear pool is in recovery mode
                 return false;
             }
@@ -131,6 +131,15 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
     function liquidityDecimals() public view virtual override returns (uint8) {
         return _liquidityDecimals;
+    }
+
+    function inRecoveryMode(address pool) internal view returns (bool) {
+        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
+        if (success && data.length == 32) {
+            return abi.decode(data, (bool));
+        }
+
+        return false; // Doesn't implement the function
     }
 
     function findTokenIndex(
@@ -164,7 +173,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         // Ensure that the pool is not in recovery mode
-        if (IBasePool(poolAddress).inRecoveryMode()) {
+        if (inRecoveryMode(poolAddress)) {
             revert PoolInRecoveryMode(poolAddress);
         }
 
@@ -188,7 +197,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
             // Token balance is for the wrapped token, get the balance of the underlying token
 
             // Ensure that the token linear pool is not in recovery mode
-            if (IBasePool(tokens[tokenIndex]).inRecoveryMode()) {
+            if (inRecoveryMode(tokens[tokenIndex])) {
                 revert PoolInRecoveryMode(tokens[tokenIndex]);
             }
 
@@ -211,7 +220,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
             // Token balance is for the wrapped token, get the balance of the underlying token
 
             // Ensure that the quote token linear pool is not in recovery mode
-            if (IBasePool(tokens[quoteTokenIndex]).inRecoveryMode()) {
+            if (inRecoveryMode(tokens[quoteTokenIndex])) {
                 revert PoolInRecoveryMode(tokens[quoteTokenIndex]);
             }
 
