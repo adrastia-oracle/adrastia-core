@@ -8,6 +8,8 @@ import {IStablePool, IBasePool} from "../accumulators/proto/balancer/BalancerV2S
 contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
     bool internal recoveryMode;
 
+    bool internal supportsRecoveryMode;
+
     bool internal hasBptToken;
 
     uint256 internal bptIndex;
@@ -25,6 +27,8 @@ contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
     constructor(bytes32 poolId_, uint256[] memory scalingFactors_) ERC20("BPT", "BPT") {
         poolId = poolId_;
         scalingFactors = scalingFactors_;
+
+        supportsRecoveryMode = true;
     }
 
     function getBptIndex() external view returns (uint256) {
@@ -38,6 +42,8 @@ contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
     }
 
     function inRecoveryMode() external view returns (bool) {
+        if (!supportsRecoveryMode) revert();
+
         return recoveryMode;
     }
 
@@ -77,5 +83,9 @@ contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
+    }
+
+    function stubSetRecoveryModeSupported(bool supported) external {
+        supportsRecoveryMode = supported;
     }
 }

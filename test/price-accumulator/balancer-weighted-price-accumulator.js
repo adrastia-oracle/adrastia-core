@@ -128,6 +128,12 @@ function describeBalancerWeightedPriceAccumulatorTests(contractName, averagingSt
                 expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
             });
 
+            it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
+                await pool.stubSetRecoveryModeSupported(false);
+
+                expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+            });
+
             it("Should return false when the token is the zero address", async function () {
                 expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(ethers.constants.AddressZero, 32))).to.equal(
                     false
@@ -803,6 +809,15 @@ function describeBalancerWeightedPriceAccumulatorTests(contractName, averagingSt
 
             it("Should revert if the token is not in the pool", async function () {
                 await expect(accumulator.stubFetchPrice(BAL)).to.be.revertedWith("TokenNotFound");
+            });
+
+            it("Doesn't revert if the pool doesn't support recovery mode", async function () {
+                await vault.stubSetBalance(poolId, WETH, ethers.utils.parseUnits("1000.0", 18));
+                await vault.stubSetBalance(poolId, USDC, ethers.utils.parseUnits("1000.0", 6));
+
+                await pool.stubSetRecoveryModeSupported(false);
+
+                await expect(accumulator.stubFetchPrice(WETH)).to.not.be.reverted;
             });
         });
     });
