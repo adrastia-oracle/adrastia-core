@@ -1555,9 +1555,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1589,9 +1593,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -1625,9 +1633,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
@@ -1657,9 +1669,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
@@ -1690,9 +1706,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
@@ -1723,9 +1743,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, expectedTokenLiquidity, expectedQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
 
@@ -2146,6 +2170,8 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, observationTime);
 
+        expect(receipt).to.emit(oracle, "AggregationPerformed").withArgs(token, observationTime, 1);
+
         const updateTime = await blockTimestamp(receipt.blockNumber);
 
         // Expect that the new observation is what we expect
@@ -2222,9 +2248,13 @@ describe("PeriodicAggregatorOracle#update w/ 2 underlying oracle", function () {
         const totalTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
         const totalQuoteTokenLiquidity = BigNumber.from(2).pow(112).sub(1);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)), "Update log")
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 2);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2268,9 +2298,13 @@ describe("PeriodicAggregatorOracle#update w/ 2 underlying oracle", function () {
         const totalTokenLiquidity = tokenLiquidity.mul(2);
         const totalQuoteTokenLiquidity = quoteTokenLiquidity.mul(2);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 2);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2322,9 +2356,13 @@ describe("PeriodicAggregatorOracle#update w/ 2 underlying oracle", function () {
         // = ~1.99 => looks good
         const expectedPrice = harmonicMean([price1, price2], [quoteTokenLiquidity1, quoteTokenLiquidity2]);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, expectedPrice, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 2);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2410,9 +2448,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 general underlying oracle and one
         const totalTokenLiquidity = tokenLiquidity.mul(2);
         const totalQuoteTokenLiquidity = quoteTokenLiquidity.mul(2);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 2);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2455,9 +2497,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 general underlying oracle and one
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2577,9 +2623,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum t
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2692,9 +2742,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and a minimum q
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2801,9 +2855,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and an allowed 
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2834,9 +2892,13 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and an allowed 
 
         await hre.timeAndMine.setTimeNextBlock(timestamp);
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)
@@ -2924,9 +2986,13 @@ describe("PeriodicAggregatorOracle#update w/ 2 underlying oracles but one failin
         const totalTokenLiquidity = tokenLiquidity;
         const totalQuoteTokenLiquidity = quoteTokenLiquidity;
 
-        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32)))
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
             .to.emit(oracle, "Updated")
             .withArgs(token, price, totalTokenLiquidity, totalQuoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
 
         expect(await underlyingOracle1.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
             BigNumber.from(1)

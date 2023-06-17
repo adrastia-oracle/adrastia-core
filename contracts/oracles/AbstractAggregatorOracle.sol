@@ -19,6 +19,14 @@ abstract contract AbstractAggregatorOracle is
         address oracle;
     }
 
+    /**
+     * @notice An event emitted when data is aggregated.
+     * @param token The token for which the data is aggregated.
+     * @param tick The identifier of the aggregation iteration (i.e. timestamp) at which the data is aggregated.
+     * @param numDataPoints The number of data points (i.e. underlying oracle responses) aggregated.
+     */
+    event AggregationPerformed(address indexed token, uint256 indexed tick, uint256 numDataPoints);
+
     IAggregationStrategy internal immutable generalAggregationStrategy;
 
     IValidationStrategy internal immutable generalValidationStrategy;
@@ -311,6 +319,8 @@ abstract contract AbstractAggregatorOracle is
         );
 
         if (validResponses >= _minimumResponses(token)) {
+            emit AggregationPerformed(token, block.timestamp, validResponses);
+
             push(token, observation);
 
             return true;
