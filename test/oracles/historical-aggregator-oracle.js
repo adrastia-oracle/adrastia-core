@@ -63,7 +63,12 @@ function getRandomBigNumber(nBits) {
     return randomValue;
 }
 
-async function deployMedianFilteringOracle(underlyingOracle = undefined) {
+async function deployMedianFilteringOracle(
+    underlyingOracle = undefined,
+    amount = undefined,
+    offset = undefined,
+    increment = undefined
+) {
     const oracleFactory = await ethers.getContractFactory("MedianFilteringOracleStub");
 
     if (underlyingOracle === undefined) {
@@ -75,12 +80,17 @@ async function deployMedianFilteringOracle(underlyingOracle = undefined) {
 
     await underlyingOracle.setObservationsCapacity(GRT, 100);
 
-    const oracle = await oracleFactory.deploy(
-        underlyingOracle.address,
-        DEFAULT_FILTER_AMOUNT,
-        DEFAULT_FILTER_OFFSET,
-        DEFAULT_FILTER_INCREMENT
-    );
+    if (amount === undefined) {
+        amount = DEFAULT_FILTER_AMOUNT;
+    }
+    if (offset === undefined) {
+        offset = DEFAULT_FILTER_OFFSET;
+    }
+    if (increment === undefined) {
+        increment = DEFAULT_FILTER_INCREMENT;
+    }
+
+    const oracle = await oracleFactory.deploy(underlyingOracle.address, amount, offset, increment);
     await oracle.deployed();
 
     return {
@@ -89,7 +99,12 @@ async function deployMedianFilteringOracle(underlyingOracle = undefined) {
     };
 }
 
-async function deployPriceVolatilityOracle(underlyingOracle = undefined) {
+async function deployPriceVolatilityOracle(
+    underlyingOracle = undefined,
+    amount = undefined,
+    offset = undefined,
+    increment = undefined
+) {
     const oracleFactory = await ethers.getContractFactory("PriceVolatilityOracleStub");
 
     if (underlyingOracle === undefined) {
@@ -105,12 +120,22 @@ async function deployPriceVolatilityOracle(underlyingOracle = undefined) {
     const volatilityView = await volatilityViewFactory.deploy(DEFAULT_VOLATILITY_PRECISION_DECIMALS);
     await volatilityView.deployed();
 
+    if (amount === undefined) {
+        amount = DEFAULT_FILTER_AMOUNT;
+    }
+    if (offset === undefined) {
+        offset = DEFAULT_FILTER_OFFSET;
+    }
+    if (increment === undefined) {
+        increment = DEFAULT_FILTER_INCREMENT;
+    }
+
     const oracle = await oracleFactory.deploy(
         volatilityView.address,
         underlyingOracle.address,
-        DEFAULT_FILTER_AMOUNT,
-        DEFAULT_FILTER_OFFSET,
-        DEFAULT_FILTER_INCREMENT,
+        amount,
+        offset,
+        increment,
         DEFAULT_VOLATILITY_MEAN_TYPE
     );
     await oracle.deployed();
@@ -275,56 +300,62 @@ function describeHistoricalAggregatorOracleTests(
             expect(await oracle.needsUpdate(updateData)).to.equal(false);
         });
 
-        it("Doesn't need an update if the underlying oracle has less than the required amount of observations (3 observations but offset is 1)", async function () {
+        it("Doesn't need an update if the underlying oracle has less than the required amount of observations (n-1 observations)", async function () {
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT) - 1;
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            }
+
+            expect(await oracle.needsUpdate(updateData)).to.equal(false);
+        });
+
+        it("Doesn't need an update if the underlying oracle has less than the required amount of observations (n observations but offset is 1)", async function () {
             const historicalOracleFactory = await ethers.getContractFactory("HistoricalOracleStub");
-            const oracleFactory = await ethers.getContractFactory("MedianFilteringOracle");
 
             const underlyingOracle2 = await historicalOracleFactory.deploy(USDC);
             await underlyingOracle2.deployed();
 
             await underlyingOracle2.setObservationsCapacity(GRT, DEFAULT_FILTER_AMOUNT + 1);
 
-            const oracle2 = await oracleFactory.deploy(
-                underlyingOracle2.address,
-                DEFAULT_FILTER_AMOUNT,
-                1,
-                DEFAULT_FILTER_INCREMENT
-            );
+            const deployment = await deployFunc(underlyingOracle2, DEFAULT_FILTER_AMOUNT, 1, DEFAULT_FILTER_INCREMENT);
+            const oracle2 = deployment.oracle;
 
-            await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
+            }
 
             expect(await oracle2.needsUpdate(updateData)).to.equal(false);
         });
 
         it("Doesn't need an update if the underlying oracle has less than the required amount of observations (3 observations but increment is 2)", async function () {
             const historicalOracleFactory = await ethers.getContractFactory("HistoricalOracleStub");
-            const oracleFactory = await ethers.getContractFactory("MedianFilteringOracle");
 
             const underlyingOracle2 = await historicalOracleFactory.deploy(USDC);
             await underlyingOracle2.deployed();
 
             await underlyingOracle2.setObservationsCapacity(GRT, DEFAULT_FILTER_AMOUNT + 1);
 
-            const oracle2 = await oracleFactory.deploy(
-                underlyingOracle2.address,
-                DEFAULT_FILTER_AMOUNT,
-                DEFAULT_FILTER_OFFSET,
-                2
-            );
+            const deployment = await deployFunc(underlyingOracle2, DEFAULT_FILTER_AMOUNT, DEFAULT_FILTER_OFFSET, 2);
+            const oracle2 = deployment.oracle;
 
-            await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle2.stubPushNow(GRT, 2, 3, 5);
+            }
 
             expect(await oracle2.needsUpdate(updateData)).to.equal(false);
         });
 
         it("Doesn't need an update if the latest observation timestamp matches the latest observation timestamp of the underlying oracle", async function () {
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            }
 
             const latestObservationTimestamp = await underlyingOracle.lastUpdateTime(updateData);
 
@@ -337,9 +368,11 @@ function describeHistoricalAggregatorOracleTests(
         });
 
         it("Doesn't need an update if the latest observation timestamp is after the latest observation timestamp of the underlying oracle", async function () {
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            }
 
             const latestObservationTimestamp = await underlyingOracle.lastUpdateTime(updateData);
 
@@ -352,9 +385,11 @@ function describeHistoricalAggregatorOracleTests(
         });
 
         it("Needs an update if the latest observation timestamp is before the latest observation timestamp of the underlying oracle", async function () {
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            }
 
             const latestObservationTimestamp = await underlyingOracle.lastUpdateTime(updateData);
 
@@ -367,9 +402,11 @@ function describeHistoricalAggregatorOracleTests(
         });
 
         it("Needs an update if the underlying oracle has the required amount of observations", async function () {
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
-            await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            const observationsToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
+            for (let i = 0; i < observationsToPush; i++) {
+                await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
+            }
 
             expect(await oracle.needsUpdate(updateData)).to.equal(true);
         });
@@ -378,15 +415,17 @@ function describeHistoricalAggregatorOracleTests(
             const timestamp1 = 1000;
             const timestamp2 = 2000;
             const timestamp3 = 3000;
+            const timestamp4 = 3000;
 
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp1);
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp2);
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp3);
+            await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp4);
 
             // Sanity check that the oracle needs an update
             expect(await oracle.needsUpdate(updateData)).to.equal(true);
 
-            await oracle.stubPush(GRT, 2, 3, 5, timestamp3);
+            await oracle.stubPush(GRT, 2, 3, 5, timestamp4);
 
             expect(await oracle.needsUpdate(updateData)).to.equal(false);
         });
@@ -398,16 +437,18 @@ function describeHistoricalAggregatorOracleTests(
             const timestamp2 = 2000;
             const timestamp3 = 3000;
             const timestamp4 = 4000;
+            const timestamp5 = 5000;
 
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp1);
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp2);
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp3);
             await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp4);
+            await underlyingOracle.stubPush(GRT, 2, 3, 5, timestamp5);
 
             // Sanity check that the oracle needs an update
             expect(await oracle.needsUpdate(updateData)).to.equal(true);
 
-            await oracle.stubPush(GRT, 2, 3, 5, timestamp3); // Offset of 1
+            await oracle.stubPush(GRT, 2, 3, 5, timestamp4); // Offset of 1
 
             expect(await oracle.needsUpdate(updateData)).to.equal(false);
         });
@@ -444,7 +485,6 @@ function describeHistoricalAggregatorOracleTests(
         var underlyingOracleFactory;
 
         beforeEach(async function () {
-            oracleFactory = await ethers.getContractFactory("MedianFilteringOracleStub");
             underlyingOracleFactory = await ethers.getContractFactory("HistoricalOracleStub");
         });
 
@@ -552,7 +592,6 @@ function describeHistoricalAggregatorOracleTests(
         var underlyingOracleFactory;
 
         beforeEach(async function () {
-            oracleFactory = await ethers.getContractFactory("MedianFilteringOracleStub");
             underlyingOracleFactory = await ethers.getContractFactory("HistoricalOracleStub");
         });
 
@@ -704,8 +743,10 @@ function describeHistoricalAggregatorOracleTests(
         }
 
         it("Should not update if needsUpdate returns false", async function () {
+            const amountToPush = observationsRequiredForAmount(DEFAULT_FILTER_AMOUNT);
+
             // Push observations to the underlying oracle
-            for (var i = 0; i < DEFAULT_FILTER_AMOUNT; i++) {
+            for (var i = 0; i < amountToPush; i++) {
                 await underlyingOracle.stubPushNow(GRT, 2, 3, 5);
             }
 

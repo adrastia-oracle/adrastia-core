@@ -42,6 +42,33 @@ contract PriceVolatilityOracle is HistoricalAggregatorOracle {
         return _meanType();
     }
 
+    /// @inheritdoc AbstractOracle
+    function needsUpdate(bytes memory data) public view virtual override returns (bool) {
+        address token = abi.decode(data, (address));
+
+        IHistoricalOracle sourceOracle = _source();
+
+        // The volatility view needs `amount+1` observations to compute `amount` changes.
+        uint256 amount = _observationAmount() + 1;
+        uint256 offset = _observationOffset();
+        uint256 increment = _observationIncrement();
+
+        if (sourceOracle.getObservationsCount(token) <= (amount - 1) * increment + offset) {
+            // If the source oracle doesn't have enough observations, we can't update
+            return false;
+        }
+
+        // Get the latest observation from the source oracle
+        ObservationLibrary.Observation memory sourceObservation = sourceOracle.getObservationAt(token, offset);
+
+        // Get our latest observation
+        ObservationLibrary.Observation memory observation = getLatestObservation(token);
+
+        // We need an update if the source has a new observation
+        // Note: We must set our observation timestamp as the source's last observation timestamp for this to work
+        return sourceObservation.timestamp > observation.timestamp;
+    }
+
     function _volatilityView() internal view virtual returns (VolatilityOracleView) {
         return cView;
     }
