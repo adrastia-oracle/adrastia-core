@@ -2270,6 +2270,18 @@ describe("CurrentAggregatorOracle#update w/ 1 underlying oracle", function () {
     });
 
     it("Shouldn't update when the underlying oracle's price is 0", async () => {
+        // Deploy the aggregator with the default validation strategy
+        const constructorOverrides = {
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 6,
+            oracles: [underlyingOracle.address],
+        };
+        const oracleFactory = await ethers.getContractFactory("CurrentAggregatorOracleStub");
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides, 0, 0, 0, MaxUint256);
+
         const price = BigNumber.from(0);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity = ethers.utils.parseUnits("1", 18);
@@ -2306,6 +2318,18 @@ describe("CurrentAggregatorOracle#update w/ 1 underlying oracle", function () {
     });
 
     it("Shouldn't update when the underlying oracle's quote token liquidity is 0", async () => {
+        // Deploy the aggregator with the default validation strategy
+        const constructorOverrides = {
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 6,
+            oracles: [underlyingOracle.address],
+        };
+        const oracleFactory = await ethers.getContractFactory("CurrentAggregatorOracleStub");
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides, 0, 0, 0, MaxUint256);
+
         const price = ethers.utils.parseUnits("1", 18);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity = BigNumber.from(0);
@@ -2342,6 +2366,18 @@ describe("CurrentAggregatorOracle#update w/ 1 underlying oracle", function () {
     });
 
     it("Shouldn't update when the underlying oracle's price and quote token liquidity is 0", async () => {
+        // Deploy the aggregator with the default validation strategy
+        const constructorOverrides = {
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 6,
+            oracles: [underlyingOracle.address],
+        };
+        const oracleFactory = await ethers.getContractFactory("CurrentAggregatorOracleStub");
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides, 0, 0, 0, MaxUint256);
+
         const price = BigNumber.from(0);
         const tokenLiquidity = ethers.utils.parseUnits("1", 18);
         const quoteTokenLiquidity = BigNumber.from(0);

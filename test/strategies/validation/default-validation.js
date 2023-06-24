@@ -365,7 +365,7 @@ describe("DefaultValidation#validate", function () {
                                     );
 
                                     // We input junk to stubValidate because we override everything
-                                    expect(await validationStrategy.stubValidate(1, 1, 1)).to.equal(
+                                    expect(await validationStrategy.stubValidate(2, 2, 2)).to.equal(
                                         expectedReturn(
                                             sanityCheckTvlDistributionRatio,
                                             sanityCheckQuoteTokenLiquidity,

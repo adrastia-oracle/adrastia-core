@@ -15,6 +15,8 @@ import "./IValidationStrategy.sol";
  * Note that the minimum token liquidity value and the minimum quote token liquidity don't have any implicit units, but
  * the units for both the token and the quote token liquidity must be the same. Validation results may vary depending on
  * the units used by the caller.
+ *
+ * All observations with a price, token liquidity, or quote token liquidity of one or less are considered invalid.
  */
 contract DefaultValidation is IERC165, IValidationStrategy {
     /// @notice The number of decimals of the quote token.
@@ -89,6 +91,11 @@ contract DefaultValidation is IERC165, IValidationStrategy {
         uint256 tokenLiquidity,
         uint256 quoteTokenLiquidity
     ) internal view virtual returns (bool) {
+        if (price <= 1 || tokenLiquidity <= 1 || quoteTokenLiquidity <= 1) {
+            // Ignore any observations where any of the data points are less than or equal to one.
+            return false;
+        }
+
         return
             sanityCheckTokenLiquidityValue(price, tokenLiquidity) &&
             sanityCheckQuoteTokenLiquidity(quoteTokenLiquidity) &&

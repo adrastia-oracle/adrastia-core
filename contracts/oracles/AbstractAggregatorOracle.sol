@@ -377,12 +377,6 @@ abstract contract AbstractAggregatorOracle is
                 continue;
             }
 
-            if (oPrice <= 1 || oTokenLiquidity <= 1 || oQuoteTokenLiquidity <= 1) {
-                // Reject consultations where the price, token liquidity, or quote token liquidity is 0 or 1
-                // These values are typically reserved for errors and zero liquidity
-                continue;
-            }
-
             // Fix differing quote token decimal places (for price)
             if (theOracles[i].priceDecimals < pDecimals) {
                 // Scale up
@@ -412,10 +406,6 @@ abstract contract AbstractAggregatorOracle is
             }
 
             if (
-                // Check that the values are not zero
-                oPrice != 0 &&
-                oTokenLiquidity != 0 &&
-                oQuoteTokenLiquidity != 0 &&
                 // Check that the values are not too large
                 oPrice <= type(uint112).max &&
                 oTokenLiquidity <= type(uint112).max &&
