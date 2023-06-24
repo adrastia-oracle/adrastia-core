@@ -101,10 +101,10 @@ cp .env.example .env
 ```
 Remember to fill out the `.env` file with the correct values.
 
-5. (Optional) Configure Node.js to use up to 8GB of RAM for the test suite
+5. (Optional) Configure Node.js to use up to 16GB of RAM for the test suite
 
 ```console
-export NODE_OPTIONS="--max-old-space-size=8192"
+export NODE_OPTIONS="--max-old-space-size=16384"
 ```
 Note: This command must be run with every new terminal instance. It's only needed for running the full test suite.
 
