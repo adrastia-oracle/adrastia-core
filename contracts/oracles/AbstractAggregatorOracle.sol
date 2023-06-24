@@ -78,10 +78,6 @@ abstract contract AbstractAggregatorOracle is
             params.quoteTokenDecimals
         )
     {
-        require(
-            params.oracles.length > 0 || params.tokenSpecificOracles.length > 0,
-            "AbstractAggregatorOracle: MISSING_ORACLES"
-        );
         if (
             address(params.validationStrategy) != address(0) &&
             params.validationStrategy.quoteTokenDecimals() != params.quoteTokenDecimals

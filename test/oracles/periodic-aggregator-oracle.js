@@ -189,7 +189,7 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
         expect(await oracle.getOracles(grtOracle.token)).to.eql(grtOracles);
     });
 
-    it("Should revert if no underlying oracles are provided", async () => {
+    it("Should not revert if no underlying oracles are provided", async () => {
         const aggregationStrategy = await aggregationStrategyFactory.deploy();
         await aggregationStrategy.deployed();
 
@@ -211,7 +211,7 @@ describe("PeriodicAggregatorOracle#constructor", async function () {
                 PERIOD,
                 GRANULARITY
             )
-        ).to.be.revertedWith("AbstractAggregatorOracle: MISSING_ORACLES");
+        ).to.not.be.reverted;
     });
 
     it("Should revert if duplicate general oracles are provided", async () => {
