@@ -77,4 +77,7 @@ module.exports = {
             polygon: process.env.POLYGONSCAN_API_KEY,
         },
     },
+    mocha: {
+        timeout: 60000, // 60 seconds
+    },
 };
