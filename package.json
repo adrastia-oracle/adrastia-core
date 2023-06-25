@@ -60,7 +60,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "coverage": "hardhat coverage",
+    "coverage": "HARDHAT_HARDFORK=berlin hardhat coverage",
     "lint": "solhint 'contracts/**/*.sol'"
   }
 }

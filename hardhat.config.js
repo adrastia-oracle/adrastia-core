@@ -50,7 +50,7 @@ module.exports = {
     networks: {
         hardhat: {
             gas: 10000000,
-            hardfork: "berlin", // EIP 1559 leads to some gas cost issues with test cases
+            hardfork: process.env.HARDHAT_HARDFORK || "london",
             forking: {
                 url: process.env.ETHEREUM_URL || "",
                 blockNumber: 17500000,
