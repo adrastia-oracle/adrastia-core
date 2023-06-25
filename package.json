@@ -47,7 +47,7 @@
     "eth-gas-reporter": "^0.2.25",
     "ethereum-waffle": "4.0.0-alpha.0",
     "ethers": "^5.7.2",
-    "hardhat": "2.15.0",
+    "hardhat": "2.14.0",
     "hardhat-contract-sizer": "^2.10.0",
     "hardhat-gas-reporter": "^1.0.9",
     "hardhat-tracer": "^2.4.0",
