@@ -56,6 +56,8 @@
 - Add HistoricalAggregatorOracle: An abstract oracle that aggregates historical observations from another oracle that implements IHistoricalOracle.
 - Add MedianFilteringOracle: An oracle that performs median filtering on the price and liquidity of another oracle that implements IHistoricalOracle.
 - Add PriceVolatilityOracle: An oracle that calculates and stores the historical price volatility (using log returns) of another oracle implementing IHistoricalOracle, with the help of VolatilityOracleView.
+- Add AggregationPerformed event to the oracle aggregators.
+- Remove hardcoded minimum values for observations in the oracle aggregators. These checks are better served in validation strategies.
 ####  Oracle views
 - Add AccumulatorOracleView: An oracle contract that delegates to the oracle functionality of underlying price and liquidity accumulators.
 - Add VolatilityOracleView: A volatility oracle view contract that uses data from an IHistoricalOracle implementation to calculate metrics relating to historical price volatility.
