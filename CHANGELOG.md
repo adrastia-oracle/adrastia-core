@@ -44,7 +44,8 @@
 - Add BalancerV2LiquidityAccumulator
 - Add BalancerV2WeightedPriceAccumulator
 - Add BalancerV2StablePriceAccumulator
-
+- Add AlgebraPriceAccumulator
+- Add AlgebraLiquidityAccumulator
 
 ### Oracles
 - Add HistoricalOracle: An abstract implementation of IHistoricalOracle, pulled out of AggregatedOracle for improved readability and extension.
