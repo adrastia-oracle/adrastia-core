@@ -133,7 +133,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         return _liquidityDecimals;
     }
 
-    function inRecoveryMode(address pool) internal view returns (bool) {
+    function inRecoveryMode(address pool) internal view virtual returns (bool) {
         (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
         if (success && data.length == 32) {
             return abi.decode(data, (bool));
@@ -145,7 +145,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
     function findTokenIndex(
         address[] memory tokens,
         address token
-    ) internal view returns (bool, uint256, bool, uint256) {
+    ) internal view virtual returns (bool, uint256, bool, uint256) {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
             if (tokens[i] == token) {

@@ -91,7 +91,7 @@ contract AlgebraPriceAccumulator is PriceAccumulator {
         address quoteToken_,
         uint160 sqrtPriceX96,
         uint128 tokenAmount
-    ) internal pure returns (uint256 price) {
+    ) internal pure virtual returns (uint256 price) {
         // Calculate quoteAmount with better precision if it doesn't overflow when multiplied by itself
         if (sqrtPriceX96 <= type(uint128).max) {
             uint256 ratioX192 = uint256(sqrtPriceX96) * sqrtPriceX96;
@@ -106,7 +106,7 @@ contract AlgebraPriceAccumulator is PriceAccumulator {
         }
     }
 
-    function calculatePrice(address token) internal view returns (bool hasLiquidity, uint256 price) {
+    function calculatePrice(address token) internal view virtual returns (bool hasLiquidity, uint256 price) {
         uint128 wholeTokenAmount = computeWholeUnitAmount(token);
 
         address pool = computeAddress(token, quoteToken);
@@ -147,7 +147,7 @@ contract AlgebraPriceAccumulator is PriceAccumulator {
         return _price.toUint112();
     }
 
-    function computeAddress(address token, address _quoteToken) internal view returns (address pool) {
+    function computeAddress(address token, address _quoteToken) internal view virtual returns (address pool) {
         if (token > _quoteToken) {
             // Sort tokens so that the first token is the one with the lower address
             (token, _quoteToken) = (_quoteToken, token);
@@ -164,7 +164,7 @@ contract AlgebraPriceAccumulator is PriceAccumulator {
         );
     }
 
-    function computeWholeUnitAmount(address token) internal view returns (uint128 amount) {
+    function computeWholeUnitAmount(address token) internal view virtual returns (uint128 amount) {
         amount = uint128(10) ** IERC20Metadata(token).decimals();
     }
 }

@@ -91,7 +91,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         return super.canUpdate(data);
     }
 
-    function inRecoveryMode(address pool) internal view returns (bool) {
+    function inRecoveryMode(address pool) internal view virtual returns (bool) {
         (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
         if (success && data.length == 32) {
             return abi.decode(data, (bool));
@@ -100,7 +100,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         return false; // Doesn't implement the function
     }
 
-    function findTokenIndex(address[] memory tokens, address token) internal pure returns (uint256) {
+    function findTokenIndex(address[] memory tokens, address token) internal pure virtual returns (uint256) {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
             if (tokens[i] == token) {
@@ -153,7 +153,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         if (price == 0) return 1;
     }
 
-    function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {
+    function computeWholeUnitAmount(address token) internal view virtual returns (uint256 amount) {
         amount = uint256(10) ** IERC20Metadata(token).decimals();
     }
 }
