@@ -6,9 +6,19 @@ import "@openzeppelin-v4/contracts/token/ERC20/ERC20.sol";
 import {IStablePool, IBasePool} from "../accumulators/proto/balancer/BalancerV2StablePriceAccumulator.sol";
 
 contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
+    struct PauseState {
+        bool paused;
+        uint256 pauseWindowEndTime;
+        uint256 bufferPeriodEndTime;
+    }
+
     bool internal recoveryMode;
 
     bool internal supportsRecoveryMode;
+
+    bool internal supportsPausedState;
+
+    bool internal supportsPaused;
 
     bool internal hasBptToken;
 
@@ -24,11 +34,15 @@ contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
 
     bytes32 internal immutable poolId;
 
+    PauseState internal pauseState;
+
     constructor(bytes32 poolId_, uint256[] memory scalingFactors_) ERC20("BPT", "BPT") {
         poolId = poolId_;
         scalingFactors = scalingFactors_;
 
         supportsRecoveryMode = true;
+        supportsPausedState = true;
+        supportsPaused = true;
     }
 
     function getBptIndex() external view returns (uint256) {
@@ -39,6 +53,18 @@ contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
 
     function getPoolId() external view returns (bytes32) {
         return poolId;
+    }
+
+    function getPausedState() external view returns (bool, uint256, uint256) {
+        if (!supportsPausedState) revert();
+
+        return (pauseState.paused, pauseState.pauseWindowEndTime, pauseState.bufferPeriodEndTime);
+    }
+
+    function paused() external view returns (bool) {
+        if (!supportsPaused) revert();
+
+        return pauseState.paused;
     }
 
     function inRecoveryMode() external view returns (bool) {
@@ -87,5 +113,25 @@ contract BalancerStablePoolStub is IStablePool, IBasePool, ERC20 {
 
     function stubSetRecoveryModeSupported(bool supported) external {
         supportsRecoveryMode = supported;
+    }
+
+    function stubSetPausedStateSupported(bool supported) external {
+        supportsPausedState = supported;
+    }
+
+    function stubSetPausedSupported(bool supported) external {
+        supportsPaused = supported;
+    }
+
+    function stubSetPausedState(bool _paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime) external {
+        pauseState.paused = _paused;
+        pauseState.pauseWindowEndTime = pauseWindowEndTime;
+        pauseState.bufferPeriodEndTime = bufferPeriodEndTime;
+    }
+
+    function stubSetPaused(bool _paused) external {
+        pauseState.paused = _paused;
+        pauseState.pauseWindowEndTime = type(uint256).max;
+        pauseState.bufferPeriodEndTime = type(uint256).max;
     }
 }

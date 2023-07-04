@@ -17,7 +17,12 @@ interface IVault {
 interface IBasePool {
     function getPoolId() external view returns (bytes32);
 
-    function inRecoveryMode() external view returns (bool);
+    function getPausedState()
+        external
+        view
+        returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
+
+    function paused() external view returns (bool);
 }
 
 interface ILinearPool {
@@ -45,7 +50,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
     error TokenNotFound(address token);
 
-    error PoolInRecoveryMode(address pool);
+    error PoolIsPaused(address pool);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -94,7 +99,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
             return false;
         }
 
-        if (inRecoveryMode(poolAddress)) {
+        if (isPaused(poolAddress)) {
             // The pool is in recovery mode
             return false;
         }
@@ -108,7 +113,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
         if (quoteTokenIsWrapped) {
             // Check if the quote token linear pool is in recovery mode
-            if (inRecoveryMode(tokens[quoteTokenIndex])) {
+            if (isPaused(tokens[quoteTokenIndex])) {
                 // The quote token linear pool is in recovery mode
                 return false;
             }
@@ -116,7 +121,7 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
 
         if (tokenIsWrapped) {
             // Check if the token linear pool is in recovery mode
-            if (inRecoveryMode(tokens[tokenIndex])) {
+            if (isPaused(tokens[tokenIndex])) {
                 // The token linear pool is in recovery mode
                 return false;
             }
@@ -133,13 +138,20 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         return _liquidityDecimals;
     }
 
-    function inRecoveryMode(address pool) internal view virtual returns (bool) {
-        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
+    function isPaused(address pool) internal view virtual returns (bool) {
+        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.getPausedState.selector));
+        if (success && data.length == 96) {
+            (bool paused, , ) = abi.decode(data, (bool, uint256, uint256));
+
+            return paused;
+        }
+
+        (success, data) = pool.staticcall(abi.encodeWithSelector(IBasePool.paused.selector));
         if (success && data.length == 32) {
             return abi.decode(data, (bool));
         }
 
-        return false; // Doesn't implement the function
+        return false; // Doesn't implement any of the pause functions
     }
 
     function findTokenIndex(
@@ -173,8 +185,8 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
         bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         // Ensure that the pool is not in recovery mode
-        if (inRecoveryMode(poolAddress)) {
-            revert PoolInRecoveryMode(poolAddress);
+        if (isPaused(poolAddress)) {
+            revert PoolIsPaused(poolAddress);
         }
 
         address token = abi.decode(data, (address));
@@ -197,8 +209,8 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
             // Token balance is for the wrapped token, get the balance of the underlying token
 
             // Ensure that the token linear pool is not in recovery mode
-            if (inRecoveryMode(tokens[tokenIndex])) {
-                revert PoolInRecoveryMode(tokens[tokenIndex]);
+            if (isPaused(tokens[tokenIndex])) {
+                revert PoolIsPaused(tokens[tokenIndex]);
             }
 
             // Get the token wrapper pool ID
@@ -220,8 +232,8 @@ contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
             // Token balance is for the wrapped token, get the balance of the underlying token
 
             // Ensure that the quote token linear pool is not in recovery mode
-            if (inRecoveryMode(tokens[quoteTokenIndex])) {
-                revert PoolInRecoveryMode(tokens[quoteTokenIndex]);
+            if (isPaused(tokens[quoteTokenIndex])) {
+                revert PoolIsPaused(tokens[quoteTokenIndex]);
             }
 
             // Get the balances of the wrapper pool

@@ -367,8 +367,21 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Should return true when given a token that's in the pool, with the pool not supporting pause state", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
@@ -383,12 +396,25 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(USDC, 32))).to.equal(false);
                 });
 
-                it("Should return false when the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await pool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await pool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
@@ -465,8 +491,21 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Should return true when given a token that's in the pool, with the pool not supporting pausing (with pause state)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting pausing (with simple pausing)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting pausing (with any pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
@@ -481,21 +520,47 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(USDC, 32))).to.equal(false);
                 });
 
-                it("Should return false when the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await pool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return false when the linear pool is in recovery mode", async function () {
-                    await linearPool.stubSetRecoveryMode(true);
+                it("Should return false when the linear pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await linearPool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await linearPool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await pool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the linear pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
             });
@@ -556,8 +621,21 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Should return true when given a token that's in the pool, with the pool not supporting pause state", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
@@ -572,21 +650,47 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(USDC, 32))).to.equal(false);
                 });
 
-                it("Should return false when the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await pool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return false when the linear pool is in recovery mode", async function () {
-                    await linearPool.stubSetRecoveryMode(true);
+                it("Should return false when the linear pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await linearPool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await linearPool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await pool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the linear pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
             });
@@ -937,10 +1041,10 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     expectEqualsWithTolerance(price, expectedPrice, PRECISION_FACTOR);
                 });
 
-                it("Reverts if the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Reverts if the pool is paused", async function () {
+                    await pool.stubSetPaused(true);
 
-                    await expect(accumulator.stubFetchPrice(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                    await expect(accumulator.stubFetchPrice(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
                 it("Reverts if the token balance is zero", async function () {
@@ -1043,19 +1147,21 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     await expect(accumulator.stubFetchPrice(BAL)).to.be.revertedWith("TokenNotFound");
                 });
 
-                it("Doesn't revert if none of the pools supports recovery mode", async function () {
+                it("Doesn't revert if none of the pools supports pausing", async function () {
                     const wethBalance = ethers.utils.parseUnits("1000.0", 18);
                     const usdcBalance = ethers.utils.parseUnits("1000.0", 6);
 
                     await vault.stubSetBalance(wethPoolId, WETH, wethBalance);
                     await vault.stubSetBalance(usdcPoolId, USDC, usdcBalance);
 
-                    await pool.stubSetRecoveryModeSupported(false);
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     if (wethLinearPool !== undefined) {
                         const linearPoolId = await wethLinearPool.getPoolId();
 
-                        await wethLinearPool.stubSetRecoveryModeSupported(false);
+                        await wethLinearPool.stubSetPausedStateSupported(false);
+                        await wethLinearPool.stubSetPausedSupported(false);
 
                         await wethLinearPool.stubSetRate(wethLinearPoolRate);
                         await vault.stubSetBalance(linearPoolId, WETH, wethBalance);
@@ -1064,7 +1170,8 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
                     if (usdcLinearPool !== undefined) {
                         const linearPoolId = await usdcLinearPool.getPoolId();
 
-                        await usdcLinearPool.stubSetRecoveryModeSupported(false);
+                        await usdcLinearPool.stubSetPausedStateSupported(false);
+                        await usdcLinearPool.stubSetPausedSupported(false);
 
                         await usdcLinearPool.stubSetRate(usdcLinearPoolRate);
                         await vault.stubSetBalance(linearPoolId, USDC, usdcBalance);
@@ -1257,7 +1364,7 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
 
                 describeCommonTests();
 
-                it("Reverts if the token linear pool is in recovery mode", async function () {
+                it("Reverts if the token linear pool is paused", async function () {
                     const wethBalance = ethers.utils.parseUnits("1000.0", 18);
                     const usdcBalance = ethers.utils.parseUnits("1000.0", 6);
 
@@ -1286,9 +1393,9 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
 
                     await pool.stubSetAmplificationParameter(DEFAULT_AMPLIFICATION, false);
 
-                    await wethLinearPool.stubSetRecoveryMode(true);
+                    await wethLinearPool.stubSetPaused(true);
 
-                    await expect(accumulator.stubFetchPrice(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                    await expect(accumulator.stubFetchPrice(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
             });
 
@@ -1423,7 +1530,7 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
 
                 describeCommonTests();
 
-                it("Reverts if the quote token linear pool is in recovery mode", async function () {
+                it("Reverts if the quote token linear pool is paused", async function () {
                     const wethBalance = ethers.utils.parseUnits("1000.0", 18);
                     const usdcBalance = ethers.utils.parseUnits("1000.0", 6);
 
@@ -1452,9 +1559,9 @@ function describeBalancerStablePriceAccumulatorTests(contractName, averagingStra
 
                     await pool.stubSetAmplificationParameter(DEFAULT_AMPLIFICATION, false);
 
-                    await usdcLinearPool.stubSetRecoveryMode(true);
+                    await usdcLinearPool.stubSetPaused(true);
 
-                    await expect(accumulator.stubFetchPrice(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                    await expect(accumulator.stubFetchPrice(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
                 it("Should return 1 if the quote token linear pool's rate is 0", async function () {
