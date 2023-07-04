@@ -78,7 +78,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
     /// @param tokenB The second token of a pool, unsorted
     /// @param fee The fee level of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure returns (PoolKey memory) {
+    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure virtual returns (PoolKey memory) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
     }
@@ -91,7 +91,7 @@ contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
         address factory,
         bytes32 _initCodeHash,
         PoolKey memory key
-    ) internal pure returns (address pool) {
+    ) internal pure virtual returns (address pool) {
         require(key.token0 < key.token1);
         pool = address(
             uint160(

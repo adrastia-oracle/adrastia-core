@@ -314,8 +314,21 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Should return true when given a token that's in the pool, with the pool not supporting pause states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
@@ -330,12 +343,25 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(USDC, 32))).to.equal(false);
                 });
 
-                it("Should return false when the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Should return false when the pool paused (with pause states)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await pool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the pool paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await pool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
             });
@@ -397,8 +423,21 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Should return true when given a token that's in the pool, with the pool not supporting pause states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
@@ -413,21 +452,47 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(USDC, 32))).to.equal(false);
                 });
 
-                it("Should return false when the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await pool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return false when the linear pool is in recovery mode", async function () {
-                    await linearPool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await linearPool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the linear pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the linear pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
             });
@@ -489,8 +554,21 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return true when given a token that's in the pool, with the pool not supporting recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Should return true when given a token that's in the pool, with the pool not supporting pause states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return true when given a token that's in the pool, with the pool not supporting any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
@@ -505,21 +583,47 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(USDC, 32))).to.equal(false);
                 });
 
-                it("Should return false when the pool is in recovery mode", async function () {
-                    await pool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await pool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
 
-                it("Should return false when the linear pool is in recovery mode", async function () {
-                    await linearPool.stubSetRecoveryMode(true);
+                it("Should return false when the pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await pool.stubSetPaused(true);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
 
-                    // Sanity check: Returns true when recovery mode is off
-                    await linearPool.stubSetRecoveryMode(false);
+                    // Sanity check: Returns true when not paused
+                    await pool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the linear pool is paused (with pause state)", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
+                });
+
+                it("Should return false when the linear pool is paused (with simple pausing)", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(false);
+
+                    // Sanity check: Returns true when not paused
+                    await linearPool.stubSetPaused(false);
                     expect(await accumulator.canUpdate(ethers.utils.hexZeroPad(WETH, 32))).to.equal(true);
                 });
             });
@@ -707,8 +811,35 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(liquidity[1]).to.equal(usdcWholeTokenLiquidity);
                 });
 
-                it("Doesn't revert if the pool doesn't support recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
+                it("Doesn't revert if the pool doesn't support pause states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+                    await vault.stubSetBalance(poolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(poolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if the pool doesn't support simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+                    await vault.stubSetBalance(poolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(poolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if the pool doesn't support any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
 
                     const wethWholeTokenLiquidity = 1000;
                     const usdcWholeTokenLiquidity = 1000;
@@ -1051,18 +1182,63 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(liquidity[1]).to.equal(usdcWholeTokenLiquidity);
                 });
 
-                it("Should revert if the linear pool is in recovery mode", async function () {
-                    await linearPool.stubSetRecoveryMode(true);
-                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                it("Should revert if the linear pool is paused (with pause state)", async function () {
+                    await linearPool.stubSetPausedSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
+                });
+
+                it("Should revert if the linear pool is paused (with simple pausing)", async function () {
+                    await linearPool.stubSetPausedStateSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
                 it("Should revert if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchLiquidity(BAL)).to.be.revertedWith("TokenNotFound");
                 });
 
-                it("Doesn't revert if none of the pools support recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
-                    await linearPool.stubSetRecoveryModeSupported(false);
+                it("Doesn't revert if none of the pools support paused states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await linearPool.stubSetPausedStateSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const wethLinearPoolId = await linearPool.getPoolId();
+
+                    await vault.stubSetBalance(wethLinearPoolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(poolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if none of the pools support simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+                    await linearPool.stubSetPausedSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const wethLinearPoolId = await linearPool.getPoolId();
+
+                    await vault.stubSetBalance(wethLinearPoolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(poolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if none of the pools support any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await linearPool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
+                    await linearPool.stubSetPausedSupported(false);
 
                     const wethWholeTokenLiquidity = 1000;
                     const usdcWholeTokenLiquidity = 1000;
@@ -1261,18 +1437,63 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(liquidity[1]).to.equal(usdcWholeTokenLiquidity);
                 });
 
-                it("Should revert if the linear pool is in recovery mode", async function () {
-                    await linearPool.stubSetRecoveryMode(true);
-                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                it("Should revert if the linear pool is paused (with pause state)", async function () {
+                    await linearPool.stubSetPausedSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
+                });
+
+                it("Should revert if the linear pool is paused (with simple pausing)", async function () {
+                    await linearPool.stubSetPausedStateSupported(false);
+
+                    await linearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
                 it("Should revert if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchLiquidity(BAL)).to.be.revertedWith("TokenNotFound");
                 });
 
-                it("Doesn't revert if none of the pools support recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
-                    await linearPool.stubSetRecoveryModeSupported(false);
+                it("Doesn't revert if none of the pools support paused states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await linearPool.stubSetPausedStateSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const usdcLinearPoolId = await linearPool.getPoolId();
+
+                    await vault.stubSetBalance(poolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(usdcLinearPoolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if none of the pools support simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+                    await linearPool.stubSetPausedSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const usdcLinearPoolId = await linearPool.getPoolId();
+
+                    await vault.stubSetBalance(poolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(usdcLinearPoolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if none of the pools support any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await linearPool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
+                    await linearPool.stubSetPausedSupported(false);
 
                     const wethWholeTokenLiquidity = 1000;
                     const usdcWholeTokenLiquidity = 1000;
@@ -1496,30 +1717,101 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                     expect(liquidity[1]).to.equal(usdcWholeTokenLiquidity);
                 });
 
-                it("Should revert if the token linear pool is in recovery mode", async function () {
-                    await wethLinearPool.stubSetRecoveryMode(true);
-                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                it("Should revert if the token linear pool is paused (with pause state)", async function () {
+                    await wethLinearPool.stubSetPausedStateSupported(false);
+
+                    await wethLinearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
-                it("Should revert if the quote token linear pool is in recovery mode", async function () {
-                    await usdcLinearPool.stubSetRecoveryMode(true);
-                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                it("Should revert if the quote token linear pool is paused (with pause state)", async function () {
+                    await usdcLinearPool.stubSetPausedStateSupported(false);
+
+                    await usdcLinearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
-                it("Should revert if all of the linear pools are in recovery mode", async function () {
-                    await wethLinearPool.stubSetRecoveryMode(true);
-                    await usdcLinearPool.stubSetRecoveryMode(true);
-                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+                it("Should revert if all of the linear pools are paused (with pause state)", async function () {
+                    await wethLinearPool.stubSetPausedStateSupported(false);
+                    await usdcLinearPool.stubSetPausedStateSupported(false);
+
+                    await wethLinearPool.stubSetPaused(true);
+                    await usdcLinearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
+                });
+
+                it("Should revert if the token linear pool is paused (with simple pausing)", async function () {
+                    await wethLinearPool.stubSetPausedStateSupported(false);
+
+                    await wethLinearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
+                });
+
+                it("Should revert if the quote token linear pool is paused (with simple pausing)", async function () {
+                    await usdcLinearPool.stubSetPausedStateSupported(false);
+
+                    await usdcLinearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
+                });
+
+                it("Should revert if all of the linear pools are paused (with simple pausing)", async function () {
+                    await wethLinearPool.stubSetPausedStateSupported(false);
+                    await usdcLinearPool.stubSetPausedStateSupported(false);
+
+                    await wethLinearPool.stubSetPaused(true);
+                    await usdcLinearPool.stubSetPaused(true);
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
                 });
 
                 it("Should revert if the token is not in the pool", async function () {
                     await expect(accumulator.stubFetchLiquidity(BAL)).to.be.revertedWith("TokenNotFound");
                 });
 
-                it("Doesn't revert if none of the pools support recovery mode", async function () {
-                    await pool.stubSetRecoveryModeSupported(false);
-                    await wethLinearPool.stubSetRecoveryModeSupported(false);
-                    await usdcLinearPool.stubSetRecoveryModeSupported(false);
+                it("Doesn't revert if none of the pools support pause states", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await wethLinearPool.stubSetPausedStateSupported(false);
+                    await usdcLinearPool.stubSetPausedStateSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const wethLinearPoolId = await wethLinearPool.getPoolId();
+                    const usdcLinearPoolId = await usdcLinearPool.getPoolId();
+
+                    await vault.stubSetBalance(wethLinearPoolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(usdcLinearPoolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if none of the pools support simple pausing", async function () {
+                    await pool.stubSetPausedSupported(false);
+                    await wethLinearPool.stubSetPausedSupported(false);
+                    await usdcLinearPool.stubSetPausedSupported(false);
+
+                    const wethWholeTokenLiquidity = 1000;
+                    const usdcWholeTokenLiquidity = 1000;
+                    const wethLiquidity = ethers.utils.parseUnits(wethWholeTokenLiquidity.toString(), 18);
+                    const usdcLiquidity = ethers.utils.parseUnits(usdcWholeTokenLiquidity.toString(), 6);
+
+                    const wethLinearPoolId = await wethLinearPool.getPoolId();
+                    const usdcLinearPoolId = await usdcLinearPool.getPoolId();
+
+                    await vault.stubSetBalance(wethLinearPoolId, WETH, wethLiquidity);
+                    await vault.stubSetBalance(usdcLinearPoolId, USDC, usdcLiquidity);
+
+                    await expect(accumulator.stubFetchLiquidity(WETH)).to.not.be.reverted;
+                });
+
+                it("Doesn't revert if none of the pools support any pausing", async function () {
+                    await pool.stubSetPausedStateSupported(false);
+                    await wethLinearPool.stubSetPausedStateSupported(false);
+                    await usdcLinearPool.stubSetPausedStateSupported(false);
+                    await pool.stubSetPausedSupported(false);
+                    await wethLinearPool.stubSetPausedSupported(false);
+                    await usdcLinearPool.stubSetPausedSupported(false);
 
                     const wethWholeTokenLiquidity = 1000;
                     const usdcWholeTokenLiquidity = 1000;
@@ -2287,9 +2579,9 @@ function describeBalancerLiquidityAccumulatorTests(contractName, averagingStrate
                 });
             });
 
-            it("Should revert if the pool is in recovery mode", async function () {
-                await pool.stubSetRecoveryMode(true);
-                await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolInRecoveryMode");
+            it("Should revert if the pool is paused", async function () {
+                await pool.stubSetPaused(true);
+                await expect(accumulator.stubFetchLiquidity(WETH)).to.be.revertedWith("PoolIsPaused");
             });
 
             it("Should revert if the token is not in the pool", async function () {

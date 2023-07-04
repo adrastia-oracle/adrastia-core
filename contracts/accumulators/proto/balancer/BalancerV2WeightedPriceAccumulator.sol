@@ -15,7 +15,12 @@ interface IVault {
 }
 
 interface IBasePool {
-    function inRecoveryMode() external view returns (bool);
+    function getPausedState()
+        external
+        view
+        returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
+
+    function paused() external view returns (bool);
 }
 
 interface IWeightedPool {
@@ -37,7 +42,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
 
     error TokenNotFound(address token);
 
-    error PoolInRecoveryMode(address pool);
+    error PoolIsPaused(address pool);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -71,7 +76,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        if (inRecoveryMode(poolAddress)) {
+        if (isPaused(poolAddress)) {
             // The pool is in recovery mode
             return false;
         }
@@ -91,8 +96,15 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         return super.canUpdate(data);
     }
 
-    function inRecoveryMode(address pool) internal view returns (bool) {
-        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
+    function isPaused(address pool) internal view virtual returns (bool) {
+        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.getPausedState.selector));
+        if (success && data.length == 96) {
+            (bool paused, , ) = abi.decode(data, (bool, uint256, uint256));
+
+            return paused;
+        }
+
+        (success, data) = pool.staticcall(abi.encodeWithSelector(IBasePool.paused.selector));
         if (success && data.length == 32) {
             return abi.decode(data, (bool));
         }
@@ -100,7 +112,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         return false; // Doesn't implement the function
     }
 
-    function findTokenIndex(address[] memory tokens, address token) internal pure returns (uint256) {
+    function findTokenIndex(address[] memory tokens, address token) internal pure virtual returns (uint256) {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
             if (tokens[i] == token) {
@@ -120,8 +132,8 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
      */
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
         // Ensure that the pool is not in recovery mode
-        if (inRecoveryMode(poolAddress)) {
-            revert PoolInRecoveryMode(poolAddress);
+        if (isPaused(poolAddress)) {
+            revert PoolIsPaused(poolAddress);
         }
 
         address token = abi.decode(data, (address));
@@ -153,7 +165,7 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         if (price == 0) return 1;
     }
 
-    function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {
+    function computeWholeUnitAmount(address token) internal view virtual returns (uint256 amount) {
         amount = uint256(10) ** IERC20Metadata(token).decimals();
     }
 }

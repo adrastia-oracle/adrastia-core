@@ -67,7 +67,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         address quoteToken_,
         uint160 sqrtPriceX96,
         uint128 tokenAmount
-    ) internal pure returns (uint256 price) {
+    ) internal pure virtual returns (uint256 price) {
         // Calculate quoteAmount with better precision if it doesn't overflow when multiplied by itself
         if (sqrtPriceX96 <= type(uint128).max) {
             uint256 ratioX192 = uint256(sqrtPriceX96) * sqrtPriceX96;
@@ -91,7 +91,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
      * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
      *  places. If hasLiquidity equals false, the returned price will always equal 0.
      */
-    function calculateWeightedPrice(address token) internal view returns (bool hasLiquidity, uint256 price) {
+    function calculateWeightedPrice(address token) internal view virtual returns (bool hasLiquidity, uint256 price) {
         uint24[] memory _poolFees = poolFees;
 
         uint128 wholeTokenAmount = computeWholeUnitAmount(token);
@@ -156,7 +156,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
     /// @param tokenB The second token of a pool, unsorted
     /// @param fee The fee level of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
-    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure returns (PoolKey memory) {
+    function getPoolKey(address tokenA, address tokenB, uint24 fee) internal pure virtual returns (PoolKey memory) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return PoolKey({token0: tokenA, token1: tokenB, fee: fee});
     }
@@ -169,7 +169,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         address factory,
         bytes32 _initCodeHash,
         PoolKey memory key
-    ) internal pure returns (address pool) {
+    ) internal pure virtual returns (address pool) {
         require(key.token0 < key.token1);
         pool = address(
             uint160(
@@ -187,7 +187,7 @@ contract UniswapV3PriceAccumulator is PriceAccumulator {
         );
     }
 
-    function computeWholeUnitAmount(address token) internal view returns (uint128 amount) {
+    function computeWholeUnitAmount(address token) internal view virtual returns (uint128 amount) {
         amount = uint128(10) ** IERC20Metadata(token).decimals();
     }
 }

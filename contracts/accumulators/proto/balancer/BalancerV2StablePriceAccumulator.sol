@@ -36,7 +36,12 @@ interface IBasePool {
      */
     function getScalingFactors() external view returns (uint256[] memory);
 
-    function inRecoveryMode() external view returns (bool);
+    function getPausedState()
+        external
+        view
+        returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime);
+
+    function paused() external view returns (bool);
 }
 
 interface ILinearPool {
@@ -65,7 +70,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
 
     error TokenNotFound(address token);
 
-    error PoolInRecoveryMode(address pool);
+    error PoolIsPaused(address pool);
     error AmplificationParameterUpdating();
 
     constructor(
@@ -119,7 +124,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        if (inRecoveryMode(poolAddress)) {
+        if (isPaused(poolAddress)) {
             // The pool is in recovery mode
             return false;
         }
@@ -133,7 +138,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
 
         if (quoteTokenIsWrapped) {
             // Check if the quote token linear pool is in recovery mode
-            if (inRecoveryMode(tokens[quoteTokenIndex])) {
+            if (isPaused(tokens[quoteTokenIndex])) {
                 // The quote token linear pool is in recovery mode
                 return false;
             }
@@ -141,7 +146,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
 
         if (tokenIsWrapped) {
             // Check if the token linear pool is in recovery mode
-            if (inRecoveryMode(tokens[tokenIndex])) {
+            if (isPaused(tokens[tokenIndex])) {
                 // The token linear pool is in recovery mode
                 return false;
             }
@@ -158,8 +163,15 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         return super.canUpdate(data);
     }
 
-    function inRecoveryMode(address pool) internal view returns (bool) {
-        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.inRecoveryMode.selector));
+    function isPaused(address pool) internal view virtual returns (bool) {
+        (bool success, bytes memory data) = pool.staticcall(abi.encodeWithSelector(IBasePool.getPausedState.selector));
+        if (success && data.length == 96) {
+            (bool paused, , ) = abi.decode(data, (bool, uint256, uint256));
+
+            return paused;
+        }
+
+        (success, data) = pool.staticcall(abi.encodeWithSelector(IBasePool.paused.selector));
         if (success && data.length == 32) {
             return abi.decode(data, (bool));
         }
@@ -170,7 +182,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
     function findTokenIndex(
         address[] memory tokens,
         address token
-    ) internal view returns (bool, uint256, bool, uint256) {
+    ) internal view virtual returns (bool, uint256, bool, uint256) {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
             if (tokens[i] == token) {
@@ -203,8 +215,8 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
      */
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
         // Ensure that the pool is not in recovery mode
-        if (inRecoveryMode(poolAddress)) {
-            revert PoolInRecoveryMode(poolAddress);
+        if (isPaused(poolAddress)) {
+            revert PoolIsPaused(poolAddress);
         }
 
         address token = abi.decode(data, (address));
@@ -227,8 +239,8 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
             // The token is inside a linear pool, so we need to convert the amount of the token to the amount of BPT
 
             // Ensure that the token linear pool is not in recovery mode
-            if (inRecoveryMode(tokens[tokenIndex])) {
-                revert PoolInRecoveryMode(tokens[tokenIndex]);
+            if (isPaused(tokens[tokenIndex])) {
+                revert PoolIsPaused(tokens[tokenIndex]);
             }
 
             ILinearPool linearPool = ILinearPool(tokens[tokenIndex]);
@@ -272,8 +284,8 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
             // quote token
 
             // Ensure that the quote token linear pool is not in recovery mode
-            if (inRecoveryMode(tokens[quoteTokenIndex])) {
-                revert PoolInRecoveryMode(tokens[quoteTokenIndex]);
+            if (isPaused(tokens[quoteTokenIndex])) {
+                revert PoolIsPaused(tokens[quoteTokenIndex]);
             }
 
             ILinearPool linearPool = ILinearPool(tokens[quoteTokenIndex]);
@@ -286,7 +298,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
         if (price == 0) return 1;
     }
 
-    function computeWholeUnitAmount(address token) internal view returns (uint256 amount) {
+    function computeWholeUnitAmount(address token) internal view virtual returns (uint256 amount) {
         amount = uint256(10) ** IERC20Metadata(token).decimals();
     }
 
@@ -294,7 +306,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
      * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
      * whether it needed scaling or not. The result is rounded down.
      */
-    function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure virtual returns (uint256) {
         return FixedPoint.divDown(amount, scalingFactor);
     }
 
@@ -302,7 +314,7 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
      * scaling or not.
      */
-    function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+    function _upscale(uint256 amount, uint256 scalingFactor) internal pure virtual returns (uint256) {
         // Upscale rounding wouldn't necessarily always go in the same direction: in a swap for example the balance of
         // token in should be rounded up, and that of token out rounded down. This is the only place where we round in
         // the same direction for all amounts, as the impact of this rounding is expected to be minimal (and there's no
@@ -314,7 +326,11 @@ contract BalancerV2StablePriceAccumulator is PriceAccumulator {
      * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
      * the `amounts` array.
      */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors, uint256 numTokens) internal pure {
+    function _upscaleArray(
+        uint256[] memory amounts,
+        uint256[] memory scalingFactors,
+        uint256 numTokens
+    ) internal pure virtual {
         for (uint256 i = 0; i < numTokens; ++i) {
             amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }

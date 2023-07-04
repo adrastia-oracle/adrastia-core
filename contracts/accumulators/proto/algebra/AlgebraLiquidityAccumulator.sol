@@ -71,7 +71,7 @@ contract AlgebraLiquidityAccumulator is LiquidityAccumulator {
         return _liquidityDecimals;
     }
 
-    function computeAddress(address token, address _quoteToken) internal view returns (address pool) {
+    function computeAddress(address token, address _quoteToken) internal view virtual returns (address pool) {
         if (token > _quoteToken) {
             // Sort tokens so that the first token is the one with the lower address
             (token, _quoteToken) = (_quoteToken, token);
