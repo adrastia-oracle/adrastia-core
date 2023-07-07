@@ -411,15 +411,22 @@ abstract contract AbstractAggregatorOracle is
                 oTokenLiquidity <= type(uint112).max &&
                 oQuoteTokenLiquidity <= type(uint112).max
             ) {
-                ObservationLibrary.MetaObservation memory observation = ObservationLibrary.MetaObservation({
-                    metadata: ObservationLibrary.ObservationMetadata({oracle: theOracles[i].oracle}),
-                    data: ObservationLibrary.Observation({
-                        price: uint112(oPrice),
-                        tokenLiquidity: uint112(oTokenLiquidity),
-                        quoteTokenLiquidity: uint112(oQuoteTokenLiquidity),
-                        timestamp: 0 // Not used
-                    })
-                });
+                ObservationLibrary.MetaObservation memory observation;
+
+                {
+                    bytes memory updateData = abi.encode(token);
+                    uint256 timestamp = IOracle(theOracles[i].oracle).lastUpdateTime(updateData);
+
+                    observation = ObservationLibrary.MetaObservation({
+                        metadata: ObservationLibrary.ObservationMetadata({oracle: theOracles[i].oracle}),
+                        data: ObservationLibrary.Observation({
+                            price: uint112(oPrice),
+                            tokenLiquidity: uint112(oTokenLiquidity),
+                            quoteTokenLiquidity: uint112(oQuoteTokenLiquidity),
+                            timestamp: uint32(timestamp)
+                        })
+                    });
+                }
 
                 if (address(validation) == address(0) || validation.validateObservation(token, observation)) {
                     // The observation is valid, so we add it to the array
@@ -436,6 +443,20 @@ abstract contract AbstractAggregatorOracle is
         }
 
         result = _aggregationStrategy(token).aggregateObservations(token, observations, 0, validResponses - 1);
+
+        if (address(validation) != address(0)) {
+            // Validate the aggregated result
+            ObservationLibrary.MetaObservation memory metaResult = ObservationLibrary.MetaObservation({
+                metadata: ObservationLibrary.ObservationMetadata({oracle: address(this)}),
+                data: result
+            });
+            if (!validation.validateObservation(token, metaResult)) {
+                return (
+                    ObservationLibrary.Observation({price: 0, tokenLiquidity: 0, quoteTokenLiquidity: 0, timestamp: 0}),
+                    0
+                );
+            }
+        }
     }
 
     /// @inheritdoc AbstractOracle
