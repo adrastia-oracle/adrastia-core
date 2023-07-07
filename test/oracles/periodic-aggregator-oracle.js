@@ -520,6 +520,22 @@ describe("PeriodicAggregatorOracle#canUpdate", function () {
 
             expect(await oracle.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
         });
+
+        it("Needs an update but the aggregated result fails validation", async function () {
+            await validationStrategy.stubSetOracleConfig(oracle.address, true, false);
+
+            await underlyingOracle1.stubSetNeedsUpdate(false);
+
+            const currentTime = await currentBlockTimestamp();
+
+            await underlyingOracle1.stubSetObservation(GRT, 1, 1, 1, currentTime);
+
+            expect(await oracle.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
+
+            // Sanity check that is returns true when the aggregated result passes validation
+            await validationStrategy.stubSetOracleConfig(oracle.address, true, true);
+            expect(await oracle.canUpdate(ethers.utils.hexZeroPad(GRT, 32))).to.equal(true);
+        });
     });
 
     describe("Can update when it needs an update and when", function () {
@@ -1574,6 +1590,58 @@ describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle", function () {
         expect(oTokenLiquidity).to.equal(tokenLiquidity);
         expect(oQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
         expect(oTimestamp).to.equal(timestamp);
+    });
+
+    it("Shouldn't update if the aggregated result fails validation", async () => {
+        const validationStrategyFactory = await ethers.getContractFactory("ValidationStub");
+        const validationStrategy = await validationStrategyFactory.deploy();
+        await validationStrategy.deployed();
+
+        const constructorOverrides = {
+            validationStrategy: validationStrategy.address,
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 18,
+            liquidityDecimals: 6,
+            oracles: [underlyingOracle.address],
+        };
+
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
+
+        await validationStrategy.stubSetOracleConfig(oracle.address, true, false);
+
+        const price = ethers.utils.parseUnits("2", 18);
+        const tokenLiquidity = ethers.utils.parseUnits("3", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("5", 18);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx).to.not.emit(oracle, "Updated");
+        await expect(updateTx).to.not.emit(oracle, "AggregationPerformed");
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
+
+        expect(oPrice).to.equal(0);
+        expect(oTokenLiquidity).to.equal(0);
+        expect(oQuoteTokenLiquidity).to.equal(0);
+        expect(oTimestamp).to.equal(0);
+
+        // Sanity check that the oracle updates if the aggregated result passes validation
+        await validationStrategy.stubSetOracleConfig(oracle.address, true, true);
+        await expect(oracle.update(ethers.utils.hexZeroPad(token, 32))).to.emit(oracle, "Updated");
     });
 
     it("Should update successfully with a very high price and the lowest possible liquidity", async () => {
@@ -3079,6 +3147,83 @@ describe("PeriodicAggregatorOracle#update w/ 2 underlying oracles but one failin
         expect(oPrice).to.equal(price);
         expect(oTokenLiquidity).to.equal(totalTokenLiquidity);
         expect(oQuoteTokenLiquidity).to.equal(totalQuoteTokenLiquidity);
+        expect(oTimestamp).to.equal(timestamp);
+    });
+});
+
+describe("PeriodicAggregatorOracle#update w/ 1 underlying oracle and we're validating timestamps", function () {
+    const quoteToken = USDC;
+    const token = GRT;
+
+    var underlyingOracle;
+    var validationStrategy;
+
+    var oracle;
+
+    beforeEach(async () => {
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("PeriodicAggregatorOracleStub");
+
+        underlyingOracle = await mockOracleFactory.deploy(quoteToken);
+        await underlyingOracle.deployed();
+
+        const validationStrategyFactory = await ethers.getContractFactory("TimeCheckingValidation");
+        validationStrategy = await validationStrategyFactory.deploy();
+        await validationStrategy.deployed();
+
+        await validationStrategy.stubSetQuoteTokenDecimals(6);
+
+        const constructorOverrides = {
+            validationStrategy: validationStrategy.address,
+            quoteTokenName: "USD Coin",
+            quoteTokenAddress: quoteToken,
+            quoteTokenSymbol: "USDC",
+            quoteTokenDecimals: 6,
+            liquidityDecimals: 0,
+            oracles: [underlyingOracle.address],
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
+
+        await validationStrategy.setAggregator(oracle.address);
+    });
+
+    it("Timestamp validation should pass and an update should be performed", async () => {
+        const price = ethers.utils.parseUnits("2.0", 6);
+        const tokenLiquidity = ethers.utils.parseUnits("3.0", 18);
+        const quoteTokenLiquidity = ethers.utils.parseUnits("5.0", 6);
+        const timestamp = (await currentBlockTimestamp()) + 10;
+
+        await underlyingOracle.stubSetObservation(
+            token,
+            price,
+            tokenLiquidity,
+            quoteTokenLiquidity,
+            await currentBlockTimestamp()
+        );
+
+        await hre.timeAndMine.setTimeNextBlock(timestamp);
+
+        const updateTx = await oracle.update(ethers.utils.hexZeroPad(token, 32));
+
+        await expect(updateTx)
+            .to.emit(oracle, "Updated")
+            .withArgs(token, price, tokenLiquidity, quoteTokenLiquidity, timestamp);
+
+        await expect(updateTx).to.emit(oracle, "AggregationPerformed").withArgs(token, timestamp, 1);
+
+        expect(await underlyingOracle.callCounts(ethers.utils.formatBytes32String("update(address)"))).to.equal(
+            BigNumber.from(1)
+        );
+
+        const [oPrice, oTokenLiquidity, oQuoteTokenLiquidity, oTimestamp] = await oracle.getLatestObservation(token);
+
+        expect(oPrice).to.equal(price);
+        expect(oTokenLiquidity).to.equal(tokenLiquidity);
+        expect(oQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
         expect(oTimestamp).to.equal(timestamp);
     });
 });

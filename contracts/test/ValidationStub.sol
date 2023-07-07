@@ -9,7 +9,14 @@ contract ValidationStub is IValidationStrategy {
         bool isValid;
     }
 
+    struct OracleConfig {
+        bool enabled;
+        bool isValid;
+    }
+
     Config public config;
+
+    mapping(address => OracleConfig) public oracleConfigs;
 
     constructor() {
         config.quoteTokenDecimals = 18;
@@ -24,14 +31,26 @@ contract ValidationStub is IValidationStrategy {
         config.isValid = isValid;
     }
 
+    function stubSetOracleConfig(address oracle, bool enabled, bool isValid) public {
+        OracleConfig storage oracleConfig = oracleConfigs[oracle];
+
+        oracleConfig.enabled = enabled;
+        oracleConfig.isValid = isValid;
+    }
+
     function quoteTokenDecimals() external view override returns (uint8) {
         return config.quoteTokenDecimals;
     }
 
     function validateObservation(
         address,
-        ObservationLibrary.MetaObservation calldata
+        ObservationLibrary.MetaObservation calldata observation
     ) external view override returns (bool) {
+        OracleConfig memory oracleConfig = oracleConfigs[observation.metadata.oracle];
+        if (oracleConfig.enabled) {
+            return oracleConfig.isValid;
+        }
+
         return config.isValid;
     }
 }
