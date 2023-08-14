@@ -33,12 +33,11 @@ contract CometSBAccumulator is LiquidityAccumulator {
     constructor(
         IAveragingStrategy averagingStrategy_,
         address comet_,
-        address quoteToken_,
         uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) LiquidityAccumulator(averagingStrategy_, address(0), updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         comet = comet_;
         baseToken = IComet(comet_).baseToken();
 

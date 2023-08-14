@@ -52,12 +52,11 @@ contract AaveV3SBAccumulator is LiquidityAccumulator {
     constructor(
         IAveragingStrategy averagingStrategy_,
         address aaveV3Pool_,
-        address quoteToken_,
         uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
-    ) LiquidityAccumulator(averagingStrategy_, quoteToken_, updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
+    ) LiquidityAccumulator(averagingStrategy_, address(0), updateTheshold_, minUpdateDelay_, maxUpdateDelay_) {
         aaveV3Pool = aaveV3Pool_;
 
         _liquidityDecimals = decimals_;

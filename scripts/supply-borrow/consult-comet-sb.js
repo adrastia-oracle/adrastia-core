@@ -43,7 +43,6 @@ async function createOracle(averagingStrategy, comet, quoteToken, period, granul
         "CometSBAccumulator",
         averagingStrategy,
         comet,
-        quoteToken,
         liquidityDecimals,
         updateTheshold,
         minUpdateDelay,

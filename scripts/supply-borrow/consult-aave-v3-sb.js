@@ -43,7 +43,6 @@ async function createOracle(averagingStrategy, aave, quoteToken, period, granula
         "AaveV3SBAccumulator",
         averagingStrategy,
         aave,
-        quoteToken,
         liquidityDecimals,
         updateTheshold,
         minUpdateDelay,
