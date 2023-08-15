@@ -5,6 +5,7 @@ import {IAaveV3Pool} from "../../accumulators/proto/aave/AaveV3RateAccumulator.s
 
 contract AaveV3PoolStub is IAaveV3Pool {
     ReserveData internal reserveData;
+    mapping(address => ReserveData) internal reserves;
 
     constructor(uint128 supplyRate_, uint128 variableBorrowRate_, uint128 stableBorrowRate_) {
         reserveData = ReserveData({
@@ -53,7 +54,26 @@ contract AaveV3PoolStub is IAaveV3Pool {
         reserveData.currentStableBorrowRate = stableBorrowRate_;
     }
 
-    function getReserveData(address) public view override returns (ReserveData memory data) {
+    function setCollateralToken(address asset, address token) public {
+        reserves[asset].aTokenAddress = token;
+    }
+
+    function setStableDebtToken(address asset, address token) public {
+        reserves[asset].stableDebtTokenAddress = token;
+    }
+
+    function setVariableDebtToken(address asset, address token) public {
+        reserves[asset].variableDebtTokenAddress = token;
+    }
+
+    function getReserveData(address token) public view override returns (ReserveData memory data) {
+        data = reserves[token];
+        if (data.aTokenAddress != address(0)) {
+            // used for supply and borrow testing
+            return data;
+        }
+
+        // Used for rate testing
         return reserveData;
     }
 }
