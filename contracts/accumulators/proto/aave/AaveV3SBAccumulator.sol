@@ -77,7 +77,7 @@ contract AaveV3SBAccumulator is LiquidityAccumulator {
         address token = abi.decode(data, (address));
         IAaveV3Pool.ReserveData memory reserveData = IAaveV3Pool(aaveV3Pool).getReserveData(token);
 
-        uint256 supply = IERC20Metadata(reserveData.aTokenAddress).totalSupply();
+        uint256 supply = IERC20(reserveData.aTokenAddress).totalSupply();
         uint256 stableDebt = IERC20(reserveData.stableDebtTokenAddress).totalSupply();
         uint256 variableDebt = IERC20(reserveData.variableDebtTokenAddress).totalSupply();
         uint256 totalDebt = stableDebt + variableDebt;
