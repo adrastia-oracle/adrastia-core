@@ -62,8 +62,6 @@ contract CometSBAccumulator is LiquidityAccumulator {
             // Base token can be both supplied and borrowed
             tokenLiquidity = ((IComet(comet).totalBorrow() * _decimalFactor) / _baseTokenWholeUnit).toUint112();
             quoteTokenLiquidity = ((IComet(comet).totalSupply() * _decimalFactor) / _baseTokenWholeUnit).toUint112();
-
-            return (tokenLiquidity, quoteTokenLiquidity);
         } else {
             // Other tokens can only be supplied as collateral
             uint256 tokenDecimalsFactor = 10 ** IERC20Metadata(token).decimals();
@@ -71,13 +69,9 @@ contract CometSBAccumulator is LiquidityAccumulator {
             IComet.TotalsCollateral memory totalsCollateral = IComet(comet).totalsCollateral(token);
 
             uint256 totalSupply = (totalsCollateral.totalSupplyAsset * _decimalFactor) / tokenDecimalsFactor;
-            if (totalSupply > type(uint112).max) {
-                revert("CometSBAccumulator: totalSupply overflow");
-            }
 
-            tokenLiquidity = uint112(totalSupply);
-
-            return (0, tokenLiquidity);
+            tokenLiquidity = 0;
+            quoteTokenLiquidity = totalSupply.toUint112();
         }
     }
 }
