@@ -4,6 +4,7 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 const cometUSDC = "0xc3d688B66703497DAA19211EEdff47f25384cdc3"; // USDC market on mainnet
+const cometWETH = "0xA17581A9E3356d9A858b789D68B4d866e593aE94"; // WETH market on mainnet
 
 const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
@@ -72,9 +73,9 @@ async function main() {
 
     // Accumulator parameters
     const averagingStrategy = await createContract("GeometricAveraging");
-    const comet = cometUSDC;
+    const comet = cometWETH;
     const quoteToken = ethers.constants.AddressZero;
-    const token = usdcAddress;
+    const token = wethAddress;
     const liquidityDecimals = 4;
 
     const oracle = await createOracle(
