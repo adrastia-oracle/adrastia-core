@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.1.0
+### Accumulators
+- Add AaveV3SBAccumulator and CometSBAccumulator
+  - Allows for calculations of time-weighted average total supply and borrow amounts for Aave V3 and Compound III (Comet) pools.
+
 ## v4.0.0
 ### Interfaces
 - Update IAccumulator
