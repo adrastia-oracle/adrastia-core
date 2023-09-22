@@ -5,7 +5,7 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 
 import "./IValidationStrategy.sol";
 
-contract OracleSpecificValidation is IERC165, IValidationStrategy {
+abstract contract AddressSpecificValidation is IERC165, IValidationStrategy {
     IValidationStrategy public constant NO_VALIDATION_STRATEGY = IValidationStrategy(address(0));
     IValidationStrategy public constant NIL_VALIDATION_STRATEGY = IValidationStrategy(address(1));
 
@@ -27,7 +27,7 @@ contract OracleSpecificValidation is IERC165, IValidationStrategy {
         address token,
         ObservationLibrary.MetaObservation calldata observation
     ) external view virtual override returns (bool) {
-        IValidationStrategy strategy = _getValidationStrategy(observation.metadata.oracle);
+        IValidationStrategy strategy = _getValidationStrategy(_extractSelector(token, observation.metadata.oracle));
         if (strategy == NO_VALIDATION_STRATEGY) {
             // Validation disabled for this oracle.
             return true;
@@ -69,4 +69,6 @@ contract OracleSpecificValidation is IERC165, IValidationStrategy {
         // No validation strategy was set for this oracle. Use the default.
         return _getDefaultValidationStrategy();
     }
+
+    function _extractSelector(address token, address oracle) internal view virtual returns (address);
 }
