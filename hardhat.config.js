@@ -82,6 +82,10 @@ module.exports = {
             chainId: 10,
             url: process.env.OPTIMISM_URL || "",
         },
+        evmos: {
+            chainId: 9001,
+            url: process.env.EVMOS_URL || "",
+        },
     },
     etherscan: {
         apiKey: {
@@ -90,6 +94,7 @@ module.exports = {
             polygonZkEVM: process.env.POLYGONSCANZKEVM_API_KEY,
             arbitrumOne: process.env.ARBISCAN_API_KEY,
             optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_API_KEY,
+            evmos: process.env.ESCAN_API_KEY,
         },
         customChains: [
             {
@@ -98,6 +103,14 @@ module.exports = {
                 urls: {
                     apiURL: "https://api-zkevm.polygonscan.com/api",
                     browserURL: "https://zkevm.polygonscan.com",
+                },
+            },
+            {
+                network: "evmos",
+                chainId: 9001,
+                urls: {
+                    apiURL: "https://escan.live/api",
+                    browserURL: "https://escan.live",
                 },
             },
         ],
