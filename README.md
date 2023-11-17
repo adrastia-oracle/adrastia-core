@@ -209,8 +209,12 @@ Please refer to the [contributing guide](CONTRIBUTING.md).
 
 ## License
 
-Adrastia Core is licensed under the [MIT License](LICENSE).
+Adrastia Core is licensed under the [Business Source License 1.1 (BUSL-1.1)](LICENSE).
 
 ### Exceptions
 
-- The file located at [contracts/libraries/uniswap-lib/FullMath.sol](contracts/libraries/uniswap-lib/FullMath.sol) is licensed under a different [MIT License](contracts/libraries/uniswap-lib/LICENSE_MIT).
+- Interfaces located at [contracts/interfaces/](contracts/interfaces/) and other interfaces located under [contracts](contracts/) and its subdirectories are licensed under the [MIT License](contracts/interfaces/LICENSE_MIT).
+- Libraries located at [contracts/libraries/](contracts/libraries/) are licensed under the [MIT License](contracts/libraries/LICENSE_MIT).
+- The file located at [contracts/libraries/uniswap-lib/FullMath.sol](contracts/libraries/uniswap-lib/FullMath.sol) is licensed under the [MIT License](contracts/libraries/uniswap-lib/LICENSE_MIT).
+- The files located at [contracts/libraries/balancer-v2](contracts/libraries/balancer-v2/) are licensed under various licenses as specified in the files.
+- The files located at [contracts/test/vendor](contracts/test/vendor/) and its subdirectories are licensed under various licenses as specified in the files.
