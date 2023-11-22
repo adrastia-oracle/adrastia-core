@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
 import "../../PriceAccumulator.sol";
@@ -38,6 +38,7 @@ contract ChainlinkPriceAccumulator is PriceAccumulator {
 
     error AnswerCannotBeNegative(int256 answer);
     error AnswerTooLarge(int256 answer);
+    error AnswerTooOld(uint256 updatedAt);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -87,11 +88,14 @@ contract ChainlinkPriceAccumulator is PriceAccumulator {
     }
 
     function fetchPrice(bytes memory) internal view virtual override returns (uint112) {
-        (, int256 answer, , , ) = source.latestRoundData();
+        (, int256 answer, , uint256 updatedAt, ) = source.latestRoundData();
+        uint256 timeSinceUpdate = block.timestamp - updatedAt;
         if (answer < 0) {
             revert AnswerCannotBeNegative(answer);
         } else if (uint256(answer) > type(uint112).max) {
             revert AnswerTooLarge(answer);
+        } else if (timeSinceUpdate > _heartbeat()) {
+            revert AnswerTooOld(updatedAt);
         } else if (answer == 0) {
             return 1; // All price accumulators report 1 if the price is 0
         }
