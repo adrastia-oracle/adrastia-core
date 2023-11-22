@@ -1,7 +1,7 @@
 # Adrastia Core
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![6007 out of 6007 tests passing](https://img.shields.io/badge/tests-6007/6007%20passing-brightgreen.svg?style=flat-square)
+![6556 out of 6556 tests passing](https://img.shields.io/badge/tests-6556/6556%20passing-brightgreen.svg?style=flat-square)
 ![test-coverage >99%](https://img.shields.io/badge/test%20coverage-%3E99%25-brightgreen.svg?style=flat-square)
 
 Adrastia Core is a set of Solidity smart contracts for building EVM oracle solutions.
@@ -209,8 +209,12 @@ Please refer to the [contributing guide](CONTRIBUTING.md).
 
 ## License
 
-Adrastia Core is licensed under the [MIT License](LICENSE).
+Adrastia Core is licensed under the [Business Source License 1.1 (BUSL-1.1)](LICENSE).
 
 ### Exceptions
 
-- The file located at [contracts/libraries/uniswap-lib/FullMath.sol](contracts/libraries/uniswap-lib/FullMath.sol) is licensed under a different [MIT License](contracts/libraries/uniswap-lib/LICENSE_MIT).
+- Interfaces located at [contracts/interfaces/](contracts/interfaces/) and other interfaces located under [contracts](contracts/) and its subdirectories are licensed under the [MIT License](contracts/interfaces/LICENSE_MIT).
+- Libraries located at [contracts/libraries/](contracts/libraries/) are licensed under the [MIT License](contracts/libraries/LICENSE_MIT).
+- The file located at [contracts/libraries/uniswap-lib/FullMath.sol](contracts/libraries/uniswap-lib/FullMath.sol) is licensed under the [MIT License](contracts/libraries/uniswap-lib/LICENSE_MIT).
+- The files located at [contracts/libraries/balancer-v2](contracts/libraries/balancer-v2/) are licensed under various licenses as specified in the files.
+- The files located at [contracts/test/vendor](contracts/test/vendor/) and its subdirectories are licensed under various licenses as specified in the files.
