@@ -508,6 +508,28 @@ function describeAlgebraPriceAccumulatorTests(contractName, stubContractName, av
                     it("token = quoteToken", async function () {
                         await expect(accumulator.stubFetchPrice(quoteToken.address)).to.be.revertedWith("InvalidToken");
                     });
+
+                    it("The call to globalState() fails", async function () {
+                        const initialPrice = encodePriceSqrt(
+                            ethers.utils.parseUnits("10.0", 18),
+                            ethers.utils.parseUnits("10.0", 18)
+                        );
+
+                        const newPoolFactory = await ethers.getContractFactory("AlgebraPoolStub");
+                        const newPool = await newPoolFactory.deploy();
+
+                        await newPool.setLiquidity(ethers.utils.parseUnits("20.0", 18));
+                        await newPool.setGlobalState(initialPrice, 1, 1, 1, 1, 1, true);
+                        await newPool.setGlobalStateRevert(true);
+
+                        await accumulator.stubOverridePoolAddress(newPool.address);
+
+                        await expect(accumulator.stubFetchPrice(token.address)).to.be.revertedWith("NoLiquidity");
+
+                        // Sanity check: ensure that the pool is still usable
+                        await newPool.setGlobalStateRevert(false);
+                        await expect(accumulator.stubFetchPrice(token.address)).to.not.be.revertedWith("NoLiquidity");
+                    });
                 });
 
                 describe("token < quoteToken", function () {

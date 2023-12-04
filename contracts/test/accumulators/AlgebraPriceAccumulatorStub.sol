@@ -4,6 +4,8 @@ pragma solidity =0.8.13;
 import "../../accumulators/proto/algebra/AlgebraPriceAccumulator.sol";
 
 contract AlgebraPriceAccumulatorStub is AlgebraPriceAccumulator {
+    address public computeAddressOverride = address(0);
+
     constructor(
         IAveragingStrategy averagingStrategy_,
         address uniswapFactory_,
@@ -45,7 +47,19 @@ contract AlgebraPriceAccumulatorStub is AlgebraPriceAccumulator {
         return super.computeAddress(token, quoteToken_);
     }
 
+    function computeAddress(address token, address quoteToken_) internal view virtual override returns (address) {
+        if (computeAddressOverride != address(0)) {
+            return computeAddressOverride;
+        }
+
+        return super.computeAddress(token, quoteToken_);
+    }
+
     function validateObservation(bytes memory, uint112) internal virtual override returns (bool) {
         return true; // Disable for simplicity
+    }
+
+    function stubOverridePoolAddress(address pool) public {
+        computeAddressOverride = pool;
     }
 }
