@@ -3,7 +3,7 @@
   "version": "4.1.0",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
-  "license": "MIT",
+  "license": "BUSL-1.1",
   "keywords": [
     "adrastia",
     "oracle",
