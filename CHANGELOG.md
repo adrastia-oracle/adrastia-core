@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.2.0
+### Oracles
+- Add ChainlinkOracleView: An oracle view contract that wraps around a Chainlink feed.
+
+### Strategies
+#### Aggregation strategies
+- Add MinimumAggregator: An aggregation strategy that returns the minimum price and the total token and quote token liquidity.
+- Add MaximumAggregator: An aggregation strategy that returns the maximum price and the total token and quote token liquidity.
+
 ## v4.1.0
 ### Accumulators
 - Add AaveV3SBAccumulator and CometSBAccumulator

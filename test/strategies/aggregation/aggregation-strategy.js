@@ -224,6 +224,14 @@ function testAggregationStrategy(contractName, deployFunction, aggregateObservat
             ).to.be.revertedWith("InsufficientObservations");
         });
 
+        it("Reverts if no observations are provided", async function () {
+            const observations = [];
+
+            await expect(aggregator.aggregateObservations(AddressZero, observations, 0, 0)).to.be.revertedWith(
+                "InsufficientObservations"
+            );
+        });
+
         describe(contractName + "#supportsInterface", function () {
             var interfaceIds;
 
@@ -347,6 +355,80 @@ async function meanAggregateObservations(token, observations, from, to, extractW
     };
 }
 
+async function minAggregateObservations(token, observations, from, to) {
+    // Get the observations from index `from` to index `to` (inclusive)
+    const observationsToAggregate = observations.slice(from, to + 1);
+
+    var minPrice = BigNumber.from(2).pow(112).sub(1);
+
+    for (const observation of observationsToAggregate) {
+        const price = observation.data.price;
+        if (price.lt(minPrice)) {
+            minPrice = price;
+        }
+    }
+
+    var sumTokenLiquidity = observationsToAggregate.reduce(
+        (sum, observation) => sum.add(observation.data.tokenLiquidity),
+        BigNumber.from(0)
+    );
+    var sumQuoteTokenLiquidity = observationsToAggregate.reduce(
+        (sum, observation) => sum.add(observation.data.quoteTokenLiquidity),
+        BigNumber.from(0)
+    );
+
+    if (sumTokenLiquidity.gt(MAX_UINT112)) {
+        sumTokenLiquidity = MAX_UINT112;
+    }
+    if (sumQuoteTokenLiquidity.gt(MAX_UINT112)) {
+        sumQuoteTokenLiquidity = MAX_UINT112;
+    }
+
+    return {
+        price: minPrice,
+        tokenLiquidity: sumTokenLiquidity,
+        quoteTokenLiquidity: sumQuoteTokenLiquidity,
+        revertedWith: undefined,
+    };
+}
+
+async function maxAggregateObservations(token, observations, from, to) {
+    // Get the observations from index `from` to index `to` (inclusive)
+    const observationsToAggregate = observations.slice(from, to + 1);
+
+    var maxPrice = ethers.constants.Zero;
+
+    for (const observation of observationsToAggregate) {
+        const price = observation.data.price;
+        if (price.gt(maxPrice)) {
+            maxPrice = price;
+        }
+    }
+
+    var sumTokenLiquidity = observationsToAggregate.reduce(
+        (sum, observation) => sum.add(observation.data.tokenLiquidity),
+        BigNumber.from(0)
+    );
+    var sumQuoteTokenLiquidity = observationsToAggregate.reduce(
+        (sum, observation) => sum.add(observation.data.quoteTokenLiquidity),
+        BigNumber.from(0)
+    );
+
+    if (sumTokenLiquidity.gt(MAX_UINT112)) {
+        sumTokenLiquidity = MAX_UINT112;
+    }
+    if (sumQuoteTokenLiquidity.gt(MAX_UINT112)) {
+        sumQuoteTokenLiquidity = MAX_UINT112;
+    }
+
+    return {
+        price: maxPrice,
+        tokenLiquidity: sumTokenLiquidity,
+        quoteTokenLiquidity: sumQuoteTokenLiquidity,
+        revertedWith: undefined,
+    };
+}
+
 async function tokenWeightedMeanAggregateObservations(token, observations, from, to) {
     return meanAggregateObservations(token, observations, from, to, (data) => data.tokenLiquidity);
 }
@@ -405,3 +487,7 @@ testAggregationStrategy(
     createDeployFunctionWithAveraging("MeanAggregator", "ArithmeticAveraging"),
     simpleMeanAggregateObservations
 );
+
+testAggregationStrategy("MinimumAggregator", createSimpleDeployFunction("MinimumAggregator"), minAggregateObservations);
+
+testAggregationStrategy("MaximumAggregator", createSimpleDeployFunction("MaximumAggregator"), maxAggregateObservations);

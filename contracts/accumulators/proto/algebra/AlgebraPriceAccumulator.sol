@@ -11,32 +11,6 @@ import "../../../libraries/uniswap-lib/FullMath.sol";
 /// https://github.com/Uniswap/v3-core/tree/main/contracts/interfaces
 interface IAlgebraPoolState {
     /**
-     * @notice The globalState structure in the pool stores many values but requires only one slot
-     * and is exposed as a single method to save gas when accessed externally.
-     * @return price The current price of the pool as a sqrt(token1/token0) Q64.96 value;
-     * Returns tick The current tick of the pool, i.e. according to the last tick transition that was run;
-     * Returns This value may not always be equal to SqrtTickMath.getTickAtSqrtRatio(price) if the price is on a tick
-     * boundary;
-     * Returns fee The last pool fee value in hundredths of a bip, i.e. 1e-6;
-     * Returns timepointIndex The index of the last written timepoint;
-     * Returns communityFeeToken0 The community fee percentage of the swap fee in thousandths (1e-3) for token0;
-     * Returns communityFeeToken1 The community fee percentage of the swap fee in thousandths (1e-3) for token1;
-     * Returns unlocked Whether the pool is currently locked to reentrancy;
-     */
-    function globalState()
-        external
-        view
-        returns (
-            uint160 price,
-            int24 tick,
-            uint16 fee,
-            uint16 timepointIndex,
-            uint8 communityFeeToken0,
-            uint8 communityFeeToken1,
-            bool unlocked
-        );
-
-    /**
      * @notice The currently in range liquidity available to the pool
      * @dev This value has no relationship to the total liquidity across all ticks.
      * Returned value cannot exceed type(uint128).max
@@ -118,11 +92,18 @@ contract AlgebraPriceAccumulator is PriceAccumulator {
                 return (false, 0);
             }
 
-            (uint160 sqrtPriceX96, , , , , , ) = IAlgebraPoolState(pool).globalState();
+            // Low-level call to globalState() as the return values can very between deployments
+            (bool success, bytes memory data) = pool.staticcall(
+                abi.encodeWithSelector(bytes4(keccak256("globalState()")))
+            );
+            if (success) {
+                // Across all known deployments, globalState() returns the sqrtPriceX96 as the first value (uint160)
+                uint160 sqrtPriceX96 = abi.decode(data, (uint160));
 
-            uint256 poolPrice = calculatePriceFromSqrtPrice(token, quoteToken, sqrtPriceX96, wholeTokenAmount);
+                uint256 poolPrice = calculatePriceFromSqrtPrice(token, quoteToken, sqrtPriceX96, wholeTokenAmount);
 
-            return (true, poolPrice);
+                return (true, poolPrice);
+            }
         }
 
         return (false, 0);
