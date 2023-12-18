@@ -33,7 +33,7 @@ async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
 }
 
-async function createOracle(averagingStrategy, quoteToken, period, granularity, liquidityDecimals) {
+async function createOracle(averagingStrategy, quoteToken, period, granularity, liquidityDecimals, target) {
     const updateTheshold = 2000000; // 2% change -> update
     const minUpdateDelay = 5; // At least 5 seconds between every update
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
@@ -42,6 +42,7 @@ async function createOracle(averagingStrategy, quoteToken, period, granularity, 
 
     const liquidityAccumulator = await createContract(
         "AlocUtilizationAndErrorAccumulator",
+        target,
         averagingStrategy,
         liquidityDecimals,
         updateTheshold,
@@ -75,8 +76,16 @@ async function main() {
     const quoteToken = ethers.constants.AddressZero;
     const token = alocAddress;
     const liquidityDecimals = 8;
+    const targetUtilization = ethers.utils.parseUnits("0.9", liquidityDecimals);
 
-    const oracle = await createOracle(averagingStrategy.address, quoteToken, period, granularity, liquidityDecimals);
+    const oracle = await createOracle(
+        averagingStrategy.address,
+        quoteToken,
+        period,
+        granularity,
+        liquidityDecimals,
+        targetUtilization
+    );
 
     const tokenContract = await ethers.getContractAt("ERC20", token);
 
