@@ -7,6 +7,8 @@ import "../../../libraries/SafeCastExt.sol";
 interface IAloc {
     function utilization() external view returns (uint256);
 
+    function liquidAssets() external view returns (uint256);
+
     function BASIS_PRECISION() external view returns (uint256);
 }
 
@@ -46,6 +48,14 @@ contract AlocUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
         address alocAddress = abi.decode(data, (address));
 
         uint256 utilization = IAloc(alocAddress).utilization();
+        if (utilization == 0 && IAloc(alocAddress).liquidAssets() == 0) {
+            // Utilization is 0, but the ALOC has no liquidity. Let's instead consider the utilization to be 100%.
+            // When used in a PID interest rate controller, this will cause the interest rate to rise so as to attract
+            // more liquidity.
+            // In other cases, it just makes more sense to consider the utilization to be 100% when there is no
+            // liquidity. i.e. if there is no liquidity, then all available liquidity is being used.
+            return _decimalFactor.toUint112();
+        }
 
         // Convert from the ALOC's units to the units used by the accumulator
         utilization *= _decimalFactor;
