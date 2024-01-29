@@ -9,6 +9,9 @@
 - Add MinimumAggregator: An aggregation strategy that returns the minimum price and the total token and quote token liquidity.
 - Add MaximumAggregator: An aggregation strategy that returns the maximum price and the total token and quote token liquidity.
 
+### Utils
+- Add NotAnErc20: An ERC20 implementation meant to be used in Adrastia oracle contracts to provide custom quote token metadata.
+
 ## v4.1.0
 ### Accumulators
 - Add AaveV3SBAccumulator and CometSBAccumulator
