@@ -103,7 +103,7 @@ contract PythOracleView is AbstractOracle {
         return pythAddress;
     }
 
-    function getFeedId() public view virtual returns (bytes32) {
+    function getUnderlyingFeedId() public view virtual returns (bytes32) {
         return feedId;
     }
 
@@ -125,7 +125,7 @@ contract PythOracleView is AbstractOracle {
             revert UnsupportedToken(token);
         }
 
-        IPyth.Price memory data = IPyth(getUnderlyingFeed()).getPriceUnsafe(getFeedId());
+        IPyth.Price memory data = IPyth(getUnderlyingFeed()).getPriceUnsafe(getUnderlyingFeedId());
 
         if (data.price < 0) {
             revert AnswerCannotBeNegative(data.price);
