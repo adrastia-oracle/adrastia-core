@@ -14,7 +14,7 @@ contract DiaOracleView is AbstractOracle {
     address internal immutable feedToken;
     address internal immutable diaAddress;
     bytes32 internal immutable feedId;
-    uint8 internal immutable feedTokenDecimals;
+    uint8 internal immutable feedDecimals;
 
     error AnswerTooLarge(int256 answer);
     error InvalidTimestamp(uint256 timestamp);
@@ -25,20 +25,20 @@ contract DiaOracleView is AbstractOracle {
      * @param diaAddress_  The address of the DIA contract.
      * @param feedId_  The ID of the DIA feed.
      * @param feedToken_  The address of the token that the feed describes.
-     * @param feedTokenDecimals_  The number of decimals of the feed token.
+     * @param feedDecimals_  The number of decimals used in the underlying feed.
      * @param quoteToken_  (Optional) The address of the quote token.
      */
     constructor(
         address diaAddress_,
         bytes32 feedId_,
         address feedToken_,
-        uint8 feedTokenDecimals_,
+        uint8 feedDecimals_,
         address quoteToken_
     ) AbstractOracle(quoteToken_) {
         diaAddress = diaAddress_;
         feedId = feedId_;
         feedToken = feedToken_;
-        feedTokenDecimals = feedTokenDecimals_;
+        feedDecimals = feedDecimals_;
     }
 
     /// @inheritdoc IOracle
@@ -89,7 +89,7 @@ contract DiaOracleView is AbstractOracle {
 
     /// @inheritdoc IQuoteToken
     function quoteTokenDecimals() public view virtual override(SimpleQuotationMetadata, IQuoteToken) returns (uint8) {
-        return feedTokenDecimals;
+        return feedDecimals;
     }
 
     function getUnderlyingFeed() public view virtual returns (address) {
