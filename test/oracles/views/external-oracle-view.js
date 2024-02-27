@@ -77,6 +77,35 @@ async function createDefaultPythOracle(feedToken, quoteToken, contractName = "Py
     };
 }
 
+async function deployDiaFeed(quoteTokenDecimals, feedId) {
+    const feedFactory = await ethers.getContractFactory("DiaFeedStub");
+    const feed = await feedFactory.deploy(feedId, quoteTokenDecimals);
+    await feed.deployed();
+
+    return feed;
+}
+
+async function createDefaultDiaOracle(feedToken, quoteToken, contractName = "DiaOracleView") {
+    const quoteTokenContract = await ethers.getContractAt(
+        "@openzeppelin-v4/contracts/token/ERC20/ERC20.sol:ERC20",
+        quoteToken
+    );
+    const quoteTokenDecimals = await quoteTokenContract.decimals();
+
+    // Create some feed ID based on the feed token
+    const feedId = pythFeedId(feedToken);
+
+    const feed = await deployDiaFeed(quoteTokenDecimals, feedId);
+
+    const factory = await ethers.getContractFactory(contractName);
+    const oracle = await factory.deploy(feed.address, feedId, feedToken, quoteTokenDecimals, quoteToken);
+
+    return {
+        feed: feed,
+        oracle: oracle,
+    };
+}
+
 describe("ChainlinkOracleView#constructor", function () {
     it("Deploys correctly with USDC as the quote token (6 decimals)", async function () {
         const feedToken = GRT;
@@ -136,6 +165,42 @@ describe("PythOracleView#constructor", function () {
         expect(await oracle.liquidityDecimals()).to.equal(0);
         expect(await oracle.quoteTokenDecimals()).to.equal(await feed.decimals());
         expect(await oracle.quoteTokenDecimals()).to.equal(18); // Sanity check
+        expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
+        expect(await oracle.getFeedToken()).to.equal(feedToken);
+    });
+});
+
+describe("DiaOracleView#constructor", function () {
+    it("Deploys correctly with USDC as the quote token (6 decimals)", async function () {
+        const feedToken = GRT;
+        const feedTokenDecimals = 6;
+        const quoteToken = USDC;
+        const deployment = await createDefaultDiaOracle(feedToken, quoteToken);
+        const oracle = deployment.oracle;
+        const feed = deployment.feed;
+
+        const feedId = pythFeedId(feedToken);
+
+        expect(await oracle.quoteToken()).to.equal(quoteToken);
+        expect(await oracle.liquidityDecimals()).to.equal(0);
+        expect(await oracle.quoteTokenDecimals()).to.equal(feedTokenDecimals);
+        expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
+        expect(await oracle.getFeedToken()).to.equal(feedToken);
+    });
+
+    it("Deploys correctly with DAI as the quote token (18 decimals)", async function () {
+        const feedToken = GRT;
+        const feedTokenDecimals = 18;
+        const quoteToken = DAI;
+        const deployment = await createDefaultDiaOracle(feedToken, quoteToken);
+        const oracle = deployment.oracle;
+        const feed = deployment.feed;
+
+        const feedId = pythFeedId(feedToken);
+
+        expect(await oracle.quoteToken()).to.equal(quoteToken);
+        expect(await oracle.liquidityDecimals()).to.equal(0);
+        expect(await oracle.quoteTokenDecimals()).to.equal(feedTokenDecimals);
         expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
         expect(await oracle.getFeedToken()).to.equal(feedToken);
     });
@@ -687,3 +752,4 @@ function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsS
 
 describeTests("ChainlinkOracleView", createDefaultChainlinkOracle, 256, true);
 describeTests("PythOracleView", createDefaultPythOracle, 64, true);
+describeTests("DiaOracleView", createDefaultDiaOracle, 128, false);
