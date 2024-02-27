@@ -4,8 +4,10 @@ const ethers = hre.ethers;
 
 const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+const wbtcAddress = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
 const pythAddress = "0x4305FB66699C3B2702D4d05CF36551390A4c69C6";
 const wethFeedId = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
+const wbtcFeedId = "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43";
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,9 +32,11 @@ async function createPythOracleView(pythAddress, feedId, tokenAddress, quoteToke
 }
 
 async function main() {
-    const token = wethAddress;
+    //const token = wethAddress;
+    const token = wbtcAddress;
     const quoteToken = usdcAddress;
-    const feedId = wethFeedId;
+    //const feedId = wethFeedId;
+    const feedId = wbtcFeedId;
 
     const oracle = await createPythOracleView(pythAddress, feedId, token, quoteToken);
 
