@@ -132,7 +132,7 @@ contract PythOracleView is AbstractOracle {
         }
 
         uint256 ourDecimals = quoteTokenDecimals();
-        uint256 workingPrice = uint64(data.price) * (10 ** ourDecimals);
+        uint256 workingPrice = uint256(int256(data.price)) * (10 ** ourDecimals);
         if (data.expo > 0) {
             workingPrice *= 10 ** uint32(data.expo);
         } else if (data.expo < 0) {
