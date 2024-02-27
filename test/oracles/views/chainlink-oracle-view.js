@@ -44,6 +44,39 @@ async function createDefaultChainlinkOracle(feedToken, quoteToken, contractName 
     };
 }
 
+function pythFeedId(feedToken) {
+    return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(feedToken));
+}
+
+async function deployPythFeed(quoteTokenDecimals, feedId) {
+    const feedFactory = await ethers.getContractFactory("PythFeedStub");
+    const feed = await feedFactory.deploy(feedId, quoteTokenDecimals);
+    await feed.deployed();
+
+    return feed;
+}
+
+async function createDefaultPythOracle(feedToken, quoteToken, contractName = "PythOracleView") {
+    const quoteTokenContract = await ethers.getContractAt(
+        "@openzeppelin-v4/contracts/token/ERC20/ERC20.sol:ERC20",
+        quoteToken
+    );
+    const quoteTokenDecimals = await quoteTokenContract.decimals();
+
+    // Create some feed ID based on the feed token
+    const feedId = pythFeedId(feedToken);
+
+    const feed = await deployPythFeed(quoteTokenDecimals, feedId);
+
+    const factory = await ethers.getContractFactory(contractName);
+    const oracle = await factory.deploy(feed.address, feedId, feedToken, quoteToken);
+
+    return {
+        feed: feed,
+        oracle: oracle,
+    };
+}
+
 describe("ChainlinkOracleView#constructor", function () {
     it("Deploys correctly with USDC as the quote token (6 decimals)", async function () {
         const feedToken = GRT;
@@ -72,7 +105,113 @@ describe("ChainlinkOracleView#constructor", function () {
     });
 });
 
-function describeTests(contractName, createDefaultOracle) {
+describe("PythOracleView#constructor", function () {
+    it("Deploys correctly with USDC as the quote token (6 decimals)", async function () {
+        const feedToken = GRT;
+        const quoteToken = USDC;
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken);
+        const oracle = deployment.oracle;
+        const feed = deployment.feed;
+
+        const feedId = pythFeedId(feedToken);
+
+        expect(await oracle.quoteToken()).to.equal(quoteToken);
+        expect(await oracle.liquidityDecimals()).to.equal(0);
+        expect(await oracle.quoteTokenDecimals()).to.equal(await feed.decimals());
+        expect(await oracle.quoteTokenDecimals()).to.equal(6); // Sanity check
+        expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
+        expect(await oracle.getFeedToken()).to.equal(feedToken);
+    });
+
+    it("Deploys correctly with DAI as the quote token (18 decimals)", async function () {
+        const feedToken = GRT;
+        const quoteToken = DAI;
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken);
+        const oracle = deployment.oracle;
+        const feed = deployment.feed;
+
+        const feedId = pythFeedId(feedToken);
+
+        expect(await oracle.quoteToken()).to.equal(quoteToken);
+        expect(await oracle.liquidityDecimals()).to.equal(0);
+        expect(await oracle.quoteTokenDecimals()).to.equal(await feed.decimals());
+        expect(await oracle.quoteTokenDecimals()).to.equal(18); // Sanity check
+        expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
+        expect(await oracle.getFeedToken()).to.equal(feedToken);
+    });
+});
+
+describe("PythOracleView#getLatestObservation - special cases", function () {
+    var quoteToken;
+    var feedToken;
+    var oracle;
+    var feed;
+
+    beforeEach(async function () {
+        quoteToken = USDC;
+        feedToken = GRT;
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+    });
+
+    async function testWithExpo(wholeTokenPrice, pythExpo, answerTooLarge) {
+        const quoteTokenDecimals = await oracle.quoteTokenDecimals();
+        const feedId = pythFeedId(feedToken);
+        const currentTime = await currentBlockTimestamp();
+
+        const token = feedToken;
+        const price = ethers.utils.parseUnits(wholeTokenPrice.toString(), quoteTokenDecimals);
+
+        var scaledPrice;
+        if (pythExpo > 0) {
+            scaledPrice = wholeTokenPrice.div(BigNumber.from(10).pow(pythExpo));
+            // pythPrice = wholeTokenPrice * 10^pythExpo
+        } else if (pythExpo < 0) {
+            scaledPrice = wholeTokenPrice.mul(BigNumber.from(10).pow(-pythExpo));
+            // pythPrice = wholeTokenPrice / 10^(-pythExpo)
+        } else {
+            // pythExpo == 0
+            scaledPrice = wholeTokenPrice;
+        }
+        await feed.setPrice(feedId, scaledPrice, 0, pythExpo, currentTime);
+
+        if (answerTooLarge) {
+            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
+        } else {
+            const observation = await oracle.getLatestObservation(token);
+            expect(observation.price).to.equal(price);
+        }
+    }
+
+    it("Returns the correct price when the expo is 0", async function () {
+        await testWithExpo(BigNumber.from(12300), 0, false);
+    });
+
+    it("Returns the correct price when the expo is -1", async function () {
+        await testWithExpo(BigNumber.from(12300), -1, false);
+    });
+
+    it("Returns the correct price when the expo is 1", async function () {
+        await testWithExpo(BigNumber.from(12300), 1, false);
+    });
+
+    it("Reverts when the answer to too large", async function () {
+        const quoteTokenDecimals = await oracle.quoteTokenDecimals();
+
+        const largestPrice = BigNumber.from(2).pow(63).sub(1);
+        const expo = 10;
+        const wholeTokenPrice = largestPrice.mul(BigNumber.from(10).pow(expo));
+
+        const expectedWorkingPrice = ethers.utils.parseUnits(wholeTokenPrice.toString(), quoteTokenDecimals);
+
+        expect(expectedWorkingPrice).to.be.gt(BigNumber.from(2).pow(112).sub(1)); // Sanity check
+
+        await testWithExpo(wholeTokenPrice, expo, true);
+    });
+});
+
+function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsSigned) {
     describe(contractName + "#canUpdate", function () {
         var quoteToken;
         var feedToken;
@@ -236,26 +375,31 @@ function describeTests(contractName, createDefaultOracle) {
             await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
         });
 
-        it("Reverts if the answer is negative", async function () {
-            const token = feedToken;
-            const decimals = await feed.decimals();
-            await feed.setRoundDataNow(ethers.utils.parseUnits("-3", decimals));
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerCannotBeNegative");
-        });
+        if (priceIsSigned) {
+            it("Reverts if the answer is negative", async function () {
+                const token = feedToken;
+                const decimals = await feed.decimals();
+                await feed.setRoundDataNow(ethers.utils.parseUnits("-3", decimals));
+                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerCannotBeNegative");
+            });
+        }
 
-        it("Reverts if the answer equals 2^112", async function () {
-            const token = feedToken;
-            const answer = BigNumber.from(2).pow(112);
-            await feed.setRoundDataNow(answer);
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
-        });
+        // Prices stored using 112 bits, so we test this boundary
+        if (maxPriceBits > 112) {
+            it("Reverts if the answer equals 2^112", async function () {
+                const token = feedToken;
+                const answer = BigNumber.from(2).pow(112);
+                await feed.setRoundDataNow(answer);
+                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
+            });
 
-        it("Reverts if the answer exceeds 2^112", async function () {
-            const token = feedToken;
-            const answer = BigNumber.from(2).pow(112).add(1);
-            await feed.setRoundDataNow(answer);
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
-        });
+            it("Reverts if the answer exceeds 2^112", async function () {
+                const token = feedToken;
+                const answer = BigNumber.from(2).pow(112).add(1);
+                await feed.setRoundDataNow(answer);
+                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
+            });
+        }
 
         it("The price is correct when the answer is zero", async function () {
             const token = feedToken;
@@ -273,13 +417,25 @@ function describeTests(contractName, createDefaultOracle) {
             expect(observation.price).to.equal(answer);
         });
 
-        it("The price is correct when the answer equals 2^112 - 1", async function () {
-            const token = feedToken;
-            const answer = BigNumber.from(2).pow(112).sub(1);
-            await feed.setRoundDataNow(answer);
-            const observation = await oracle.getLatestObservation(token);
-            expect(observation.price).to.equal(answer);
-        });
+        if (maxPriceBits > 112) {
+            it("The price is correct when the answer equals 2^112 - 1", async function () {
+                const token = feedToken;
+                const answer = BigNumber.from(2).pow(112).sub(1);
+                await feed.setRoundDataNow(answer);
+                const observation = await oracle.getLatestObservation(token);
+                expect(observation.price).to.equal(answer);
+            });
+        } else {
+            const maxPow = priceIsSigned ? maxPriceBits - 1 : maxPriceBits;
+
+            it("The price is correct when the answer equals 2^" + maxPow + " - 1", async function () {
+                const token = feedToken;
+                const answer = BigNumber.from(2).pow(maxPow).sub(1);
+                await feed.setRoundDataNow(answer);
+                const observation = await oracle.getLatestObservation(token);
+                expect(observation.price).to.equal(answer);
+            });
+        }
 
         it("The price is correct when the answer equals a common price (one whole quote token)", async function () {
             const token = feedToken;
@@ -529,4 +685,5 @@ function describeTests(contractName, createDefaultOracle) {
     });
 }
 
-describeTests("ChainlinkOracleView", createDefaultChainlinkOracle);
+describeTests("ChainlinkOracleView", createDefaultChainlinkOracle, 256, true);
+describeTests("PythOracleView", createDefaultPythOracle, 64, true);
