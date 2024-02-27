@@ -4,6 +4,7 @@ const ethers = hre.ethers;
 
 const wethAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+const wbtcAddress = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599";
 const diaAddress = "0xa93546947f3015c986695750b8bbEa8e26D65856";
 
 function sleep(ms) {
@@ -36,9 +37,9 @@ async function createDiaOracleView(diaAddress, feedId, tokenAddress, feedTokenDe
 }
 
 async function main() {
-    const token = wethAddress;
+    const token = wbtcAddress;
     const quoteToken = usdcAddress;
-    const feedId = ethers.utils.formatBytes32String("ETH/USD");
+    const feedId = ethers.utils.formatBytes32String("BTC/USD");
     const feedTokenDecimals = 8;
 
     const oracle = await createDiaOracleView(diaAddress, feedId, token, feedTokenDecimals, quoteToken);
