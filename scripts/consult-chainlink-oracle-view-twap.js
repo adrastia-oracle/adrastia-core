@@ -44,6 +44,7 @@ async function createTwapOracle(priceAveragingStrategy, adrastiaOracle, quoteTok
 
     const priceAccumulator = await createContract(
         "AdrastiaPriceAccumulator",
+        true,
         priceAveragingStrategy,
         adrastiaOracle,
         updateTheshold,

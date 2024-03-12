@@ -12,7 +12,10 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
 
     address public immutable adrastiaOracle;
 
+    bool public immutable validationDisabled;
+
     constructor(
+        bool validationDisabled_,
         IAveragingStrategy averagingStrategy_,
         address adrastiaOracle_,
         uint256 updateTheshold_,
@@ -27,6 +30,7 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
             maxUpdateDelay_
         )
     {
+        validationDisabled = validationDisabled_;
         adrastiaOracle = adrastiaOracle_;
     }
 
@@ -86,5 +90,13 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
         address token = abi.decode(data, (address));
 
         return IPriceOracle(adrastiaOracle).consultPrice(token, _heartbeat());
+    }
+
+    function validateObservation(bytes memory updateData, uint112 price) internal virtual override returns (bool) {
+        if (validationDisabled) {
+            return true;
+        }
+
+        return super.validateObservation(updateData, price);
     }
 }
