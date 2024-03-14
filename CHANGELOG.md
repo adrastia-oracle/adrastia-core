@@ -1,5 +1,17 @@
 # Changelog
 
+## v4.3.0
+### Accumulators
+- Add AdrastiaPriceAccumulator: An accumulator that tracks and accumulates values from Adrastia price oracles.
+
+### Libraries
+- Add StringLibrary: A library for working with strings.
+  - Add function bytes32ToString: Converts bytes32 to string, stopping the conversion when we hit the null terminator or the end of the bytes.
+
+### Oracles
+- Add PythOracleView: An oracle view that reads from Pyth.
+- Add DiaOracleView: An oracle view that reads from DIA.
+
 ## v4.2.0
 ### Oracles
 - Add ChainlinkOracleView: An oracle view contract that wraps around a Chainlink feed.
