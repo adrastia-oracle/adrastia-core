@@ -5,8 +5,11 @@ import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../interfaces/IQuoteToken.sol";
+import "../libraries/StringLibrary.sol";
 
 contract SimpleQuotationMetadata is IQuoteToken, IERC165 {
+    using StringLibrary for bytes32;
+
     address public immutable quoteToken;
 
     constructor(address quoteToken_) {
@@ -43,23 +46,10 @@ contract SimpleQuotationMetadata is IQuoteToken, IERC165 {
         return interfaceId == type(IQuoteToken).interfaceId;
     }
 
-    function bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
-        // Calculate string length
-        uint256 i = 0;
-        while (i < 32 && _bytes32[i] != 0) ++i;
-
-        bytes memory bytesArray = new bytes(i);
-
-        // Extract characters
-        for (i = 0; i < 32 && _bytes32[i] != 0; ++i) bytesArray[i] = _bytes32[i];
-
-        return string(bytesArray);
-    }
-
     function getStringOrBytes32(address contractAddress, bytes4 selector) internal view returns (string memory) {
         (bool success, bytes memory result) = contractAddress.staticcall(abi.encodeWithSelector(selector));
         if (!success) return "";
 
-        return result.length == 32 ? bytes32ToString(bytes32(result)) : abi.decode(result, (string));
+        return result.length == 32 ? (bytes32(result)).bytes32ToString() : abi.decode(result, (string));
     }
 }
