@@ -12,6 +12,8 @@ const DEFAULT_UPDATE_THRESHOLD = ethers.utils.parseUnits("0.02", DEFAULT_PRECISI
 const DEFAULT_UPDATE_DELAY = 10;
 const DEFAULT_HEARTBEAT = 8 * 60 * 60;
 
+const DEFAULT_VALIDATION_DISABLED = false;
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -47,10 +49,12 @@ async function createDefaultDeployment(overrides, contractName = "AdrastiaPriceA
     var updateThreshold = overrides?.updateThreshold ?? DEFAULT_UPDATE_THRESHOLD;
     var minUpdateDelay = overrides?.minUpdateDelay ?? DEFAULT_UPDATE_DELAY;
     var maxUpdateDelay = overrides?.maxUpdateDelay ?? DEFAULT_HEARTBEAT;
+    var validationDisabled = overrides?.validationDisabled ?? DEFAULT_VALIDATION_DISABLED;
 
     const factory = await ethers.getContractFactory(contractName);
 
     const accumulator = await factory.deploy(
+        validationDisabled,
         aggregationStrategyAddress,
         oracleAddress,
         updateThreshold,
@@ -66,13 +70,21 @@ async function createDefaultDeployment(overrides, contractName = "AdrastiaPriceA
         updateDelay: minUpdateDelay,
         heartbeat: maxUpdateDelay,
         oracle: oracle,
+        validationDisabled: validationDisabled,
     };
 }
 
 describe("AdrastiaPriceAccumulator#constructor", function () {
     it("Deploys correctly with defaults", async function () {
-        const { accumulator, averagingStrategy, quoteToken, updateThreshold, updateDelay, heartbeat } =
-            await createDefaultDeployment();
+        const {
+            accumulator,
+            averagingStrategy,
+            quoteToken,
+            updateThreshold,
+            updateDelay,
+            heartbeat,
+            validationDisabled,
+        } = await createDefaultDeployment();
 
         expect(await accumulator.averagingStrategy()).to.equal(averagingStrategy);
         expect(await accumulator.quoteToken()).to.equal(quoteToken);
@@ -80,6 +92,7 @@ describe("AdrastiaPriceAccumulator#constructor", function () {
         expect(await accumulator.updateThreshold()).to.equal(updateThreshold);
         expect(await accumulator.updateDelay()).to.equal(updateDelay);
         expect(await accumulator.heartbeat()).to.equal(heartbeat);
+        expect(await accumulator.validationDisabled()).to.equal(validationDisabled);
     });
 });
 
@@ -341,5 +354,183 @@ describe("AdrastiaPriceAccumulator#fetchPrice", function () {
         await hre.timeAndMine.setTime(timestamp + 1);
 
         expect(await deployment.accumulator.stubFetchPrice(token)).to.equal(price);
+    });
+});
+
+describe("AdrastiaPriceAccumulator#update", function () {
+    describe("When validation is disabled", function () {
+        var deployment;
+
+        beforeEach(async function () {
+            deployment = await createDefaultDeployment({
+                validationDisabled: true,
+            });
+        });
+
+        it("Allows smart contracts to update", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const callerFactory = await ethers.getContractFactory("AdrastiaPriceAccumulatorUpdater");
+            const caller = await callerFactory.deploy(deployment.accumulator.address);
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            const updateTx = await caller.update(token);
+            const receipt = await updateTx.wait();
+
+            // Expect it to not emit ValidationPerformed
+            expect(receipt).to.not.emit(deployment.accumulator, "ValidationPerformed");
+
+            // Expect it to emit Updated
+            expect(receipt).to.emit(deployment.accumulator, "Updated").withArgs(token, price);
+        });
+
+        it("Updates with only the token address as the update data", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            const updateTx = await deployment.accumulator.update(
+                ethers.utils.defaultAbiCoder.encode(["address"], [token])
+            );
+            const receipt = await updateTx.wait();
+
+            // Expect it to not emit ValidationPerformed
+            expect(receipt).to.not.emit(deployment.accumulator, "ValidationPerformed");
+
+            // Expect it to emit Updated
+            expect(receipt).to.emit(deployment.accumulator, "Updated").withArgs(token, price);
+        });
+    });
+
+    describe("When validation is enabled", function () {
+        var deployment;
+
+        beforeEach(async function () {
+            deployment = await createDefaultDeployment({
+                validationDisabled: false,
+            });
+        });
+
+        it("Blocks smart contracts from updating", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const callerFactory = await ethers.getContractFactory("AdrastiaPriceAccumulatorUpdater");
+            const caller = await callerFactory.deploy(deployment.accumulator.address);
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            await expect(caller.update(token)).to.be.revertedWith("PriceAccumulator: MUST_BE_EOA");
+        });
+
+        it("Reverts if we try to update with only the token address as the update data", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            await expect(deployment.accumulator.update(ethers.utils.defaultAbiCoder.encode(["address"], [token]))).to.be
+                .reverted;
+        });
+
+        it("Performs validation and emits the event", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            const updateTx = await deployment.accumulator.update(
+                ethers.utils.defaultAbiCoder.encode(["address", "uint256", "uint256"], [token, price, timestamp])
+            );
+            const receipt = await updateTx.wait();
+
+            const updateTimestamp = await blockTimestamp(receipt.blockNumber);
+
+            // Expect it to emit ValidationPerformed
+            expect(receipt)
+                .to.emit(deployment.accumulator, "ValidationPerformed")
+                .withArgs(token, price, price, updateTimestamp, timestamp, true);
+
+            // Expect it to emit Updated
+            expect(receipt).to.emit(deployment.accumulator, "Updated").withArgs(token, price);
+        });
+
+        it("Doesn't update if time validation fails", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            const providedTimestamp = 1;
+
+            const updateTx = await deployment.accumulator.update(
+                ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint256", "uint256"],
+                    [token, price, providedTimestamp]
+                )
+            );
+            const receipt = await updateTx.wait();
+
+            const updateTimestamp = await blockTimestamp(receipt.blockNumber);
+
+            // Expect it to emit ValidationPerformed
+            expect(receipt)
+                .to.emit(deployment.accumulator, "ValidationPerformed")
+                .withArgs(token, price, price, updateTimestamp, providedTimestamp, false);
+
+            // Expect it to not emit Updated
+            expect(receipt).to.not.emit(deployment.accumulator, "Updated");
+        });
+
+        it("Doesn't update if price validation fails", async function () {
+            const timestamp = await currentBlockTimestamp();
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, timestamp);
+
+            const providedPrice = 1;
+
+            const updateTx = await deployment.accumulator.update(
+                ethers.utils.defaultAbiCoder.encode(
+                    ["address", "uint256", "uint256"],
+                    [token, providedPrice, timestamp]
+                )
+            );
+            const receipt = await updateTx.wait();
+
+            const updateTimestamp = await blockTimestamp(receipt.blockNumber);
+
+            // Expect it to emit ValidationPerformed
+            expect(receipt)
+                .to.emit(deployment.accumulator, "ValidationPerformed")
+                .withArgs(token, price, providedPrice, updateTimestamp, timestamp, false);
+
+            // Expect it to not emit Updated
+            expect(receipt).to.not.emit(deployment.accumulator, "Updated");
+        });
     });
 });
