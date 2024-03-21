@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.4.0
+### Accumulators
+- Add ValueAndErrorAccumulator: An abstract extension of LiquidityAccumulator that accumulates values and errors.
+- Add AlocUtilizationAndErrorAccumulator: An accumulator that tracks and accumulates TrueFi ALOC utilization and error.
+
 ## v4.3.0
 ### Accumulators
 - Add AdrastiaPriceAccumulator: An accumulator that tracks and accumulates values from Adrastia price oracles.
