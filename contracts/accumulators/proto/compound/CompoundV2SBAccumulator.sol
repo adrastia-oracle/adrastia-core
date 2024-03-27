@@ -30,12 +30,37 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
 
     address[] internal _cTokens;
     mapping(address => TokenInfo) internal _tokenToCToken;
+    mapping(address => address) internal _cTokenToToken;
 
     uint8 internal immutable _liquidityDecimals;
     uint256 internal immutable _decimalFactor;
 
+    /**
+     * @notice Emitted when the token mappings are refreshed.
+     * @param numAdded The number of tokens added.
+     * @param numRemoved The number of tokens removed.
+     */
+    event TokenMappingsRefreshed(uint256 numAdded, uint256 numRemoved);
+
+    /**
+     * @notice Emitted when a new cToken is added to the mapping.
+     * @param cToken The cToken address.
+     */
+    event CTokenAdded(address indexed cToken);
+
+    /**
+     * @notice Emitted when a cToken is removed from the mapping.
+     * @param cToken The cToken address.
+     */
+    event CTokenRemoved(address indexed cToken);
+
     /// @notice Emitted when an unsupported token is encountered.
     error InvalidToken(address token);
+
+    /// @notice Emitted when a token is already mapped to a cToken.
+    /// @param token The token address.
+    /// @param cToken The cToken address.
+    error DuplicateMarket(address token, address cToken);
 
     constructor(
         IAveragingStrategy averagingStrategy_,
@@ -62,12 +87,17 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
     }
 
     function refreshTokenMappings() public virtual {
+        address[] memory oldCTokens = _cTokens;
+
         // Delete old mappings
-        for (uint256 i = 0; i < _cTokens.length; ++i) {
-            delete _tokenToCToken[_cTokens[i]];
+        for (uint256 i = 0; i < oldCTokens.length; ++i) {
+            address token = _cTokenToToken[oldCTokens[i]];
+            delete _tokenToCToken[token];
+            delete _cTokenToToken[oldCTokens[i]];
         }
         delete _cTokens;
 
+        uint256 numTokens = 0;
         for (uint256 i = 0; i < 256; ++i) {
             (bool success1, bytes memory data1) = address(comptroller).staticcall(
                 abi.encodeWithSelector(IComptroller.allMarkets.selector, i)
@@ -82,8 +112,15 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
                 if (success2) {
                     address token = abi.decode(data2, (address));
                     uint8 tokenDecimals = IERC20Metadata(token).decimals();
+
+                    if (address(_tokenToCToken[token].cToken) != address(0)) {
+                        revert DuplicateMarket(token, cToken);
+                    }
+
                     _cTokens.push(cToken);
                     _tokenToCToken[token] = TokenInfo({cToken: ICToken(cToken), underlyingDecimals: tokenDecimals});
+                    _cTokenToToken[cToken] = token;
+                    ++numTokens;
                 }
                 // Note: cTokens like cEther don't have an underlying token. Such tokens will be ignored.
             } else {
@@ -91,6 +128,36 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
                 break;
             }
         }
+
+        // Log the removals
+        uint256 numRemoved = 0;
+        for (uint256 i = 0; i < oldCTokens.length; ++i) {
+            if (address(_cTokenToToken[oldCTokens[i]]) == address(0)) {
+                emit CTokenRemoved(oldCTokens[i]);
+                ++numRemoved;
+            }
+        }
+
+        // Log the additions
+        uint256 numAdded = 0;
+        address[] memory newCTokens = _cTokens;
+        for (uint256 i = 0; i < newCTokens.length; ++i) {
+            bool isNew = true;
+
+            for (uint256 j = 0; j < oldCTokens.length; ++j) {
+                if (oldCTokens[j] == newCTokens[i]) {
+                    isNew = false;
+                    break;
+                }
+            }
+
+            if (isNew) {
+                emit CTokenAdded(newCTokens[i]);
+                ++numAdded;
+            }
+        }
+
+        emit TokenMappingsRefreshed(numAdded, numRemoved);
     }
 
     function tokenInfo(address token) public view virtual returns (ICToken cToken, uint8 underlyingDecimals) {
