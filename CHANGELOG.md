@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.5.0
+### Accumulators
+- Add CompoundV2SBAccumulator: An accumulator that tracks and accumulates Compound v2 total supply and borrow amounts.
+- Add IonicSBAccumulator: An accumulator that tracks and accumulates Ionic total supply and borrow amounts.
+
 ## v4.4.0
 ### Accumulators
 - Add ValueAndErrorAccumulator: An abstract extension of LiquidityAccumulator that accumulates values and errors.
