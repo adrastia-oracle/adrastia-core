@@ -515,8 +515,84 @@ function createDescribeCompoundV2FetchLiquidityTests(typicalSupplyCalculation) {
     };
 }
 
+function createDescribeSpecificVenusIsolatedFetchLiquidityTests() {
+    return function describeVenusIsolatedFetchLiquidityTests(contractName, deployContracts) {
+        describe("Venus isolated special cases", function () {
+            var poolStub;
+            var accumulator;
+            var decimals;
+            var cTokenFactory;
+
+            beforeEach(async function () {
+                const contracts = await deployContracts(WETH, (decimals = DEFAULT_DECIMALS));
+                poolStub = contracts.poolStub;
+                accumulator = contracts.accumulator;
+                cTokenFactory = await ethers.getContractFactory("IonicCTokenStub");
+            });
+
+            const n = 1000;
+
+            it("Fuzz testing with " + n + " iterations", async function () {
+                const token = WETH;
+                const updateData = ethers.utils.hexZeroPad(token, 32);
+
+                const tokenContract = await ethers.getContractAt("IERC20Metadata", token);
+                const tokenDecimals = await tokenContract.decimals();
+
+                for (let i = 0; i < n; i++) {
+                    // Generate a random number of supply, borrow, reserves, and bad debt
+                    const cash = getRandomBigNumber(64);
+                    const borrow = getRandomBigNumber(64);
+                    const reserves = getRandomBigNumber(64);
+                    const badDebt = getRandomBigNumber(64);
+
+                    const totalSupply = cash.add(borrow).add(badDebt).sub(reserves);
+                    const totalBorrow = borrow.add(badDebt);
+
+                    if (totalSupply.lt(0)) {
+                        // Invalid total supply. Retry.
+                        --i;
+
+                        continue;
+                    }
+
+                    const rawCash = ethers.utils.parseUnits(cash.toString(), tokenDecimals - decimals);
+                    const rawBorrow = ethers.utils.parseUnits(borrow.toString(), tokenDecimals - decimals);
+                    const rawReserves = ethers.utils.parseUnits(reserves.toString(), tokenDecimals - decimals);
+                    const rawBadDebt = ethers.utils.parseUnits(badDebt.toString(), tokenDecimals - decimals);
+
+                    // Get the cToken
+                    const cTokenAddress = await poolStub.cTokensByUnderlying(token);
+                    const cToken = await cTokenFactory.attach(cTokenAddress);
+
+                    await cToken.stubSetCash(rawCash);
+                    await cToken.stubSetTotalBorrows(rawBorrow);
+                    await cToken.stubSetTotalReserves(rawReserves);
+                    await cToken.stubSetBadDebt(rawBadDebt);
+
+                    const result = await accumulator.stubFetchLiquidity(updateData);
+
+                    // Allow for a 0.00001% difference
+                    expect(result.tokenLiquidity).to.be.closeTo(totalBorrow, totalBorrow.div(10000000));
+                    expect(result.quoteTokenLiquidity).to.be.closeTo(totalSupply, totalSupply.div(10000000));
+                }
+            });
+        });
+    };
+}
+
 function createDescribeIonicFetchLiquidityTests() {
     return createDescribeCompoundV2FetchLiquidityTests(false);
+}
+
+function createDescribeVenusIsolatedFetchLiquidityTests() {
+    const stdDescribe = createDescribeCompoundV2FetchLiquidityTests(true);
+    const venusIsolatedDescribe = createDescribeSpecificVenusIsolatedFetchLiquidityTests();
+
+    return (contractName, deployContracts) => {
+        stdDescribe(contractName, deployContracts);
+        venusIsolatedDescribe(contractName, deployContracts);
+    };
 }
 
 function describeSBAccumulatorTests(
@@ -826,6 +902,40 @@ async function deployIonicContracts(baseToken, decimals) {
     };
 }
 
+async function deployVenusIsolatedContracts(baseToken, decimals) {
+    const poolStubFactory = await ethers.getContractFactory("IonicStub");
+    const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+    const accumulatorFactory = await ethers.getContractFactory("VenusIsolatedSBAccumulatorStub");
+    const cTokenFactory = await ethers.getContractFactory("IonicCTokenStub");
+
+    const poolStub = await poolStubFactory.deploy();
+    await poolStub.deployed();
+
+    const averagingStrategy = await averagingStrategyFactory.deploy();
+    await averagingStrategy.deployed();
+
+    const accumulator = await accumulatorFactory.deploy(
+        averagingStrategy.address,
+        poolStub.address,
+        decimals,
+        DEFAULT_UPDATE_THRESHOLD,
+        DEFAULT_UPDATE_DELAY,
+        DEFAULT_HEARTBEAT
+    );
+
+    const cToken = await cTokenFactory.deploy(baseToken);
+    await cToken.deployed();
+
+    await poolStub.stubSetCToken(baseToken, cToken.address);
+
+    await accumulator.refreshTokenMappings();
+
+    return {
+        poolStub: poolStub,
+        accumulator: accumulator,
+    };
+}
+
 async function deployCompoundV2Contracts(baseToken, decimals) {
     const poolStubFactory = await ethers.getContractFactory("IonicStub");
     const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
@@ -1004,4 +1114,14 @@ describeSBAccumulatorTests(
     true,
     false,
     createDescribeCompoundV2FetchLiquidityTests(true)
+);
+describeSBAccumulatorTests(
+    "VenusIsolatedSBAccumulator",
+    deployVenusIsolatedContracts,
+    ionicSetSupply,
+    ionicSetBorrow,
+    [_WETH, _USDC],
+    true,
+    false,
+    createDescribeVenusIsolatedFetchLiquidityTests()
 );
