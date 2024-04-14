@@ -227,6 +227,21 @@ describe("CompoundV2SBAccumulator#refreshTokenMappings", function () {
         await expect(accumulator.refreshTokenMappings()).to.be.revertedWith("DuplicateMarket");
     });
 
+    it("Reverts if two different CEther tokens are listed", async function () {
+        const cEther1 = await cTokenFactory.deploy(WETH);
+        await cEther1.deployed();
+        const cEther2 = await cTokenFactory.deploy(WETH);
+        await cEther2.deployed();
+
+        await cEther1.stubSetIsCEther(true);
+        await cEther2.stubSetIsCEther(true);
+
+        await poolStub["stubAddMarket(address)"](cEther1.address);
+        await poolStub["stubAddMarket(address)"](cEther2.address);
+
+        await expect(accumulator.refreshTokenMappings()).to.be.revertedWith("DuplicateMarket");
+    });
+
     it("Discovers one market - WETH", async function () {
         const cToken = await cTokenFactory.deploy(WETH);
         await cToken.deployed();
@@ -403,13 +418,26 @@ describe("CompoundV2SBAccumulator#refreshTokenMappings", function () {
         expect(receipt.events.length).to.equal(1);
     });
 
-    it("CTokens without underlying tokens are ignored", async function () {
+    it("CTokens without underlying tokens are treated as CEther", async function () {
         const cToken = await cTokenFactory.deploy(WETH);
         await cToken.deployed();
 
         await cToken.stubSetIsCEther(true);
 
         await poolStub["stubAddMarket(address)"](cToken.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cToken.address);
+        expect(receipt.events.length).to.equal(2);
+    });
+
+    it("Skips markets whose cToken is address(0)", async function () {
+        const cToken = await cTokenFactory.deploy(WETH);
+        await cToken.deployed();
+
+        await poolStub["stubAddMarket(address)"](ethers.constants.AddressZero);
         const refreshTx = await accumulator.refreshTokenMappings();
         const receipt = await refreshTx.wait();
 
