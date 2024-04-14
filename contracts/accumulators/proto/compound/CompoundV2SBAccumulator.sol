@@ -170,7 +170,7 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
     function supplyForCToken(ICToken cToken) internal view virtual returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 totalReserves = cToken.totalReserves();
-        uint256 totalBorrows = cToken.totalBorrows();
+        uint256 totalBorrows = borrowsForCToken(cToken);
 
         return (cash + totalBorrows) - totalReserves;
     }
