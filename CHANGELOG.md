@@ -1,5 +1,10 @@
 # Changelog
 
+## v4.6.0
+### Accumulators
+- Update CompoundV2SBAccumulator: Add support for CEther.
+- Add VenusIsolatedSBAccumulator: An accumulator that tracks and accumulates Venus Isolated Pools total supply and borrow amounts.
+
 ## v4.5.0
 ### Accumulators
 - Add CompoundV2SBAccumulator: An accumulator that tracks and accumulates Compound v2 total supply and borrow amounts.

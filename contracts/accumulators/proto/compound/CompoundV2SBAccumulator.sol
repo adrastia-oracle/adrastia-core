@@ -3,6 +3,7 @@ pragma solidity =0.8.13;
 
 import "../../LiquidityAccumulator.sol";
 import "../../../libraries/SafeCastExt.sol";
+import "../../../libraries/EtherAsTokenLibrary.sol";
 
 interface IComptroller {
     function allMarkets(uint256 index) external view returns (address);
@@ -104,25 +105,35 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
             );
             if (success1) {
                 address cToken = abi.decode(data1, (address));
+                if (cToken == address(0)) {
+                    // Skip past any empty markets (this should never happen, but just in case)
+                    continue;
+                }
 
                 // Now get the underlying token
                 (bool success2, bytes memory data2) = cToken.staticcall(
                     abi.encodeWithSelector(ICToken.underlying.selector)
                 );
+                address token;
+                uint8 tokenDecimals;
                 if (success2) {
-                    address token = abi.decode(data2, (address));
-                    uint8 tokenDecimals = IERC20Metadata(token).decimals();
-
-                    if (address(_tokenToCToken[token].cToken) != address(0)) {
-                        revert DuplicateMarket(token, cToken);
-                    }
-
-                    _cTokens.push(cToken);
-                    _tokenToCToken[token] = TokenInfo({cToken: ICToken(cToken), underlyingDecimals: tokenDecimals});
-                    _cTokenToToken[cToken] = token;
-                    ++numTokens;
+                    // CErc20
+                    token = abi.decode(data2, (address));
+                    tokenDecimals = IERC20Metadata(token).decimals();
+                } else {
+                    // CEther
+                    token = EtherAsTokenLibrary.ETHER_AS_TOKEN;
+                    tokenDecimals = 18;
                 }
-                // Note: cTokens like cEther don't have an underlying token. Such tokens will be ignored.
+
+                if (address(_tokenToCToken[token].cToken) != address(0)) {
+                    revert DuplicateMarket(token, cToken);
+                }
+
+                _cTokens.push(cToken);
+                _tokenToCToken[token] = TokenInfo({cToken: ICToken(cToken), underlyingDecimals: tokenDecimals});
+                _cTokenToToken[cToken] = token;
+                ++numTokens;
             } else {
                 // We've iterated through all markets
                 break;
@@ -170,7 +181,7 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
     function supplyForCToken(ICToken cToken) internal view virtual returns (uint256) {
         uint256 cash = cToken.getCash();
         uint256 totalReserves = cToken.totalReserves();
-        uint256 totalBorrows = cToken.totalBorrows();
+        uint256 totalBorrows = borrowsForCToken(cToken);
 
         return (cash + totalBorrows) - totalReserves;
     }

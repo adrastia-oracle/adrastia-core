@@ -11,6 +11,7 @@ contract IonicCTokenStub is IIonicCToken, ICToken {
     uint256 public _totalBorrows;
     uint256 public _totalReserves;
     uint256 public _cash;
+    uint256 public _badDebt;
 
     bool internal _isCEther;
 
@@ -38,6 +39,10 @@ contract IonicCTokenStub is IIonicCToken, ICToken {
         _isCEther = isCEther_;
     }
 
+    function stubSetBadDebt(uint256 badDebt_) external {
+        _badDebt = badDebt_;
+    }
+
     function getTotalUnderlyingSupplied() external view override returns (uint256) {
         return _totalUnderlyingSupplied;
     }
@@ -60,5 +65,9 @@ contract IonicCTokenStub is IIonicCToken, ICToken {
 
     function getCash() external view override returns (uint256) {
         return _cash;
+    }
+
+    function badDebt() external view returns (uint256) {
+        return _badDebt;
     }
 }
