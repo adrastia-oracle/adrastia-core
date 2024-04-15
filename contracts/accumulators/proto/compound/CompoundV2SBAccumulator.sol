@@ -76,7 +76,11 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
         _liquidityDecimals = decimals_;
         _decimalFactor = 10 ** decimals_;
 
-        refreshTokenMappings();
+        _refreshTokenMappings();
+    }
+
+    function refreshTokenMappings() external virtual {
+        _refreshTokenMappings();
     }
 
     function quoteTokenDecimals() public view virtual override(SimpleQuotationMetadata, IQuoteToken) returns (uint8) {
@@ -87,7 +91,8 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
         return _liquidityDecimals;
     }
 
-    function refreshTokenMappings() public virtual {
+    /// @dev Calls to the cToken contracts are limited to 20k gas to avoid issues with CEther fallback.
+    function _refreshTokenMappings() internal virtual {
         address[] memory oldCTokens = _cTokens;
 
         // Delete old mappings
@@ -103,7 +108,7 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
             (bool success1, bytes memory data1) = address(comptroller).staticcall(
                 abi.encodeWithSelector(IComptroller.allMarkets.selector, i)
             );
-            if (success1) {
+            if (success1 && data1.length == 32) {
                 address cToken = abi.decode(data1, (address));
                 if (cToken == address(0)) {
                     // Skip past any empty markets (this should never happen, but just in case)
@@ -111,12 +116,12 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
                 }
 
                 // Now get the underlying token
-                (bool success2, bytes memory data2) = cToken.staticcall(
+                (bool success2, bytes memory data2) = cToken.staticcall{gas: 20000}(
                     abi.encodeWithSelector(ICToken.underlying.selector)
                 );
                 address token;
                 uint8 tokenDecimals;
-                if (success2) {
+                if (success2 && data2.length == 32) {
                     // CErc20
                     token = abi.decode(data2, (address));
                     tokenDecimals = IERC20Metadata(token).decimals();
