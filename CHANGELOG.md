@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.6.1
+### Accumulators
+- Fix bug in CompoundV2SBAccumulator: Some CEther markets used to cause reverts when updating the token mappings.
+
 ## v4.6.0
 ### Accumulators
 - Update CompoundV2SBAccumulator: Add support for CEther.
