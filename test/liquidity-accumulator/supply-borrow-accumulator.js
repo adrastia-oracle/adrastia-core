@@ -444,6 +444,78 @@ describe("CompoundV2SBAccumulator#refreshTokenMappings", function () {
         expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(0, 0);
         expect(receipt.events.length).to.equal(1);
     });
+
+    it("CEther with a non-reverting fallback doesn't cause problems", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther = await cEtherFactory.deploy();
+
+        await poolStub["stubAddMarket(address)"](cEther.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cEther.address);
+        expect(receipt.events.length).to.equal(2);
+    });
+
+    it("CEther with a reverting fallback doesn't cause problems", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther = await cEtherFactory.deploy();
+
+        await cEther.stubSetRevertInFallback(true);
+
+        await poolStub["stubAddMarket(address)"](cEther.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cEther.address);
+        expect(receipt.events.length).to.equal(2);
+    });
+
+    it("CEther with a gas-guzzling fallback doesn't cause problems", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther = await cEtherFactory.deploy();
+
+        await cEther.stubSetConsumeGasInFallback(true);
+
+        await poolStub["stubAddMarket(address)"](cEther.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cEther.address);
+        expect(receipt.events.length).to.equal(2);
+    });
+
+    it("CEther with a state-modifying fallback doesn't cause problems", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther = await cEtherFactory.deploy();
+
+        await cEther.stubSetWriteInFallback(true);
+
+        await poolStub["stubAddMarket(address)"](cEther.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cEther.address);
+        expect(receipt.events.length).to.equal(2);
+    });
+
+    it("Two CEther with a gas-guzzling fallback is reverted with DuplicateMarket", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther1 = await cEtherFactory.deploy();
+        const cEther2 = await cEtherFactory.deploy();
+
+        await cEther1.stubSetConsumeGasInFallback(true);
+        await cEther2.stubSetConsumeGasInFallback(true);
+
+        await poolStub["stubAddMarket(address)"](cEther1.address);
+        await poolStub["stubAddMarket(address)"](cEther2.address);
+
+        await expect(accumulator.refreshTokenMappings()).to.be.revertedWith("DuplicateMarket");
+    });
 });
 
 function createDescribeCompoundV2FetchLiquidityTests(typicalSupplyCalculation) {
