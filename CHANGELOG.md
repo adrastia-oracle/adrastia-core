@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.7.0
+### Accumulators
+- Modify AlocUtilizationAndErrorAccumulator: Add constructor flag to treat an empty ALOC as 0% utilized.
+
 ## v4.6.1
 ### Accumulators
 - Fix bug in CompoundV2SBAccumulator: Some CEther markets used to cause reverts when updating the token mappings.
