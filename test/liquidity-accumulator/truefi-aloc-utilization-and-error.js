@@ -42,6 +42,7 @@ describe("AlocUtilizationAndErrorAccumulator#constructor", function () {
         await averagingStrategy.deployed();
 
         const accumulator = await accumulatorFactory.deploy(
+            true,
             DEFAULT_TARGET,
             averagingStrategy.address,
             DEFAULT_DECIMALS,
@@ -60,7 +61,7 @@ describe("AlocUtilizationAndErrorAccumulator#constructor", function () {
     });
 });
 
-describe("AlocUtilizationAndErrorAccumulator#fetchValue", function () {
+describe("AlocUtilizationAndErrorAccumulator#fetchValue - Considering empty ALOC as 100% utilization", function () {
     var aloc;
     var accumulator;
 
@@ -72,6 +73,7 @@ describe("AlocUtilizationAndErrorAccumulator#fetchValue", function () {
         aloc = await alocStubFactory.deploy();
         const averagingStrategy = await averagingStrategyFactory.deploy();
         accumulator = await accumulatorFactory.deploy(
+            true,
             DEFAULT_TARGET,
             averagingStrategy.address,
             DEFAULT_DECIMALS,
@@ -169,6 +171,116 @@ describe("AlocUtilizationAndErrorAccumulator#fetchValue", function () {
     });
 });
 
+describe("AlocUtilizationAndErrorAccumulator#fetchValue - Considering empty ALOC as 0% utilization", function () {
+    var aloc;
+    var accumulator;
+
+    beforeEach(async function () {
+        const alocStubFactory = await ethers.getContractFactory("AlocStub");
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const accumulatorFactory = await ethers.getContractFactory("AlocUtilizationAndErrorAccumulatorStub");
+
+        aloc = await alocStubFactory.deploy();
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        accumulator = await accumulatorFactory.deploy(
+            false,
+            DEFAULT_TARGET,
+            averagingStrategy.address,
+            DEFAULT_DECIMALS,
+            DEFAULT_UPDATE_THRESHOLD,
+            DEFAULT_UPDATE_DELAY,
+            DEFAULT_HEARTBEAT
+        );
+
+        await aloc.deployed();
+        await accumulator.deployed();
+    });
+
+    it("Returns 0% utilization when the aloc is at zero utilization but has no liquidity", async function () {
+        await aloc.stubSetUtilization(0);
+        await aloc.stubSetLiquidAssets(0);
+
+        const utilization = await accumulator.stubFetchValue(aloc.address);
+        const expectedUtilization = ethers.utils.parseUnits("0", DEFAULT_DECIMALS);
+
+        expect(utilization).to.eq(expectedUtilization);
+    });
+
+    it("Returns 0% utilization when the aloc is at zero utilization but has liquidity", async function () {
+        await aloc.stubSetUtilization(0);
+        await aloc.stubSetLiquidAssets(1);
+
+        const utilization = await accumulator.stubFetchValue(aloc.address);
+        const expectedUtilization = ethers.utils.parseUnits("0", DEFAULT_DECIMALS);
+
+        expect(utilization).to.eq(expectedUtilization);
+    });
+
+    it("Returns 1% utilization when the aloc is at 1% utilization", async function () {
+        const utilizationStr = "0.01";
+
+        const alocBasis = await aloc.BASIS_PRECISION();
+        const alocDecimals = Math.log10(alocBasis.toNumber());
+        const alocUtilization = ethers.utils.parseUnits(utilizationStr, alocDecimals);
+
+        await aloc.stubSetUtilization(alocUtilization);
+        await aloc.stubSetLiquidAssets(1);
+
+        const utilization = await accumulator.stubFetchValue(aloc.address);
+        const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
+
+        expect(utilization).to.eq(expectedUtilization);
+    });
+
+    it("Returns 50% utilization when the aloc is at 50% utilization", async function () {
+        const utilizationStr = "0.5";
+
+        const alocBasis = await aloc.BASIS_PRECISION();
+        const alocDecimals = Math.log10(alocBasis.toNumber());
+        const alocUtilization = ethers.utils.parseUnits(utilizationStr, alocDecimals);
+
+        await aloc.stubSetUtilization(alocUtilization);
+        await aloc.stubSetLiquidAssets(0);
+
+        const utilization = await accumulator.stubFetchValue(aloc.address);
+        const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
+
+        expect(utilization).to.eq(expectedUtilization);
+    });
+
+    it("Returns target utilization when the aloc is at target utilization", async function () {
+        const utilizationStr = ethers.utils.formatUnits(DEFAULT_TARGET, DEFAULT_DECIMALS);
+
+        const alocBasis = await aloc.BASIS_PRECISION();
+        const alocDecimals = Math.log10(alocBasis.toNumber());
+        const alocUtilization = ethers.utils.parseUnits(utilizationStr, alocDecimals);
+
+        await aloc.stubSetUtilization(alocUtilization);
+        await aloc.stubSetLiquidAssets(0);
+
+        const utilization = await accumulator.stubFetchValue(aloc.address);
+        const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
+
+        expect(utilization).to.eq(expectedUtilization);
+    });
+
+    it("Returns 100% utilization when the aloc is at 100% utilization", async function () {
+        const utilizationStr = "1";
+
+        const alocBasis = await aloc.BASIS_PRECISION();
+        const alocDecimals = Math.log10(alocBasis.toNumber());
+        const alocUtilization = ethers.utils.parseUnits(utilizationStr, alocDecimals);
+
+        await aloc.stubSetUtilization(alocUtilization);
+        await aloc.stubSetLiquidAssets(0);
+
+        const utilization = await accumulator.stubFetchValue(aloc.address);
+        const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
+
+        expect(utilization).to.eq(expectedUtilization);
+    });
+});
+
 describe("AlocUtilizationAndErrorAccumulator#fetchLiquidity", function () {
     var aloc;
     var accumulator;
@@ -181,6 +293,7 @@ describe("AlocUtilizationAndErrorAccumulator#fetchLiquidity", function () {
         aloc = await alocStubFactory.deploy();
         const averagingStrategy = await averagingStrategyFactory.deploy();
         accumulator = await accumulatorFactory.deploy(
+            true,
             DEFAULT_TARGET,
             averagingStrategy.address,
             DEFAULT_DECIMALS,

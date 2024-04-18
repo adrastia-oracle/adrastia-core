@@ -18,8 +18,10 @@ contract AlocUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
     uint8 internal immutable _liquidityDecimals;
     uint256 internal immutable _decimalFactor;
     uint112 internal immutable _target;
+    bool internal immutable _considerEmptyAs100Percent;
 
     constructor(
+        bool considerEmptyAs100Percent_,
         uint112 target_,
         IAveragingStrategy averagingStrategy_,
         uint8 decimals_,
@@ -30,6 +32,7 @@ contract AlocUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
         _liquidityDecimals = decimals_;
         _decimalFactor = 10 ** decimals_;
         _target = target_;
+        _considerEmptyAs100Percent = considerEmptyAs100Percent_;
     }
 
     function getTarget(address token) external view virtual returns (uint112) {
@@ -48,13 +51,15 @@ contract AlocUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
         address alocAddress = abi.decode(data, (address));
 
         uint256 utilization = IAloc(alocAddress).utilization();
-        if (utilization == 0 && IAloc(alocAddress).liquidAssets() == 0) {
-            // Utilization is 0, but the ALOC has no liquidity. Let's instead consider the utilization to be 100%.
-            // When used in a PID interest rate controller, this will cause the interest rate to rise so as to attract
-            // more liquidity.
-            // In other cases, it just makes more sense to consider the utilization to be 100% when there is no
-            // liquidity. i.e. if there is no liquidity, then all available liquidity is being used.
-            return _decimalFactor.toUint112();
+        if (_considerEmptyAs100Percent) {
+            if (utilization == 0 && IAloc(alocAddress).liquidAssets() == 0) {
+                // Utilization is 0, but the ALOC has no liquidity. Let's instead consider the utilization to be 100%.
+                // When used in a PID interest rate controller, this will cause the interest rate to rise so as to attract
+                // more liquidity.
+                // In other cases, it just makes more sense to consider the utilization to be 100% when there is no
+                // liquidity. i.e. if there is no liquidity, then all available liquidity is being used.
+                return _decimalFactor.toUint112();
+            }
         }
 
         // Convert from the ALOC's units to the units used by the accumulator

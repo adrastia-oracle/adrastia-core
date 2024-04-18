@@ -8,6 +8,7 @@ contract AlocUtilizationAndErrorAccumulatorStub is AlocUtilizationAndErrorAccumu
     uint112 internal targetOverride;
 
     constructor(
+        bool considerEmptyAs100Percent_,
         uint112 target_,
         IAveragingStrategy averagingStrategy_,
         uint8 decimals_,
@@ -16,6 +17,7 @@ contract AlocUtilizationAndErrorAccumulatorStub is AlocUtilizationAndErrorAccumu
         uint256 maxUpdateDelay_
     )
         AlocUtilizationAndErrorAccumulator(
+            considerEmptyAs100Percent_,
             target_,
             averagingStrategy_,
             decimals_,
