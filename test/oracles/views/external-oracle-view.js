@@ -85,7 +85,7 @@ async function deployDiaFeed(quoteTokenDecimals, feedId) {
     return feed;
 }
 
-async function createDefaultDiaOracle(feedToken, quoteToken, contractName = "DiaOracleView") {
+async function createDefaultDiaOracle(feedToken, quoteToken, contractName = "DiaOracleView", overrides = {}) {
     const quoteTokenContract = await ethers.getContractAt(
         "@openzeppelin-v4/contracts/token/ERC20/ERC20.sol:ERC20",
         quoteToken
@@ -95,10 +95,15 @@ async function createDefaultDiaOracle(feedToken, quoteToken, contractName = "Dia
     // Create some feed ID based on the feed token
     const feedId = pythFeedId(feedToken);
 
-    const feed = await deployDiaFeed(quoteTokenDecimals, feedId);
+    let feedAddress = overrides.feedAddress;
+    let feed = undefined;
+    if (!feedAddress) {
+        feed = await deployDiaFeed(quoteTokenDecimals, feedId);
+        feedAddress = feed.address;
+    }
 
-    const factory = await ethers.getContractFactory(contractName);
-    const oracle = await factory.deploy(feed.address, feedId, feedToken, quoteTokenDecimals, quoteToken);
+    const factory = await ethers.getContractFactory(contractName ?? "DiaOracleView");
+    const oracle = await factory.deploy(feedAddress, feedId, feedToken, quoteTokenDecimals, quoteToken);
 
     return {
         feed: feed,
@@ -203,6 +208,30 @@ describe("DiaOracleView#constructor", function () {
         expect(await oracle.quoteTokenDecimals()).to.equal(feedTokenDecimals);
         expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
         expect(await oracle.getFeedToken()).to.equal(feedToken);
+    });
+
+    it("Reverts if the feed address is address(0)", async function () {
+        const feedToken = GRT;
+        const quoteToken = USDC;
+        await expect(
+            createDefaultDiaOracle(feedToken, quoteToken, undefined, { feedAddress: AddressZero })
+        ).to.be.revertedWith("InvalidConstructorArgument");
+    });
+
+    it("Reverts if the feed token is address(0)", async function () {
+        const feedToken = AddressZero;
+        const quoteToken = USDC;
+
+        await expect(createDefaultDiaOracle(feedToken, quoteToken)).to.be.revertedWith("InvalidConstructorArgument");
+    });
+
+    it("Reverts if the feed address and feed token are address(0)", async function () {
+        const feedToken = AddressZero;
+        const quoteToken = USDC;
+
+        await expect(
+            createDefaultDiaOracle(feedToken, quoteToken, undefined, { feedAddress: AddressZero })
+        ).to.be.revertedWith("InvalidConstructorArgument");
     });
 });
 
