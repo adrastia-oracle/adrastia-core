@@ -1579,6 +1579,16 @@ function describeLiquidityAccumulatorTests(
                 const interfaceId = await interfaceIds.iAccumulator();
                 expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
             });
+
+            it("Should support IERC165", async () => {
+                const interfaceId = await interfaceIds.iERC165();
+                expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
+            });
+
+            it("Should return false for the invalid interface", async () => {
+                const interfaceId = await interfaceIds.invalidInterface();
+                expect(await liquidityAccumulator["supportsInterface(bytes4)"](interfaceId)).to.equal(false);
+            });
         });
 
         describe(contractName + "#consultLiquidity(token)", function () {

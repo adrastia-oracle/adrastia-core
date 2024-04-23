@@ -28,7 +28,11 @@ abstract contract AbstractAccumulator is IERC165, IAccumulator {
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IAccumulator).interfaceId;
+        if (interfaceId == 0xffffffff) {
+            return false;
+        }
+
+        return interfaceId == type(IAccumulator).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     function _updateThreshold() internal view virtual returns (uint256) {
