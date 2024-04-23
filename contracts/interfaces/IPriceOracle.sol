@@ -20,7 +20,7 @@ abstract contract IPriceOracle is IUpdateable, IQuoteToken {
      * @dev Using maxAge of 0 can be gas costly and the returned data is easier to manipulate.
      * @param token The token to get the price of.
      * @param maxAge The maximum age of the quotation, in seconds. If 0, the function gets the instant rates as of the
-     *   latest block, straight from the source.
+     *   latest block, straight from the source. WARNING: Using a maxAge of 0 is expensive and is generally insecure.
      * @return price The quote token denominated price for a whole token.
      */
     function consultPrice(address token, uint256 maxAge) public view virtual returns (uint112 price);

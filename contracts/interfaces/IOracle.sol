@@ -28,7 +28,7 @@ abstract contract IOracle is IUpdateable, IPriceOracle, ILiquidityOracle {
      * @dev Using maxAge of 0 can be gas costly and the returned data is easier to manipulate.
      * @param token The token to get the price of.
      * @param maxAge The maximum age of the quotation, in seconds. If 0, the function gets the instant rates as of the
-     *   latest block, straight from the source.
+     *   latest block, straight from the source. WARNING: Using a maxAge of 0 is expensive and is generally insecure.
      * @return price The quote token denominated price for a whole token.
      * @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
      * @return quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
