@@ -28,6 +28,7 @@ contract PythOracleView is AbstractOracle {
     error AnswerTooLarge(int256 answer);
     error InvalidTimestamp(uint256 timestamp);
     error UnsupportedToken(address token);
+    error InvalidConstructorArgument();
 
     /**
      * @notice Constructs a new PythOracleView contract.
@@ -42,6 +43,10 @@ contract PythOracleView is AbstractOracle {
         address feedToken_,
         address quoteToken_
     ) AbstractOracle(quoteToken_) {
+        if (pythAddress_ == address(0) || feedToken_ == address(0)) {
+            revert InvalidConstructorArgument();
+        }
+
         pythAddress = pythAddress_;
         feedId = feedId_;
         feedToken = feedToken_;

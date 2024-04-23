@@ -56,7 +56,7 @@ async function deployPythFeed(quoteTokenDecimals, feedId) {
     return feed;
 }
 
-async function createDefaultPythOracle(feedToken, quoteToken, contractName = "PythOracleView") {
+async function createDefaultPythOracle(feedToken, quoteToken, contractName = "PythOracleView", overrides = {}) {
     const quoteTokenContract = await ethers.getContractAt(
         "@openzeppelin-v4/contracts/token/ERC20/ERC20.sol:ERC20",
         quoteToken
@@ -66,10 +66,15 @@ async function createDefaultPythOracle(feedToken, quoteToken, contractName = "Py
     // Create some feed ID based on the feed token
     const feedId = pythFeedId(feedToken);
 
-    const feed = await deployPythFeed(quoteTokenDecimals, feedId);
+    let feedAddress = overrides.feedAddress;
+    let feed = undefined;
+    if (!feedAddress) {
+        feed = await deployPythFeed(quoteTokenDecimals, feedId);
+        feedAddress = feed.address;
+    }
 
-    const factory = await ethers.getContractFactory(contractName);
-    const oracle = await factory.deploy(feed.address, feedId, feedToken, quoteToken);
+    const factory = await ethers.getContractFactory(contractName ?? "PythOracleView");
+    const oracle = await factory.deploy(feedAddress, feedId, feedToken, quoteToken);
 
     return {
         feed: feed,
@@ -172,6 +177,30 @@ describe("PythOracleView#constructor", function () {
         expect(await oracle.quoteTokenDecimals()).to.equal(18); // Sanity check
         expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
         expect(await oracle.getFeedToken()).to.equal(feedToken);
+    });
+
+    it("Reverts if the feed address is address(0)", async function () {
+        const feedToken = GRT;
+        const quoteToken = USDC;
+        await expect(
+            createDefaultPythOracle(feedToken, quoteToken, undefined, { feedAddress: AddressZero })
+        ).to.be.revertedWith("InvalidConstructorArgument");
+    });
+
+    it("Reverts if the feed token is address(0)", async function () {
+        const feedToken = AddressZero;
+        const quoteToken = USDC;
+
+        await expect(createDefaultPythOracle(feedToken, quoteToken)).to.be.revertedWith("InvalidConstructorArgument");
+    });
+
+    it("Reverts if the feed address and feed token are address(0)", async function () {
+        const feedToken = AddressZero;
+        const quoteToken = USDC;
+
+        await expect(
+            createDefaultPythOracle(feedToken, quoteToken, undefined, { feedAddress: AddressZero })
+        ).to.be.revertedWith("InvalidConstructorArgument");
     });
 });
 
