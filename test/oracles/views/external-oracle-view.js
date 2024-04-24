@@ -8,6 +8,10 @@ const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
+const DEFAULT_CONFIDENCE_DECIMALS = 8;
+const DEFAULT_MIN_CONFIDENCE = ethers.utils.parseUnits("0.95", DEFAULT_CONFIDENCE_DECIMALS); // 95%
+const LOWEST_CONFIDENCE_INTERVAL = ethers.constants.One;
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -73,8 +77,13 @@ async function createDefaultPythOracle(feedToken, quoteToken, contractName = "Py
         feedAddress = feed.address;
     }
 
+    let minConfidence = overrides.minConfidence;
+    if (minConfidence == null) {
+        minConfidence = DEFAULT_MIN_CONFIDENCE;
+    }
+
     const factory = await ethers.getContractFactory(contractName ?? "PythOracleView");
-    const oracle = await factory.deploy(feedAddress, feedId, feedToken, quoteToken);
+    const oracle = await factory.deploy(feedAddress, feedId, feedToken, minConfidence, quoteToken);
 
     return {
         feed: feed,
@@ -148,7 +157,10 @@ describe("PythOracleView#constructor", function () {
     it("Deploys correctly with USDC as the quote token (6 decimals)", async function () {
         const feedToken = GRT;
         const quoteToken = USDC;
-        const deployment = await createDefaultPythOracle(feedToken, quoteToken);
+        const minConfidence = DEFAULT_MIN_CONFIDENCE;
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: minConfidence,
+        });
         const oracle = deployment.oracle;
         const feed = deployment.feed;
 
@@ -160,12 +172,16 @@ describe("PythOracleView#constructor", function () {
         expect(await oracle.quoteTokenDecimals()).to.equal(6); // Sanity check
         expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
         expect(await oracle.getFeedToken()).to.equal(feedToken);
+        expect(await oracle.getMinConfidence()).to.equal(minConfidence);
     });
 
     it("Deploys correctly with DAI as the quote token (18 decimals)", async function () {
         const feedToken = GRT;
         const quoteToken = DAI;
-        const deployment = await createDefaultPythOracle(feedToken, quoteToken);
+        const minConfidence = DEFAULT_MIN_CONFIDENCE;
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: minConfidence,
+        });
         const oracle = deployment.oracle;
         const feed = deployment.feed;
 
@@ -177,6 +193,7 @@ describe("PythOracleView#constructor", function () {
         expect(await oracle.quoteTokenDecimals()).to.equal(18); // Sanity check
         expect(await oracle.getUnderlyingFeedId()).to.equal(feedId);
         expect(await oracle.getFeedToken()).to.equal(feedToken);
+        expect(await oracle.getMinConfidence()).to.equal(minConfidence);
     });
 
     it("Reverts if the feed address is address(0)", async function () {
@@ -184,6 +201,14 @@ describe("PythOracleView#constructor", function () {
         const quoteToken = USDC;
         await expect(
             createDefaultPythOracle(feedToken, quoteToken, undefined, { feedAddress: AddressZero })
+        ).to.be.revertedWith("InvalidConstructorArgument");
+    });
+
+    it("Reverts if the min confidence is zero", async function () {
+        const feedToken = GRT;
+        const quoteToken = USDC;
+        await expect(
+            createDefaultPythOracle(feedToken, quoteToken, undefined, { minConfidence: 0 })
         ).to.be.revertedWith("InvalidConstructorArgument");
     });
 
@@ -278,7 +303,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         feed = deployment.feed;
     });
 
-    async function testWithExpo(wholeTokenPrice, pythExpo, answerTooLarge) {
+    async function testWithExpo(wholeTokenPrice, pythExpo, pythConf, answerTooLarge, confidenceTooLow) {
         const quoteTokenDecimals = await oracle.quoteTokenDecimals();
         const feedId = pythFeedId(feedToken);
         const currentTime = await currentBlockTimestamp();
@@ -297,10 +322,12 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
             // pythExpo == 0
             scaledPrice = wholeTokenPrice;
         }
-        await feed.setPrice(feedId, scaledPrice, 0, pythExpo, currentTime);
+        await feed.setPrice(feedId, scaledPrice, pythConf, pythExpo, currentTime);
 
         if (answerTooLarge) {
             await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
+        } else if (confidenceTooLow) {
+            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("ConfidenceTooLow");
         } else {
             const observation = await oracle.getLatestObservation(token);
             expect(observation.price).to.equal(price);
@@ -308,15 +335,15 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
     }
 
     it("Returns the correct price when the expo is 0", async function () {
-        await testWithExpo(BigNumber.from(12300), 0, false);
+        await testWithExpo(BigNumber.from(12300), 0, 0, false, false);
     });
 
     it("Returns the correct price when the expo is -1", async function () {
-        await testWithExpo(BigNumber.from(12300), -1, false);
+        await testWithExpo(BigNumber.from(12300), -1, 0, false, false);
     });
 
     it("Returns the correct price when the expo is 1", async function () {
-        await testWithExpo(BigNumber.from(12300), 1, false);
+        await testWithExpo(BigNumber.from(12300), 1, 0, false, false);
     });
 
     it("Reverts when the answer to too large", async function () {
@@ -324,13 +351,153 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
 
         const largestPrice = BigNumber.from(2).pow(63).sub(1);
         const expo = 10;
+        const conf = 0;
         const wholeTokenPrice = largestPrice.mul(BigNumber.from(10).pow(expo));
 
         const expectedWorkingPrice = ethers.utils.parseUnits(wholeTokenPrice.toString(), quoteTokenDecimals);
 
         expect(expectedWorkingPrice).to.be.gt(BigNumber.from(2).pow(112).sub(1)); // Sanity check
 
-        await testWithExpo(wholeTokenPrice, expo, true);
+        await testWithExpo(wholeTokenPrice, expo, conf, true, false);
+    });
+
+    it("Reverts if the confidence interval is non-zero and the price is zero", async function () {
+        const price = BigNumber.from(0);
+        const expo = 0;
+        const conf = 1;
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+    });
+
+    it("Reverts if the confidence interval is greater than the price", async function () {
+        const price = BigNumber.from(12300);
+        const expo = 0;
+        const conf = price.add(1);
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+    });
+
+    it("Works if the confidence internal is zero and the price is zero", async function () {
+        const price = BigNumber.from(0);
+        const expo = 0;
+        const conf = 0;
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+    });
+
+    it("Reverts if the confidence of a non-zero price is not 100%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("1.0", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(12300);
+        const expo = 0;
+        const conf = 1;
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+    });
+
+    it("Reverts if the confidence of a non-zero low price is not 100%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("1.0", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(1);
+        const expo = 0;
+        const conf = 1;
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+    });
+
+    it("Works if the confidence of a non-zero price is 100%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("1.0", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(12300);
+        const expo = 0;
+        const conf = 0;
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+    });
+
+    it("Works if the confidence of a non-zero low price is 100%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("1.0", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(1);
+        const expo = 0;
+        const conf = 0;
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+    });
+
+    it("Works if the confidence of a non-zero price is 90%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("0.9", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(12300);
+        const expo = 0;
+        const conf = price.div(10);
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+    });
+
+    it("Works if the confidence of a non-zero price is greater than 90%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("0.9", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(12300);
+        const expo = 0;
+        const conf = price.div(10).sub(1);
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+    });
+
+    it("Reverts if the confidence of a non-zero price is less than 90%", async function () {
+        //Redeploy
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken, undefined, {
+            minConfidence: ethers.utils.parseUnits("0.9", DEFAULT_CONFIDENCE_DECIMALS),
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = BigNumber.from(12300);
+        const expo = 0;
+        const conf = price.div(10).add(1);
+        const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
+
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
     });
 });
 

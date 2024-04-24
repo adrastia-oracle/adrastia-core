@@ -9,6 +9,8 @@ const pythAddress = "0x4305FB66699C3B2702D4d05CF36551390A4c69C6";
 const wethFeedId = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
 const wbtcFeedId = "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43";
 
+const minConfidence = ethers.utils.parseUnits("0.9", 8);
+
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -23,8 +25,15 @@ async function createContract(name, ...deploymentArgs) {
     return contract;
 }
 
-async function createPythOracleView(pythAddress, feedId, tokenAddress, quoteTokenAddress) {
-    const oracle = await createContract("PythOracleView", pythAddress, feedId, tokenAddress, quoteTokenAddress);
+async function createPythOracleView(pythAddress, feedId, tokenAddress, minConfidence, quoteTokenAddress) {
+    const oracle = await createContract(
+        "PythOracleView",
+        pythAddress,
+        feedId,
+        tokenAddress,
+        minConfidence,
+        quoteTokenAddress
+    );
 
     return {
         oracle: oracle,
@@ -38,7 +47,7 @@ async function main() {
     //const feedId = wethFeedId;
     const feedId = wbtcFeedId;
 
-    const oracle = await createPythOracleView(pythAddress, feedId, token, quoteToken);
+    const oracle = await createPythOracleView(pythAddress, feedId, token, minConfidence, quoteToken);
 
     const quoteTokenDecimals = await oracle.oracle.quoteTokenDecimals();
 
