@@ -34,6 +34,7 @@ contract PythOracleView is AbstractOracle {
     error UnsupportedToken(address token);
     error InvalidConstructorArgument();
     error ConfidenceTooLow(uint256 confidence);
+    error InvalidExponent(int32 exponent);
 
     /**
      * @notice Constructs a new PythOracleView contract.
@@ -158,12 +159,14 @@ contract PythOracleView is AbstractOracle {
         uint256 ourDecimals = quoteTokenDecimals();
         uint256 workingPrice = uint256(int256(data.price)) * (10 ** ourDecimals);
         uint256 confidenceInterval = uint256(data.conf) * (10 ** ourDecimals);
-        if (data.expo > 0) {
-            workingPrice *= 10 ** uint32(data.expo);
-            confidenceInterval *= 10 ** uint32(data.expo);
+        if (data.expo > 0 || data.expo < -77) {
+            // Pyth docs state a positive exponent is invalid
+            // A negative exponent down to -254 is valid, but anything below -77 is too large for uint256
+            revert InvalidExponent(data.expo);
         } else if (data.expo < 0) {
-            workingPrice /= 10 ** uint32(-data.expo);
-            confidenceInterval /= 10 ** uint32(-data.expo);
+            uint256 divisor = 10 ** uint32(-data.expo);
+            workingPrice /= divisor;
+            confidenceInterval /= divisor;
         }
 
         if (workingPrice > type(uint112).max) {

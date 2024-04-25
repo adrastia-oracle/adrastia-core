@@ -303,7 +303,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         feed = deployment.feed;
     });
 
-    async function testWithExpo(wholeTokenPrice, pythExpo, pythConf, answerTooLarge, confidenceTooLow) {
+    async function testWithExpo(wholeTokenPrice, pythExpo, pythConf, answerTooLarge, confidenceTooLow, invalidExpo) {
         const quoteTokenDecimals = await oracle.quoteTokenDecimals();
         const feedId = pythFeedId(feedToken);
         const currentTime = await currentBlockTimestamp();
@@ -324,7 +324,9 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         }
         await feed.setPrice(feedId, scaledPrice, pythConf, pythExpo, currentTime);
 
-        if (answerTooLarge) {
+        if (invalidExpo) {
+            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidExponent");
+        } else if (answerTooLarge) {
             await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
         } else if (confidenceTooLow) {
             await expect(oracle.getLatestObservation(token)).to.be.revertedWith("ConfidenceTooLow");
@@ -335,22 +337,42 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
     }
 
     it("Returns the correct price when the expo is 0", async function () {
-        await testWithExpo(BigNumber.from(12300), 0, 0, false, false);
+        await testWithExpo(BigNumber.from(12300), 0, 0, false, false, false);
     });
 
     it("Returns the correct price when the expo is -1", async function () {
-        await testWithExpo(BigNumber.from(12300), -1, 0, false, false);
+        await testWithExpo(BigNumber.from(12300), -1, 0, false, false, false);
     });
 
-    it("Returns the correct price when the expo is 1", async function () {
-        await testWithExpo(BigNumber.from(12300), 1, 0, false, false);
+    it("Reverts when the expo is 1", async function () {
+        await testWithExpo(BigNumber.from(12300), 1, 0, false, false, true);
+    });
+
+    it("Reverts when the expo is -78", async function () {
+        // Price is ignored - we expect a revert. Set it to zero to avoid a BigNumber error.
+        await testWithExpo(ethers.constants.Zero, -78, 0, false, false, true);
+    });
+
+    it("Returns the correct price when the expo is -77", async function () {
+        // We use zero as the price to avoid a BigNumber error.
+        await testWithExpo(ethers.constants.Zero, -77, 0, false, false, false);
     });
 
     it("Reverts when the answer to too large", async function () {
+        const tokenFactory = await ethers.getContractFactory("FakeERC20");
+        const newQuoteToken = await tokenFactory.deploy("Token", "TOK", 28); // 28 decimals
+        await newQuoteToken.deployed();
+
+        quoteToken = newQuoteToken.address;
+
+        const deployment = await createDefaultPythOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
         const quoteTokenDecimals = await oracle.quoteTokenDecimals();
 
         const largestPrice = BigNumber.from(2).pow(63).sub(1);
-        const expo = 10;
+        const expo = 0;
         const conf = 0;
         const wholeTokenPrice = largestPrice.mul(BigNumber.from(10).pow(expo));
 
@@ -358,7 +380,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
 
         expect(expectedWorkingPrice).to.be.gt(BigNumber.from(2).pow(112).sub(1)); // Sanity check
 
-        await testWithExpo(wholeTokenPrice, expo, conf, true, false);
+        await testWithExpo(wholeTokenPrice, expo, conf, true, false, false);
     });
 
     it("Reverts if the confidence interval is non-zero and the price is zero", async function () {
@@ -367,7 +389,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = 1;
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true, false);
     });
 
     it("Reverts if the confidence interval is greater than the price", async function () {
@@ -376,7 +398,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = price.add(1);
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true, false);
     });
 
     it("Works if the confidence internal is zero and the price is zero", async function () {
@@ -385,7 +407,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = 0;
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false, false);
     });
 
     it("Reverts if the confidence of a non-zero price is not 100%", async function () {
@@ -401,7 +423,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = 1;
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true, false);
     });
 
     it("Reverts if the confidence of a non-zero low price is not 100%", async function () {
@@ -417,7 +439,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = 1;
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true, false);
     });
 
     it("Works if the confidence of a non-zero price is 100%", async function () {
@@ -433,7 +455,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = 0;
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false, false);
     });
 
     it("Works if the confidence of a non-zero low price is 100%", async function () {
@@ -449,7 +471,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = 0;
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false, false);
     });
 
     it("Works if the confidence of a non-zero price is 90%", async function () {
@@ -465,7 +487,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = price.div(10);
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false, false);
     });
 
     it("Works if the confidence of a non-zero price is greater than 90%", async function () {
@@ -481,7 +503,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = price.div(10).sub(1);
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, false);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, false, false);
     });
 
     it("Reverts if the confidence of a non-zero price is less than 90%", async function () {
@@ -497,7 +519,7 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         const conf = price.div(10).add(1);
         const wholeTokenPrice = price.mul(BigNumber.from(10).pow(expo));
 
-        await testWithExpo(wholeTokenPrice, expo, conf, false, true);
+        await testWithExpo(wholeTokenPrice, expo, conf, false, true, false);
     });
 });
 
