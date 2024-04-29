@@ -14,6 +14,8 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
 
     bool public immutable validationDisabled;
 
+    error InvalidAveragingStrategy(address strategy);
+
     constructor(
         bool validationDisabled_,
         IAveragingStrategy averagingStrategy_,
@@ -30,6 +32,10 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
             maxUpdateDelay_
         )
     {
+        if (address(averagingStrategy_) == address(0)) {
+            revert InvalidAveragingStrategy(address(averagingStrategy_));
+        }
+
         validationDisabled = validationDisabled_;
         adrastiaOracle = adrastiaOracle_;
     }

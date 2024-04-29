@@ -25,13 +25,13 @@ async function blockTimestamp(blockNum) {
 }
 
 async function createDefaultDeployment(overrides, contractName = "AdrastiaPriceAccumulatorStub") {
-    var aggregationStrategyAddress = overrides?.aggregationStrategyAddress;
-    if (!aggregationStrategyAddress) {
+    var averagingStrategyAddress = overrides?.averagingStrategyAddress;
+    if (!averagingStrategyAddress) {
         const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
         const averagingStrategy = await averagingStrategyFactory.deploy();
         await averagingStrategy.deployed();
 
-        aggregationStrategyAddress = averagingStrategy.address;
+        averagingStrategyAddress = averagingStrategy.address;
     }
 
     var quoteToken = overrides?.quoteToken || USDC;
@@ -55,7 +55,7 @@ async function createDefaultDeployment(overrides, contractName = "AdrastiaPriceA
 
     const accumulator = await factory.deploy(
         validationDisabled,
-        aggregationStrategyAddress,
+        averagingStrategyAddress,
         oracleAddress,
         updateThreshold,
         minUpdateDelay,
@@ -64,7 +64,7 @@ async function createDefaultDeployment(overrides, contractName = "AdrastiaPriceA
 
     return {
         accumulator: accumulator,
-        averagingStrategy: aggregationStrategyAddress,
+        averagingStrategy: averagingStrategyAddress,
         quoteToken: quoteToken,
         updateThreshold: updateThreshold,
         updateDelay: minUpdateDelay,
@@ -93,6 +93,12 @@ describe("AdrastiaPriceAccumulator#constructor", function () {
         expect(await accumulator.updateDelay()).to.equal(updateDelay);
         expect(await accumulator.heartbeat()).to.equal(heartbeat);
         expect(await accumulator.validationDisabled()).to.equal(validationDisabled);
+    });
+
+    it("Reverts if the averaging strategy address is zero", async function () {
+        await expect(createDefaultDeployment({ averagingStrategyAddress: AddressZero })).to.be.revertedWith(
+            "InvalidAveragingStrategy"
+        );
     });
 });
 
