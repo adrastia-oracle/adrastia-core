@@ -322,6 +322,12 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
             // pythExpo == 0
             scaledPrice = wholeTokenPrice;
         }
+
+        if (!wholeTokenPrice.eq(0)) {
+            // Sanity check that the test case is valid
+            expect(scaledPrice).to.be.not.eq(0);
+        }
+
         await feed.setPrice(feedId, scaledPrice, pythConf, pythExpo, currentTime);
 
         if (invalidExpo) {
@@ -344,18 +350,32 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
         await testWithExpo(BigNumber.from(12300), -1, 0, false, false, false);
     });
 
-    it("Reverts when the expo is 1", async function () {
-        await testWithExpo(BigNumber.from(12300), 1, 0, false, false, true);
+    it("Returns the correct price when the expo is 1", async function () {
+        await testWithExpo(BigNumber.from(12300), 1, 0, false, false, false);
     });
 
-    it("Reverts when the expo is -78", async function () {
-        // Price is ignored - we expect a revert. Set it to zero to avoid a BigNumber error.
-        await testWithExpo(ethers.constants.Zero, -78, 0, false, false, true);
+    it("Returns the correct price when the expo is 11", async function () {
+        await testWithExpo(ethers.utils.parseUnits("123", 18), 11, 0, false, false, false);
     });
 
-    it("Returns the correct price when the expo is -77", async function () {
-        // We use zero as the price to avoid a BigNumber error.
-        await testWithExpo(ethers.constants.Zero, -77, 0, false, false, false);
+    it("Returns the correct price when the expo is -11", async function () {
+        await testWithExpo(BigNumber.from(12300), -11, 0, false, false, false);
+    });
+
+    it("Returns the correct price when the expo is 12", async function () {
+        await testWithExpo(ethers.utils.parseUnits("123", 18), 12, 0, false, false, false);
+    });
+
+    it("Returns the correct price when the expo is -12", async function () {
+        await testWithExpo(BigNumber.from(12300), -12, 0, false, false, false);
+    });
+
+    it("Reverts when the expo is -13", async function () {
+        await testWithExpo(BigNumber.from(12300), -13, 0, false, false, true);
+    });
+
+    it("Reverts when the expo is 13", async function () {
+        await testWithExpo(ethers.utils.parseUnits("123", 18), 13, 0, false, false, true);
     });
 
     it("Reverts when the answer to too large", async function () {

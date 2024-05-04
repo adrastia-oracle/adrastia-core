@@ -159,14 +159,17 @@ contract PythOracleView is AbstractOracle {
         uint256 ourDecimals = quoteTokenDecimals();
         uint256 workingPrice = uint256(int256(data.price)) * (10 ** ourDecimals);
         uint256 confidenceInterval = uint256(data.conf) * (10 ** ourDecimals);
-        if (data.expo > 0 || data.expo < -77) {
-            // Pyth docs state a positive exponent is invalid
-            // A negative exponent down to -254 is valid, but anything below -77 is too large for uint256
+        if (data.expo > 12 || data.expo < -12) {
+            // The range of exponents supported by the Pyth Network client code is [-12, 12]
             revert InvalidExponent(data.expo);
         } else if (data.expo < 0) {
             uint256 divisor = 10 ** uint32(-data.expo);
             workingPrice /= divisor;
             confidenceInterval /= divisor;
+        } else if (data.expo > 0) {
+            uint256 multiplier = 10 ** uint32(data.expo);
+            workingPrice *= multiplier;
+            confidenceInterval *= multiplier;
         }
 
         if (workingPrice > type(uint112).max) {
