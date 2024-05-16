@@ -90,6 +90,10 @@ module.exports = {
             chainId: 34443,
             url: process.env.MODE_URL || "",
         },
+        bsc: {
+            chainId: 56,
+            url: process.env.BSC_URL || "",
+        },
     },
     etherscan: {
         apiKey: {
