@@ -1,5 +1,28 @@
 # Changelog
 
+## v4.7.0
+### Accumulators
+- Modify AlocUtilizationAndErrorAccumulator: Add constructor flag to treat an empty ALOC as 0% utilized.
+
+## v4.6.1
+### Accumulators
+- Fix bug in CompoundV2SBAccumulator: Some CEther markets used to cause reverts when updating the token mappings.
+
+## v4.6.0
+### Accumulators
+- Update CompoundV2SBAccumulator: Add support for CEther.
+- Add VenusIsolatedSBAccumulator: An accumulator that tracks and accumulates Venus Isolated Pools total supply and borrow amounts.
+
+## v4.5.0
+### Accumulators
+- Add CompoundV2SBAccumulator: An accumulator that tracks and accumulates Compound v2 total supply and borrow amounts.
+- Add IonicSBAccumulator: An accumulator that tracks and accumulates Ionic total supply and borrow amounts.
+
+## v4.4.0
+### Accumulators
+- Add ValueAndErrorAccumulator: An abstract extension of LiquidityAccumulator that accumulates values and errors.
+- Add AlocUtilizationAndErrorAccumulator: An accumulator that tracks and accumulates TrueFi ALOC utilization and error.
+
 ## v4.3.0
 ### Accumulators
 - Add AdrastiaPriceAccumulator: An accumulator that tracks and accumulates values from Adrastia price oracles.
