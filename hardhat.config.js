@@ -86,6 +86,10 @@ module.exports = {
             chainId: 9001,
             url: process.env.EVMOS_URL || "",
         },
+        mode: {
+            chainId: 34443,
+            url: process.env.MODE_URL || "",
+        },
     },
     etherscan: {
         apiKey: {
@@ -95,6 +99,7 @@ module.exports = {
             arbitrumOne: process.env.ARBISCAN_API_KEY,
             optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_API_KEY,
             evmos: process.env.ESCAN_API_KEY,
+            mode: "placeholder",
         },
         customChains: [
             {
@@ -111,6 +116,14 @@ module.exports = {
                 urls: {
                     apiURL: "https://escan.live/api",
                     browserURL: "https://escan.live",
+                },
+            },
+            {
+                network: "mode",
+                chainId: 34443,
+                urls: {
+                    apiURL: "https://explorer.mode.network/api",
+                    browserURL: "https://explorer.mode.network",
                 },
             },
         ],
