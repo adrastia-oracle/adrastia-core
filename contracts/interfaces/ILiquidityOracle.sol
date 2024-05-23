@@ -14,11 +14,9 @@ abstract contract ILiquidityOracle is IUpdateable, IQuoteToken {
     /// @param token The token to get liquidity levels of (along with the quote token).
     /// @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
     /// @return quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
-    function consultLiquidity(address token)
-        public
-        view
-        virtual
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+    function consultLiquidity(
+        address token
+    ) public view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 
     /**
      * @notice Gets the liquidity levels of the token and the quote token in the underlying pool, reverting if the
@@ -26,13 +24,12 @@ abstract contract ILiquidityOracle is IUpdateable, IQuoteToken {
      * @dev Using maxAge of 0 can be gas costly and the returned data is easier to manipulate.
      * @param token The token to get liquidity levels of (along with the quote token).
      * @param maxAge The maximum age of the quotation, in seconds. If 0, the function gets the instant rates as of the
-     *   latest block, straight from the source.
+     *   latest block, straight from the source. WARNING: Using a maxAge of 0 is expensive and is generally insecure.
      * @return tokenLiquidity The amount of the token that is liquid in the underlying pool, in wei.
      * @return quoteTokenLiquidity The amount of the quote token that is liquid in the underlying pool, in wei.
      */
-    function consultLiquidity(address token, uint256 maxAge)
-        public
-        view
-        virtual
-        returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+    function consultLiquidity(
+        address token,
+        uint256 maxAge
+    ) public view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
 }

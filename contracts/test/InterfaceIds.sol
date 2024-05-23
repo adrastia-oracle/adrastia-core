@@ -98,4 +98,8 @@ contract InterfaceIds {
     function iValidationStrategy() external pure returns (bytes4) {
         return type(IValidationStrategy).interfaceId;
     }
+
+    function invalidInterface() external pure returns (bytes4) {
+        return 0xffffffff;
+    }
 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.7.1
+### Accumulators
+- Add constructor sanitization
+- Fix EIP-165 compliance issue
+
+### Interfaces
+- Add a warning about using 0 for maxAge.
+
+### Oracles
+- Update PythOracleView
+  - Add exponent validation
+  - Add support for Pyth confidence intervals
+
 ## v4.7.0
 ### Accumulators
 - Modify AlocUtilizationAndErrorAccumulator: Add constructor flag to treat an empty ALOC as 0% utilized.

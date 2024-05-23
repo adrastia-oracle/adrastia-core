@@ -19,6 +19,7 @@ contract DiaOracleView is AbstractOracle {
     error AnswerTooLarge(int256 answer);
     error InvalidTimestamp(uint256 timestamp);
     error UnsupportedToken(address token);
+    error InvalidConstructorArgument();
 
     /**
      * @notice Constructs a new DiaOracleView contract.
@@ -35,6 +36,10 @@ contract DiaOracleView is AbstractOracle {
         uint8 feedDecimals_,
         address quoteToken_
     ) AbstractOracle(quoteToken_) {
+        if (diaAddress_ == address(0) || feedToken_ == address(0)) {
+            revert InvalidConstructorArgument();
+        }
+
         diaAddress = diaAddress_;
         feedId = feedId_;
         feedToken = feedToken_;
