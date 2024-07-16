@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-import "../../accumulators/proto/ionic/IonicUtilizationAndErrorAccumulator.sol";
+import "../../accumulators/proto/adrastia/AdrastiaUtilizationAndErrorAccumulator.sol";
 
-contract IonicUtilizationAndErrorAccumulatorStub is IonicUtilizationAndErrorAccumulator {
+contract AdrastiaUtilizationAndErrorAccumulatorStub is AdrastiaUtilizationAndErrorAccumulator {
     bool internal targetOverridden;
     uint112 internal targetOverride;
 
@@ -17,7 +17,7 @@ contract IonicUtilizationAndErrorAccumulatorStub is IonicUtilizationAndErrorAccu
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     )
-        IonicUtilizationAndErrorAccumulator(
+        AdrastiaUtilizationAndErrorAccumulator(
             supplyAndBorrowOracle_,
             considerEmptyAs100Percent_,
             target_,

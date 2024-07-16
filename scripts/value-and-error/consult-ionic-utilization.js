@@ -72,7 +72,7 @@ async function createUtilizationOracle(
     const maxUpdateDelay = 60; // At most (optimistically) 60 seconds between every update
 
     const utilizationAccumulator = await createContract(
-        "IonicUtilizationAndErrorAccumulator",
+        "AdrastiaUtilizationAndErrorAccumulator",
         sbOracle,
         considerEmptyAs100Percent,
         targetUtilization,
