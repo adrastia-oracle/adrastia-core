@@ -1,6 +1,10 @@
 # Changelog
 
-## 4.7.1
+## v4.8.0
+### Accumulators
+- Add AdrastiaUtilizationAndErrorAccumulator: An accumulator that tracks and accumulates utilization and error based on an Adrastia supply & borrow oracle.
+
+## v4.7.1
 ### Accumulators
 - Add constructor sanitization
 - Fix EIP-165 compliance issue
