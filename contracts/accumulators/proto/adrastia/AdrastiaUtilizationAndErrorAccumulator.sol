@@ -4,7 +4,7 @@ pragma solidity =0.8.13;
 import "../../ValueAndErrorAccumulator.sol";
 import "../../../libraries/SafeCastExt.sol";
 
-contract IonicUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
+contract AdrastiaUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
     using SafeCastExt for uint256;
 
     uint8 internal immutable _liquidityDecimals;

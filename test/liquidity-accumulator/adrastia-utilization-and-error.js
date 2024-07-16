@@ -24,7 +24,7 @@ function calculateError(utilization, target) {
     }
 }
 
-describe("IonicUtilizationAndErrorAccumulator#constructor", function () {
+describe("AdrastiaUtilizationAndErrorAccumulator#constructor", function () {
     var sbOracleStubFactory;
     var averagingStrategyFactory;
     var accumulatorFactory;
@@ -32,7 +32,7 @@ describe("IonicUtilizationAndErrorAccumulator#constructor", function () {
     beforeEach(async function () {
         sbOracleStubFactory = await ethers.getContractFactory("MockOracle");
         averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
-        accumulatorFactory = await ethers.getContractFactory("IonicUtilizationAndErrorAccumulator");
+        accumulatorFactory = await ethers.getContractFactory("AdrastiaUtilizationAndErrorAccumulator");
     });
 
     it("Works with defaults", async function () {
@@ -62,14 +62,14 @@ describe("IonicUtilizationAndErrorAccumulator#constructor", function () {
     });
 });
 
-describe("IonicUtilizationAndErrorAccumulator#fetchValue - Considering empty market as 100% utilization", function () {
+describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty market as 100% utilization", function () {
     var sbOracle;
     var accumulator;
 
     beforeEach(async function () {
         const sbOracleStubFactory = await ethers.getContractFactory("MockOracle");
         const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
-        const accumulatorFactory = await ethers.getContractFactory("IonicUtilizationAndErrorAccumulatorStub");
+        const accumulatorFactory = await ethers.getContractFactory("AdrastiaUtilizationAndErrorAccumulatorStub");
 
         sbOracle = await sbOracleStubFactory.deploy(AddressZero);
         await sbOracle.deployed();
@@ -157,14 +157,14 @@ describe("IonicUtilizationAndErrorAccumulator#fetchValue - Considering empty mar
     });
 });
 
-describe("IonicUtilizationAndErrorAccumulator#fetchValue - Considering empty market as 0% utilization", function () {
+describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty market as 0% utilization", function () {
     var sbOracle;
     var accumulator;
 
     beforeEach(async function () {
         const sbOracleStubFactory = await ethers.getContractFactory("MockOracle");
         const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
-        const accumulatorFactory = await ethers.getContractFactory("IonicUtilizationAndErrorAccumulatorStub");
+        const accumulatorFactory = await ethers.getContractFactory("AdrastiaUtilizationAndErrorAccumulatorStub");
 
         sbOracle = await sbOracleStubFactory.deploy(AddressZero);
         await sbOracle.deployed();
@@ -254,14 +254,14 @@ describe("IonicUtilizationAndErrorAccumulator#fetchValue - Considering empty mar
     });
 });
 
-describe("IonicUtilizationAndErrorAccumulator#fetchLiquidity", function () {
+describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
     var sbOracle;
     var accumulator;
 
     beforeEach(async function () {
         const sbOracleStubFactory = await ethers.getContractFactory("MockOracle");
         const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
-        const accumulatorFactory = await ethers.getContractFactory("IonicUtilizationAndErrorAccumulatorStub");
+        const accumulatorFactory = await ethers.getContractFactory("AdrastiaUtilizationAndErrorAccumulatorStub");
 
         sbOracle = await sbOracleStubFactory.deploy(AddressZero);
         await sbOracle.deployed();
@@ -405,14 +405,14 @@ describe("IonicUtilizationAndErrorAccumulator#fetchLiquidity", function () {
     );
 });
 
-describe("IonicUtilizationAndErrorAccumulator#update", function () {
+describe("AdrastiaUtilizationAndErrorAccumulator#update", function () {
     var sbOracle;
     var accumulator;
 
     beforeEach(async function () {
         const sbOracleStubFactory = await ethers.getContractFactory("MockOracle");
         const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
-        const accumulatorFactory = await ethers.getContractFactory("IonicUtilizationAndErrorAccumulator");
+        const accumulatorFactory = await ethers.getContractFactory("AdrastiaUtilizationAndErrorAccumulator");
 
         sbOracle = await sbOracleStubFactory.deploy(AddressZero);
         await sbOracle.deployed();
