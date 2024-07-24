@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-pragma experimental ABIEncoderV2;
-
-import "../../../libraries/SafeCastExt.sol";
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
 import "./ICurvePool.sol";
 import "../../LiquidityAccumulator.sol";
 
 contract CurveLiquidityAccumulator is LiquidityAccumulator {
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     address public immutable curvePool;
 

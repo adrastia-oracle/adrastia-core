@@ -53,7 +53,7 @@ module.exports = {
             hardfork: process.env.HARDHAT_HARDFORK || "shanghai",
             forking: {
                 url: process.env.ETHEREUM_URL || "",
-                blockNumber: 17500000,
+                blockNumber: 20370000,
             },
             mining: {
                 auto: true,

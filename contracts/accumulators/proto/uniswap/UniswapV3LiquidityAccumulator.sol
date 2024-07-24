@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-pragma experimental ABIEncoderV2;
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
 
-import "../../../libraries/SafeCastExt.sol";
-
 import "../../LiquidityAccumulator.sol";
 
 contract UniswapV3LiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     /// @notice The identifying key of the pool
     struct PoolKey {

@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-pragma experimental ABIEncoderV2;
-
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "../../PriceAccumulator.sol";
-import "../../../libraries/SafeCastExt.sol";
 
 contract UniswapV2PriceAccumulator is PriceAccumulator {
     using AddressLibrary for address;
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     address public immutable uniswapFactory;
 
