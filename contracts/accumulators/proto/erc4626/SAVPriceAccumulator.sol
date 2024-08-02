@@ -18,7 +18,7 @@ import {SimpleQuotationMetadata} from "../../../utils/SimpleQuotationMetadata.so
 contract SAVPriceAccumulator is PriceAccumulator {
     using SafeCast for uint256;
 
-    IPriceOracle internal immutable _underlyingOracle;
+    IPriceOracle internal immutable _underlyingAssetOracle;
 
     error InvalidAveragingStrategy(address strategy);
 
@@ -46,7 +46,7 @@ contract SAVPriceAccumulator is PriceAccumulator {
             revert InvalidQuoteToken(quoteToken_);
         }
 
-        _underlyingOracle = underlyingOracle_;
+        _underlyingAssetOracle = underlyingOracle_;
     }
 
     /// @inheritdoc PriceAccumulator
@@ -66,7 +66,7 @@ contract SAVPriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        uint256 timeSinceLastUpdate = IPriceOracle(underlyingOracle()).timeSinceLastUpdate(assetData);
+        uint256 timeSinceLastUpdate = IPriceOracle(underlyingAssetOracle()).timeSinceLastUpdate(assetData);
         uint256 heartbeat = _heartbeat();
         if (timeSinceLastUpdate > heartbeat) {
             return false;
@@ -75,8 +75,8 @@ contract SAVPriceAccumulator is PriceAccumulator {
         return super.canUpdate(data);
     }
 
-    function underlyingOracle() public view virtual returns (IPriceOracle) {
-        return _underlyingOracle;
+    function underlyingAssetOracle() public view virtual returns (IPriceOracle) {
+        return _underlyingAssetOracle;
     }
 
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
@@ -87,7 +87,7 @@ contract SAVPriceAccumulator is PriceAccumulator {
 
         uint256 totalAssets = vault.totalAssets();
 
-        IPriceOracle oracle = underlyingOracle();
+        IPriceOracle oracle = underlyingAssetOracle();
         uint256 assetPrice = oracle.consultPrice(asset, _heartbeat());
         uint256 priceDecimals = oracle.quoteTokenDecimals();
         uint256 assetDecimals = IERC20Metadata(asset).decimals();

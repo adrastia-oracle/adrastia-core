@@ -83,7 +83,7 @@ describe("SAVPriceAccumulator#constructor", function () {
         expect(await accumulator.updateThreshold()).to.equal(updateThreshold);
         expect(await accumulator.updateDelay()).to.equal(updateDelay);
         expect(await accumulator.heartbeat()).to.equal(heartbeat);
-        expect(await accumulator.underlyingOracle()).to.equal(oracle.address);
+        expect(await accumulator.underlyingAssetOracle()).to.equal(oracle.address);
     });
 
     it("Reverts if the averaging strategy address is zero", async function () {
