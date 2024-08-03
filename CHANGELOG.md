@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.9.0
+### Dependencies
+- Upgrade OpenZeppelin Contracts to v4.9.6
+
+### Accumulators
+- Add SAVPriceAccumulator: An accumulator that tracks ERC4626 vault share prices.
+
 ## v4.8.0
 ### Accumulators
 - Add AdrastiaUtilizationAndErrorAccumulator: An accumulator that tracks and accumulates utilization and error based on an Adrastia supply & borrow oracle.

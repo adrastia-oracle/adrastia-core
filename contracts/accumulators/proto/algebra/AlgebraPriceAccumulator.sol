@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../../PriceAccumulator.sol";
-import "../../../libraries/SafeCastExt.sol";
 import "../../../libraries/uniswap-lib/FullMath.sol";
 
 /// @dev Credit to Uniswap Labs under GPL-2.0-or-later license:
@@ -20,7 +20,7 @@ interface IAlgebraPoolState {
 
 contract AlgebraPriceAccumulator is PriceAccumulator {
     using AddressLibrary for address;
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     error InvalidToken(address token);
     error NoLiquidity(address token);

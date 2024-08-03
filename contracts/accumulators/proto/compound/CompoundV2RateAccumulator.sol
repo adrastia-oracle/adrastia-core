@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+
 import "../../PriceAccumulator.sol";
-import "../../../libraries/SafeCastExt.sol";
 
 abstract contract ICToken {
     function supplyRatePerBlock() external view virtual returns (uint256);
@@ -11,7 +12,7 @@ abstract contract ICToken {
 }
 
 contract CompoundV2RateAccumulator is PriceAccumulator {
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     address public immutable cToken;
 

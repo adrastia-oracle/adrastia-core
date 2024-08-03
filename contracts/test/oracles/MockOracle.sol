@@ -4,6 +4,13 @@ pragma solidity =0.8.13;
 import "../../oracles/AbstractOracle.sol";
 
 contract MockOracle is AbstractOracle {
+    struct PriceDecimalChange {
+        uint8 decimals;
+        bool changed;
+    }
+
+    PriceDecimalChange public priceDecimalChange;
+
     mapping(bytes32 => uint256) public callCounts;
 
     bool _needsUpdate;
@@ -21,6 +28,14 @@ contract MockOracle is AbstractOracle {
 
     constructor(address quoteToken_) AbstractOracle(quoteToken_) {
         _liquidityDecimals = 0;
+    }
+
+    function quoteTokenDecimals() public view virtual override(IQuoteToken, SimpleQuotationMetadata) returns (uint8) {
+        if (priceDecimalChange.changed) {
+            return priceDecimalChange.decimals;
+        }
+
+        return super.quoteTokenDecimals();
     }
 
     function getLatestObservation(
@@ -79,6 +94,10 @@ contract MockOracle is AbstractOracle {
 
     function stubSetLiquidityDecimals(uint8 decimals) public {
         _liquidityDecimals = decimals;
+    }
+
+    function stubSetPriceDecimals(uint8 decimals) public {
+        priceDecimalChange = PriceDecimalChange(decimals, true);
     }
 
     function liquidityDecimals() public view virtual override returns (uint8) {

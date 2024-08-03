@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-import "./LiquidityAccumulator.sol";
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
-import "hardhat/console.sol";
+import "./LiquidityAccumulator.sol";
 
 abstract contract ValueAndErrorAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
     using SafeCast for uint256;
-    using SafeCastExt for uint256;
 
     uint112 public constant ERROR_ZERO = 1e18;
 

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-pragma experimental ABIEncoderV2;
-
 import "@openzeppelin-v4/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 
@@ -11,7 +9,6 @@ import "../interfaces/IPriceAccumulator.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../libraries/ObservationLibrary.sol";
 import "../libraries/AddressLibrary.sol";
-import "../libraries/SafeCastExt.sol";
 import "../utils/SimpleQuotationMetadata.sol";
 import "../strategies/averaging/IAveragingStrategy.sol";
 
@@ -24,7 +21,6 @@ abstract contract PriceAccumulator is
 {
     using AddressLibrary for address;
     using SafeCast for uint256;
-    using SafeCastExt for uint256;
 
     IAveragingStrategy public immutable averagingStrategy;
 

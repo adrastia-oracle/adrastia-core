@@ -50,10 +50,10 @@ module.exports = {
     networks: {
         hardhat: {
             gas: 10000000,
-            hardfork: process.env.HARDHAT_HARDFORK || "shanghai",
+            hardfork: process.env.HARDHAT_HARDFORK || "cancun",
             forking: {
                 url: process.env.ETHEREUM_URL || "",
-                blockNumber: 17500000,
+                blockNumber: 20370000,
             },
             mining: {
                 auto: true,

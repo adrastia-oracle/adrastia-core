@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
+
 import "../../PriceAccumulator.sol";
-import "../../../libraries/SafeCastExt.sol";
 
 abstract contract IAaveV2Pool {
     struct ReserveData {
@@ -33,7 +34,7 @@ abstract contract IAaveV2Pool {
 }
 
 contract AaveV2RateAccumulator is PriceAccumulator {
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     address public immutable aaveV2Pool;
 

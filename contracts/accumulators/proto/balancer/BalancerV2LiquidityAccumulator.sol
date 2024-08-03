@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin-v4/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "../../LiquidityAccumulator.sol";
-import "../../../libraries/SafeCastExt.sol";
 
 interface IVault {
     function getPoolTokens(
@@ -33,7 +33,7 @@ interface ILinearPool {
 
 contract BalancerV2LiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     address public immutable balancerVault;
     address public immutable poolAddress;

@@ -1,6 +1,6 @@
 {
   "name": "@adrastia-oracle/adrastia-core",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "main": "index.js",
   "author": "TRILEZ SOFTWARE INC.",
   "license": "BUSL-1.1",
@@ -30,7 +30,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@openzeppelin-v4/contracts": "npm:@openzeppelin/contracts@4.6.0",
+    "@openzeppelin-v4/contracts": "npm:@openzeppelin/contracts@4.9.6",
     "@prb/math": "^2.5.0",
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v3-core": "^1.0.1"

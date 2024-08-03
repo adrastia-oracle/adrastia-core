@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
+import {SafeCast} from "@openzeppelin-v4/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin-v4/contracts/token/ERC20/IERC20.sol";
-
-import "../../../libraries/SafeCastExt.sol";
 
 import "../../LiquidityAccumulator.sol";
 
@@ -20,7 +19,7 @@ interface IAlgebraPoolState {
 
 contract AlgebraLiquidityAccumulator is LiquidityAccumulator {
     using AddressLibrary for address;
-    using SafeCastExt for uint256;
+    using SafeCast for uint256;
 
     error InvalidToken(address token);
 
