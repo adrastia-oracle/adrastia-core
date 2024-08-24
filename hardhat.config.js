@@ -94,6 +94,10 @@ module.exports = {
             chainId: 56,
             url: process.env.BSC_URL || "",
         },
+        base: {
+            chainId: 8453,
+            url: process.env.BASE_URL || "",
+        },
     },
     etherscan: {
         apiKey: {
@@ -104,6 +108,7 @@ module.exports = {
             optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_API_KEY,
             evmos: process.env.ESCAN_API_KEY,
             mode: "placeholder",
+            base: process.env.BASE_SCAN_API_KEY,
         },
         customChains: [
             {
@@ -128,6 +133,14 @@ module.exports = {
                 urls: {
                     apiURL: "https://explorer.mode.network/api",
                     browserURL: "https://explorer.mode.network",
+                },
+            },
+            {
+                network: "base",
+                chainId: 8453,
+                urls: {
+                    apiURL: "https://api.basescan.org/api",
+                    browserURL: "https://basescan.org",
                 },
             },
         ],
