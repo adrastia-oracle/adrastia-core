@@ -115,7 +115,9 @@ contract SAVPriceAccumulator is PriceAccumulator {
             return 0;
         }
 
-        sharePrice /= vaultSupply;
+        unchecked {
+            sharePrice /= vaultSupply;
+        }
 
         return sharePrice.toUint112();
     }
