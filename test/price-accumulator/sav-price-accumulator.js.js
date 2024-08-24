@@ -317,6 +317,24 @@ describe("SAVPriceAccumulator#canUpdate", function () {
         var updateData = ethers.utils.defaultAbiCoder.encode(["address"], [deployment.vault.address]);
         expect(await deployment.accumulator.canUpdate(updateData)).to.equal(true);
     });
+
+    it("Returns false if the vault's asset function returns no data'", async function () {
+        const notAVaultFactory = await ethers.getContractFactory("NotAVault1");
+        const notAVault = await notAVaultFactory.deploy();
+        await notAVault.deployed();
+
+        var updateData = ethers.utils.defaultAbiCoder.encode(["address"], [notAVault.address]);
+        expect(await deployment.accumulator.canUpdate(updateData)).to.equal(false);
+    });
+
+    it("Returns false if the vault's asset function returns more than just an address'", async function () {
+        const notAVaultFactory = await ethers.getContractFactory("NotAVault2");
+        const notAVault = await notAVaultFactory.deploy();
+        await notAVault.deployed();
+
+        var updateData = ethers.utils.defaultAbiCoder.encode(["address"], [notAVault.address]);
+        expect(await deployment.accumulator.canUpdate(updateData)).to.equal(false);
+    });
 });
 
 describe("SAVPriceAccumulator#fetchPrice", function () {
