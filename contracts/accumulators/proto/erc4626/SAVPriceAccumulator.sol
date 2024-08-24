@@ -62,7 +62,7 @@ contract SAVPriceAccumulator is PriceAccumulator {
         (bool success, bytes memory assetData) = address(vault).staticcall(
             abi.encodeWithSelector(vault.asset.selector)
         );
-        if (!success) {
+        if (!success || assetData.length != 32) {
             return false;
         }
 
