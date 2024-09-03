@@ -24,6 +24,8 @@ contract SAVPriceAccumulator is PriceAccumulator {
 
     error InvalidOracle(address oracle);
 
+    error OracleHeartbeatIncompatible(address oracle, uint256 oracleHeartbeat, uint256 ourHeartbeat);
+
     error InvalidQuoteToken(address quoteToken);
 
     constructor(
@@ -45,6 +47,8 @@ contract SAVPriceAccumulator is PriceAccumulator {
         if (quoteToken_ == address(0)) {
             revert InvalidQuoteToken(quoteToken_);
         }
+
+        verifyUnderlyingOracleHeartbeat(address(underlyingOracle_), maxUpdateDelay_);
 
         _underlyingAssetOracle = underlyingOracle_;
     }
@@ -120,5 +124,18 @@ contract SAVPriceAccumulator is PriceAccumulator {
         }
 
         return sharePrice.toUint112();
+    }
+
+    function verifyUnderlyingOracleHeartbeat(address oracle, uint256 ourHeartbeat) internal view virtual {
+        (bool success, bytes memory data) = oracle.staticcall(abi.encodeWithSignature("heartbeat()"));
+        if (success && data.length == 32) {
+            uint256 oracleHeartbeat = abi.decode(data, (uint256));
+            // We want our heartbeat to be gte the oracle's heartbeat. Otherwise, there may be times where we require
+            // an update, but the underlying oracle hasn't been updated within our heartbeat (causing a revert).
+            if (ourHeartbeat < oracleHeartbeat) {
+                revert OracleHeartbeatIncompatible(oracle, oracleHeartbeat, ourHeartbeat);
+            }
+        }
+        // else we don't know the heartbeat, so we can't verify it. Do nothing.
     }
 }
