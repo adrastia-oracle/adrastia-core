@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.9.1
+### Accumulators
+- Improve SAVPriceAccumulator: Adds conditional underlying oracle heartbeat validation.
+
 ## v4.9.0
 ### Dependencies
 - Upgrade OpenZeppelin Contracts to v4.9.6
