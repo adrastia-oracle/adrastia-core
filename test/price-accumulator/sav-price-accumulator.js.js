@@ -99,6 +99,41 @@ describe("SAVPriceAccumulator#constructor", function () {
     it("Reverts if the oracle address is zero", async function () {
         await expect(createDefaultDeployment({ oracleAddress: AddressZero })).to.be.revertedWith("InvalidOracle");
     });
+
+    it("Reverts if the heartbeat is less than the underlying oracle's heartbeat", async function () {
+        const ourHeartbeat = 10;
+
+        const underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
+        const underlyingOracle = await underlyingOracleFactory.deploy(USDC);
+
+        await underlyingOracle.stubSetHeartbeat(ourHeartbeat + 1);
+
+        await expect(
+            createDefaultDeployment({ maxUpdateDelay: ourHeartbeat, oracleAddress: underlyingOracle.address })
+        ).to.be.revertedWith("OracleHeartbeatIncompatible");
+    });
+
+    it("Doesn't revert if the heartbeat is equal to the underlying oracle's heartbeat", async function () {
+        const ourHeartbeat = 10;
+
+        const underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
+        const underlyingOracle = await underlyingOracleFactory.deploy(USDC);
+
+        await underlyingOracle.stubSetHeartbeat(ourHeartbeat);
+
+        await createDefaultDeployment({ maxUpdateDelay: ourHeartbeat, oracleAddress: underlyingOracle.address });
+    });
+
+    it("Doesn't revert if the heartbeat is greater than the underlying oracle's heartbeat", async function () {
+        const ourHeartbeat = 10;
+
+        const underlyingOracleFactory = await ethers.getContractFactory("MockOracle");
+        const underlyingOracle = await underlyingOracleFactory.deploy(USDC);
+
+        await underlyingOracle.stubSetHeartbeat(ourHeartbeat - 1);
+
+        await createDefaultDeployment({ maxUpdateDelay: ourHeartbeat, oracleAddress: underlyingOracle.address });
+    });
 });
 
 describe("SAVPriceAccumulator#quoteTokenName", function () {
@@ -316,6 +351,24 @@ describe("SAVPriceAccumulator#canUpdate", function () {
 
         var updateData = ethers.utils.defaultAbiCoder.encode(["address"], [deployment.vault.address]);
         expect(await deployment.accumulator.canUpdate(updateData)).to.equal(true);
+    });
+
+    it("Returns false if the vault's asset function returns no data'", async function () {
+        const notAVaultFactory = await ethers.getContractFactory("NotAVault1");
+        const notAVault = await notAVaultFactory.deploy();
+        await notAVault.deployed();
+
+        var updateData = ethers.utils.defaultAbiCoder.encode(["address"], [notAVault.address]);
+        expect(await deployment.accumulator.canUpdate(updateData)).to.equal(false);
+    });
+
+    it("Returns false if the vault's asset function returns more than just an address'", async function () {
+        const notAVaultFactory = await ethers.getContractFactory("NotAVault2");
+        const notAVault = await notAVaultFactory.deploy();
+        await notAVault.deployed();
+
+        var updateData = ethers.utils.defaultAbiCoder.encode(["address"], [notAVault.address]);
+        expect(await deployment.accumulator.canUpdate(updateData)).to.equal(false);
     });
 });
 

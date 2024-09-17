@@ -24,6 +24,8 @@ contract SAVPriceAccumulator is PriceAccumulator {
 
     error InvalidOracle(address oracle);
 
+    error OracleHeartbeatIncompatible(address oracle, uint256 oracleHeartbeat, uint256 ourHeartbeat);
+
     error InvalidQuoteToken(address quoteToken);
 
     constructor(
@@ -46,6 +48,8 @@ contract SAVPriceAccumulator is PriceAccumulator {
             revert InvalidQuoteToken(quoteToken_);
         }
 
+        verifyUnderlyingOracleHeartbeat(address(underlyingOracle_), maxUpdateDelay_);
+
         _underlyingAssetOracle = underlyingOracle_;
     }
 
@@ -62,7 +66,7 @@ contract SAVPriceAccumulator is PriceAccumulator {
         (bool success, bytes memory assetData) = address(vault).staticcall(
             abi.encodeWithSelector(vault.asset.selector)
         );
-        if (!success) {
+        if (!success || assetData.length != 32) {
             return false;
         }
 
@@ -105,6 +109,8 @@ contract SAVPriceAccumulator is PriceAccumulator {
         if (decimalShift > 0) {
             sharePrice *= 10 ** uint256(decimalShift);
         } else if (decimalShift < 0) {
+            // Note: If decimalShift equals type(int256).min, this negation will overflow. But this operation is safe
+            // as all decimals are 8 bit numbers, making it impossible for decimalShift to equal type(int256).min.
             sharePrice /= 10 ** uint256(-decimalShift);
         }
 
@@ -113,8 +119,23 @@ contract SAVPriceAccumulator is PriceAccumulator {
             return 0;
         }
 
-        sharePrice /= vaultSupply;
+        unchecked {
+            sharePrice /= vaultSupply;
+        }
 
         return sharePrice.toUint112();
+    }
+
+    function verifyUnderlyingOracleHeartbeat(address oracle, uint256 ourHeartbeat) internal view virtual {
+        (bool success, bytes memory data) = oracle.staticcall(abi.encodeWithSignature("heartbeat()"));
+        if (success && data.length == 32) {
+            uint256 oracleHeartbeat = abi.decode(data, (uint256));
+            // We want our heartbeat to be gte the oracle's heartbeat. Otherwise, there may be times where we require
+            // an update, but the underlying oracle hasn't been updated within our heartbeat (causing a revert).
+            if (ourHeartbeat < oracleHeartbeat) {
+                revert OracleHeartbeatIncompatible(oracle, oracleHeartbeat, ourHeartbeat);
+            }
+        }
+        // else we don't know the heartbeat, so we can't verify it. Do nothing.
     }
 }

@@ -22,12 +22,20 @@ contract MockOracle is AbstractOracle {
 
     uint8 _liquidityDecimals;
 
+    uint256 _heartbeat;
+
     mapping(address => ObservationLibrary.Observation) public observations;
 
     mapping(address => ObservationLibrary.Observation) instantRates;
 
     constructor(address quoteToken_) AbstractOracle(quoteToken_) {
         _liquidityDecimals = 0;
+    }
+
+    function heartbeat() public view virtual returns (uint256) {
+        require(_heartbeat != 0, "HEARTBEAT NOT SET");
+
+        return _heartbeat;
     }
 
     function quoteTokenDecimals() public view virtual override(IQuoteToken, SimpleQuotationMetadata) returns (uint8) {
@@ -42,6 +50,10 @@ contract MockOracle is AbstractOracle {
         address token
     ) public view virtual override returns (ObservationLibrary.Observation memory observation) {
         return observations[token];
+    }
+
+    function stubSetHeartbeat(uint256 heartbeat_) public {
+        _heartbeat = heartbeat_;
     }
 
     function stubSetObservation(

@@ -6,7 +6,6 @@ async function main() {
     const factory = await ethers.getContractFactory("InterfaceIds");
     const interfaceIds = await factory.deploy();
 
-    console.log("IAggregatedOracle interfaceId =", await interfaceIds.iAggregatedOracle());
     console.log("IPeriodic interfaceId =", await interfaceIds.iPeriodic());
     console.log("IPriceAccumulator interfaceId =", await interfaceIds.iPriceAccumulator());
     console.log("ILiquidityAccumulator interfaceId =", await interfaceIds.iLiquidityAccumulator());
