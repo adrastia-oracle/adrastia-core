@@ -11,6 +11,12 @@ import "../averaging/IAveragingStrategy.sol";
  */
 contract MinimumAggregator is AbstractAggregator {
     /**
+     * @notice Constructs a new MinimumAggregator instance.
+     * @param timestampStrategy_ The strategy used to handle timestamps in the aggregated observations.
+     */
+    constructor(TimestampStrategy timestampStrategy_) AbstractAggregator(timestampStrategy_) {}
+
+    /**
      * @notice Aggregates the observations by taking the minimum price and the sum of the token and quote token
      *   liquidity.
      * @param observations The observations to aggregate.
@@ -34,6 +40,8 @@ contract MinimumAggregator is AbstractAggregator {
         uint256 sumTokenLiquidity = 0;
         uint256 sumQuoteTokenLiquidity = 0;
 
+        uint256[] memory timestamps = new uint256[](to - from + 1);
+
         for (uint256 i = from; i <= to; ++i) {
             uint256 price = observations[i].data.price;
             if (price < minPrice) {
@@ -42,8 +50,9 @@ contract MinimumAggregator is AbstractAggregator {
 
             sumTokenLiquidity += observations[i].data.tokenLiquidity;
             sumQuoteTokenLiquidity += observations[i].data.quoteTokenLiquidity;
+            timestamps[i - from] = observations[i].data.timestamp;
         }
 
-        return prepareResult(minPrice, sumTokenLiquidity, sumQuoteTokenLiquidity);
+        return prepareResult(minPrice, sumTokenLiquidity, sumQuoteTokenLiquidity, calculateFinalTimestamp(timestamps));
     }
 }

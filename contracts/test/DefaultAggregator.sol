@@ -5,7 +5,7 @@ import "../strategies/averaging/HarmonicAveragingWS140.sol";
 import "../strategies/aggregation/QuoteTokenWeightedMeanAggregator.sol";
 
 contract DefaultAggregator is QuoteTokenWeightedMeanAggregator, HarmonicAveragingWS140 {
-    constructor() QuoteTokenWeightedMeanAggregator(this) {}
+    constructor() QuoteTokenWeightedMeanAggregator(this, TimestampStrategy.ThisBlock) {}
 
     function supportsInterface(
         bytes4 interfaceId

@@ -12,13 +12,15 @@ contract AggregatorStub is AbstractAggregator {
 
     Config public config;
 
+    constructor() AbstractAggregator(TimestampStrategy.ThisBlock) {}
+
     function aggregateObservations(
         address,
         ObservationLibrary.MetaObservation[] calldata,
         uint256,
         uint256
     ) external view override returns (ObservationLibrary.Observation memory) {
-        return prepareResult(config.price, config.tokenLiquidity, config.quoteTokenLiquidity);
+        return prepareResult(config.price, config.tokenLiquidity, config.quoteTokenLiquidity, block.timestamp);
     }
 
     function stubSetObservation(uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity) public {

@@ -18,6 +18,8 @@ import "./IAggregationStrategy.sol";
  * by the IAggregationStrategy interface.
  */
 abstract contract AbstractAggregator is IERC165, IAggregationStrategy {
+    TimestampStrategy public immutable timestampStrategy;
+
     /// @notice An error thrown when the price value exceeds the maximum allowed value for uint112.
     error PriceTooHigh(uint256 price);
 
@@ -27,9 +29,90 @@ abstract contract AbstractAggregator is IERC165, IAggregationStrategy {
     /// @notice An error thrown when the from index is greater than the to index.
     error BadInput();
 
+    /**
+     * @notice An error thrown when no timestamps are provided for aggregation.
+     */
+    error NoTimestampsProvided();
+
+    /**
+     * @notice An error thrown when an unsupported timestamp strategy is provided.
+     * @param strategy The unsupported timestamp strategy.
+     */
+    error InvalidTimestampStrategy(TimestampStrategy strategy);
+
+    /**
+     * @notice An error thrown when the timestamp provided is greater than the maximum allowed value for uint32.
+     * @param timestamp The timestamp that caused the error.
+     */
+    error InvalidTimestamp(uint256 timestamp);
+
+    /**
+     * @notice Constructor for the AbstractAggregator contract.
+     * @param timestampStrategy_ The strategy used to handle timestamps in the aggregated observations.
+     */
+    constructor(TimestampStrategy timestampStrategy_) {
+        validateTimestampStrategy(timestampStrategy_);
+
+        timestampStrategy = timestampStrategy_;
+    }
+
     // @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IAggregationStrategy).interfaceId || interfaceId == type(IERC165).interfaceId;
+    }
+
+    /**
+     * @notice Validates the provided timestamp strategy.
+     * @dev This function checks if the provided strategy is one of the supported strategies. Override this and
+     * `calculateFinalTimestamp` in derived contracts if you want to support non-standard timestamp strategies.
+     * @param strategy The timestamp strategy to validate.
+     */
+    function validateTimestampStrategy(TimestampStrategy strategy) internal pure virtual {
+        if (uint256(strategy) > uint256(TimestampStrategy.LastObservation)) {
+            revert InvalidTimestampStrategy(strategy);
+        }
+    }
+
+    /**
+     * @notice Calculates the final timestamp based on the provided timestamps and the configured timestamp strategy.
+     * @param timestamps An array of timestamps from which to calculate the final timestamp. The order is expected to be
+     * the same as the order of observations.
+     * @return The final timestamp based on the configured strategy.
+     */
+    function calculateFinalTimestamp(uint256[] memory timestamps) internal view virtual returns (uint256) {
+        if (timestamps.length == 0) {
+            revert NoTimestampsProvided();
+        }
+
+        if (timestampStrategy == TimestampStrategy.ThisBlock) {
+            return block.timestamp;
+        } else if (timestampStrategy == TimestampStrategy.EarliestObservation) {
+            uint256 earliestTimestamp = timestamps[0];
+
+            for (uint256 i = 1; i < timestamps.length; ++i) {
+                if (timestamps[i] < earliestTimestamp) {
+                    earliestTimestamp = timestamps[i];
+                }
+            }
+
+            return earliestTimestamp;
+        } else if (timestampStrategy == TimestampStrategy.LatestObservation) {
+            uint256 latestTimestamp = timestamps[0];
+
+            for (uint256 i = 1; i < timestamps.length; ++i) {
+                if (timestamps[i] > latestTimestamp) {
+                    latestTimestamp = timestamps[i];
+                }
+            }
+
+            return latestTimestamp;
+        } else if (timestampStrategy == TimestampStrategy.FirstObservation) {
+            return timestamps[0];
+        } else if (timestampStrategy == TimestampStrategy.LastObservation) {
+            return timestamps[timestamps.length - 1];
+        } else {
+            revert InvalidTimestampStrategy(timestampStrategy);
+        }
     }
 
     /**
@@ -49,8 +132,9 @@ abstract contract AbstractAggregator is IERC165, IAggregationStrategy {
     function prepareResult(
         uint256 price,
         uint256 tokenLiquidity,
-        uint256 quoteTokenLiquidity
-    ) internal view returns (ObservationLibrary.Observation memory result) {
+        uint256 quoteTokenLiquidity,
+        uint256 timestamp
+    ) internal pure returns (ObservationLibrary.Observation memory result) {
         if (price > type(uint112).max) {
             revert PriceTooHigh(price);
         } else {
@@ -66,7 +150,12 @@ abstract contract AbstractAggregator is IERC165, IAggregationStrategy {
         } else {
             result.quoteTokenLiquidity = uint112(quoteTokenLiquidity);
         }
-        result.timestamp = uint32(block.timestamp);
+
+        if (timestamp > type(uint32).max) {
+            revert InvalidTimestamp(timestamp);
+        }
+
+        result.timestamp = uint32(timestamp);
 
         return result;
     }
