@@ -8,11 +8,20 @@ contract AggregatorStub is AbstractAggregator {
         uint256 price;
         uint256 tokenLiquidity;
         uint256 quoteTokenLiquidity;
+        uint256 timestamp;
     }
 
     Config public config;
 
-    constructor() AbstractAggregator(TimestampStrategy.ThisBlock) {}
+    constructor(TimestampStrategy timestampStrategy_) AbstractAggregator(timestampStrategy_) {}
+
+    function stubValidateTimestampStrategy(uint8 strategy) public pure {
+        validateTimestampStrategy(TimestampStrategy(strategy));
+    }
+
+    function stubCalculateFinalTimestamp(uint256[] memory timestamps) public view returns (uint256) {
+        return calculateFinalTimestamp(timestamps);
+    }
 
     function aggregateObservations(
         address,
@@ -20,12 +29,18 @@ contract AggregatorStub is AbstractAggregator {
         uint256,
         uint256
     ) external view override returns (ObservationLibrary.Observation memory) {
-        return prepareResult(config.price, config.tokenLiquidity, config.quoteTokenLiquidity, block.timestamp);
+        return prepareResult(config.price, config.tokenLiquidity, config.quoteTokenLiquidity, config.timestamp);
     }
 
-    function stubSetObservation(uint256 price, uint256 tokenLiquidity, uint256 quoteTokenLiquidity) public {
+    function stubSetObservation(
+        uint256 price,
+        uint256 tokenLiquidity,
+        uint256 quoteTokenLiquidity,
+        uint256 timestamp
+    ) public {
         config.price = price;
         config.tokenLiquidity = tokenLiquidity;
         config.quoteTokenLiquidity = quoteTokenLiquidity;
+        config.timestamp = timestamp;
     }
 }
