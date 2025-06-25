@@ -42,8 +42,15 @@ contract MedianAggregator is AbstractAggregator {
         if (observations.length <= to) revert InsufficientObservations(observations.length, to - from + 1);
         uint256 length = to - from + 1;
         if (length == 1) {
+            uint256[] memory timestamps_ = new uint256[](1);
+            timestamps_[0] = observations[from].data.timestamp;
+            uint256 finalTimestamp = calculateFinalTimestamp(timestamps_);
+            if (finalTimestamp > type(uint32).max) {
+                revert InvalidTimestamp(finalTimestamp);
+            }
+
             ObservationLibrary.Observation memory observation = observations[from].data;
-            observation.timestamp = uint32(block.timestamp);
+            observation.timestamp = uint32(finalTimestamp);
             return observation;
         }
 
