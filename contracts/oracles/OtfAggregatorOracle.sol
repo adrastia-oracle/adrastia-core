@@ -20,6 +20,20 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
      */
     uint256 internal immutable _minResponses;
 
+    /**
+     * @notice An error thrown when the minimum freshness is invalid.
+     * @param providedMinFreshness The provided minimum freshness that caused the error.
+     * @param minFreshness The minimum freshness that is required.
+     */
+    error InvalidMinimumFreshness(uint256 providedMinFreshness, uint256 minFreshness);
+
+    /**
+     * @notice An error thrown when the minimum number of responses is invalid.
+     * @param providedMinResponses The provided minimum number of responses that caused the error.
+     * @param minResponses The minimum number of responses that is required.
+     */
+    error InvalidMinimumResponses(uint256 providedMinResponses, uint256 minResponses);
+
     constructor(
         AbstractAggregatorOracleParams memory params,
         uint256 minimumFreshness_,
@@ -102,11 +116,15 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
     }
 
     function _validateMinimumFreshness(uint256 minimumFreshness_) internal pure virtual {
-        require(minimumFreshness_ > 0, "OtfAggregatorOracle: INVALID_MINIMUM_FRESHNESS");
+        if (minimumFreshness_ == 0) {
+            revert InvalidMinimumFreshness(minimumFreshness_, 1);
+        }
     }
 
     function _validateMinimumResponses(uint256 minResponses_) internal pure virtual {
-        require(minResponses_ > 0, "OtfAggregatorOracle: INVALID_MIN_RESPONSES");
+        if (minResponses_ == 0) {
+            revert InvalidMinimumResponses(minResponses_, 1);
+        }
     }
 
     function _minimumResponses(address) internal view virtual override returns (uint256) {
