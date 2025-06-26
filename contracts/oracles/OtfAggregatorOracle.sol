@@ -110,7 +110,7 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
     }
 
     function _minimumResponses(address) internal view virtual override returns (uint256) {
-        return 1;
+        return _minResponses;
     }
 
     function _maximumResponseAge(address) internal view virtual override returns (uint256) {
