@@ -134,16 +134,4 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
     function _maximumResponseAge(address) internal view virtual override returns (uint256) {
         return _minimumFreshness;
     }
-
-    /// @inheritdoc AbstractAggregatorOracle
-    /// @dev This oracle won't update its underlying oracles.
-    function canUpdateUnderlyingOracles(bytes memory) internal view virtual override returns (bool) {
-        return false;
-    }
-
-    /// @inheritdoc AbstractAggregatorOracle
-    /// @dev This oracle won't update its underlying oracles.
-    function updateUnderlyingOracles(bytes memory) internal virtual override returns (bool) {
-        return false;
-    }
 }
