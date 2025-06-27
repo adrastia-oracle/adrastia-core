@@ -524,6 +524,47 @@ describe("OtfAggregatorOracle#canUpdate", function () {
     });
 });
 
+describe("OtfAggregatorOracle#update", function () {
+    var oracle;
+
+    beforeEach(async function () {
+        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
+        const oracleFactory = await ethers.getContractFactory("OtfAggregatorOracle");
+        const validationStrategyFactory = await ethers.getContractFactory("ValidationStub");
+
+        const validationStrategy = await validationStrategyFactory.deploy();
+        await validationStrategy.deployed();
+        await validationStrategy.stubSetQuoteTokenDecimals(DEFAULT_AGGREGATOR_CONSTRUCTOR_PARAMS.quoteTokenDecimals);
+
+        underlyingOracle = await mockOracleFactory.deploy(USDC);
+        await underlyingOracle.deployed();
+
+        const constructorOverrides = {
+            validationStrategy: validationStrategy.address,
+            oracles: [underlyingOracle.address],
+        };
+
+        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
+
+        // Time increases by 1 second with each block mined
+        await hre.timeAndMine.setTimeIncrease(1);
+
+        // Push an underlying observation for GRT, so that aggregation works
+        updateTime = await currentBlockTimestamp();
+        await underlyingOracle.stubSetObservation(
+            GRT,
+            LOWEST_ACCEPTABLE_PRICE,
+            LOWEST_ACCEPTABLE_LIQUIDITY,
+            LOWEST_ACCEPTABLE_LIQUIDITY,
+            updateTime
+        );
+    });
+
+    it("Returns false", async () => {
+        expect(await oracle.callStatic.update(ethers.utils.hexZeroPad(GRT, 32))).to.equal(false);
+    });
+});
+
 describe("OtfAggregatorOracle#consultPrice(token)", function () {
     var oracle;
     var underlyingOracle;
@@ -2026,30 +2067,6 @@ describe("OtfAggregatorOracle#consult(token, maxAge)", function () {
     });
 });
 
-describe("OtfAggregatorOracle#update", function () {
-    var oracle;
-
-    beforeEach(async () => {
-        const mockOracleFactory = await ethers.getContractFactory("MockOracle");
-        const oracleFactory = await ethers.getContractFactory("OtfAggregatorOracle");
-
-        const underlyingOracle = await mockOracleFactory.deploy(USDC);
-        await underlyingOracle.deployed();
-
-        const constructorOverrides = {
-            validationStrategy: AddressZero,
-            oracles: [underlyingOracle.address],
-        };
-
-        oracle = await constructDefaultAggregator(oracleFactory, constructorOverrides);
-    });
-
-    it("Reverts called", async () => {
-        const updateData = ethers.utils.defaultAbiCoder.encode(["address"], [GRT]);
-        await expect(oracle.update(updateData)).to.be.revertedWith("Not supported");
-    });
-});
-
 describe("OtfAggregatorOracle - IHistoricalOracle implementation", function () {
     var oracle;
 
@@ -2141,9 +2158,9 @@ describe("OtfAggregatorOracle#supportsInterface(interfaceId)", function () {
         expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 
-    it("Doesn't support IUpdateable", async () => {
+    it("Should support IUpdateable", async () => {
         const interfaceId = await interfaceIds.iUpdateable();
-        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(false);
+        expect(await oracle["supportsInterface(bytes4)"](interfaceId)).to.equal(true);
     });
 
     it("Doesn't support IHistoricalOracle", async () => {

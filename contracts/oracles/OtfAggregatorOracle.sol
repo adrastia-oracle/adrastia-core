@@ -59,7 +59,12 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
 
     /// @notice Not supported.
     function update(bytes memory) public virtual override returns (bool) {
-        revert("Not supported");
+        return false;
+    }
+
+    function canUpdate(bytes memory) public pure virtual override returns (bool) {
+        // This oracle does not support updates, so it cannot be updated.
+        return false;
     }
 
     /// @notice Always returns false, as this oracle does not store observations and does not need to be updated.
@@ -112,8 +117,8 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
     function supportsInterface(
         bytes4 interfaceId
     ) public view virtual override(AbstractAggregatorOracle) returns (bool) {
-        if (interfaceId == type(IUpdateable).interfaceId || interfaceId == type(IHistoricalOracle).interfaceId) {
-            // This oracle does not support IUpdateable or IHistoricalOracle (unlike the parent contracts)
+        if (interfaceId == type(IHistoricalOracle).interfaceId) {
+            // This oracle does not support IHistoricalOracle (unlike the parent contracts)
             return false;
         }
 
