@@ -112,6 +112,11 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
     function supportsInterface(
         bytes4 interfaceId
     ) public view virtual override(AbstractAggregatorOracle) returns (bool) {
+        if (interfaceId == type(IUpdateable).interfaceId || interfaceId == type(IHistoricalOracle).interfaceId) {
+            // This oracle does not support IUpdateable or IHistoricalOracle (unlike the parent contracts)
+            return false;
+        }
+
         return AbstractAggregatorOracle.supportsInterface(interfaceId);
     }
 
