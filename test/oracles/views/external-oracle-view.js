@@ -862,17 +862,21 @@ function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsS
             const answer = ethers.utils.parseUnits("3", decimals);
             await feed.setRoundDataNow(answer);
 
-            expect(await oracle["consultLiquidity(address,uint256)"](feedToken, 0)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
+            const [tokenLiquidity, quoteTokenLiquidity] = await oracle["consultLiquidity(address,uint256)"](
+                feedToken,
+                0
+            );
+            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
         });
 
         it("Returns zero liquidity for the token and quote token, when the token is the quote token", async function () {
-            expect(await oracle["consultLiquidity(address,uint256)"](quoteToken, 0)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
+            const [tokenLiquidity, quoteTokenLiquidity] = await oracle["consultLiquidity(address,uint256)"](
+                quoteToken,
+                0
+            );
+            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
         });
 
         it("Reverts if the token does not match the feed token", async function () {
@@ -952,17 +956,15 @@ function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsS
             const answer = ethers.utils.parseUnits("3", decimals);
             await feed.setRoundDataNow(answer);
 
-            expect(await oracle["consultLiquidity(address)"](feedToken)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
+            const [tokenLiquidity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](feedToken);
+            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
         });
 
         it("Returns zero liquidity for the token and quote token, when the token is the quote token", async function () {
-            expect(await oracle["consultLiquidity(address)"](quoteToken)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
+            const [tokenLiquidity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](quoteToken);
+            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
         });
 
         it("Reverts if the token does not match the feed token", async function () {
