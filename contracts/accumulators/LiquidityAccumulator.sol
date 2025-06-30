@@ -389,6 +389,7 @@ abstract contract LiquidityAccumulator is
 
     /**
      * @notice Fetches the liquidity for a token.
+     * @dev In most cases, maxAge is ignored and this function always fetches the real-time liquidity.
      *
      * @param data The encoded address of the token for which to fetch the liquidity.
      * @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time liquidity.
