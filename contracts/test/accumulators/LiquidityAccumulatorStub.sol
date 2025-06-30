@@ -137,7 +137,8 @@ contract LiquidityAccumulatorStub is LiquidityAccumulator {
     }
 
     function fetchLiquidity(
-        bytes memory data
+        bytes memory data,
+        uint256 /* maxAge */ // maxAge is not used in this implementation
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         address token = abi.decode(data, (address));
 

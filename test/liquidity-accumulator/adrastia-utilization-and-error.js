@@ -1,7 +1,7 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { blockTimestamp } = require("../../src/time");
+const { ethers, timeAndMine } = require("hardhat");
+const { blockTimestamp, currentBlockTimestamp } = require("../../src/time");
 
 const AddressZero = ethers.constants.AddressZero;
 
@@ -89,7 +89,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     });
 
     it("Returns 100% utilization when the market is at zero utilization but has no liquidity", async function () {
-        await sbOracle.stubSetObservation(USDC, 0, 0, 0, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, 0, 0);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
@@ -100,7 +100,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     it("Returns 0% utilization when the market is at zero utilization but has liquidity", async function () {
         const totalBorrow = 0;
         const totalSupply = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("0", DEFAULT_DECIMALS);
@@ -111,7 +111,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     it("Returns 1% utilization when the market is at 1% utilization", async function () {
         const totalBorrow = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("0.01", DEFAULT_DECIMALS);
@@ -122,7 +122,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     it("Returns 50% utilization when the market is at 50% utilization", async function () {
         const totalBorrow = ethers.utils.parseUnits("50", DEFAULT_DECIMALS);
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("0.5", DEFAULT_DECIMALS);
@@ -135,7 +135,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
 
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
         const totalBorrow = DEFAULT_TARGET.mul(totalSupply).div(BigNumber.from(10).pow(DEFAULT_DECIMALS));
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -148,7 +148,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
 
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
         const totalBorrow = totalSupply;
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -184,7 +184,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     });
 
     it("Returns 0% utilization when the market is at zero utilization but has no liquidity", async function () {
-        await sbOracle.stubSetObservation(USDC, 0, 0, 0, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, 0, 0);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("0", DEFAULT_DECIMALS);
@@ -195,7 +195,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     it("Returns 0% utilization when the market is at zero utilization but has liquidity", async function () {
         const totalBorrow = 0;
         const totalSupply = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("0", DEFAULT_DECIMALS);
@@ -206,7 +206,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
     it("Returns 1% utilization when the market is at 1% utilization", async function () {
         const totalBorrow = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits("0.01", DEFAULT_DECIMALS);
@@ -219,7 +219,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
 
         const totalBorrow = ethers.utils.parseUnits("50", DEFAULT_DECIMALS);
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -232,7 +232,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
 
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
         const totalBorrow = DEFAULT_TARGET.mul(totalSupply).div(BigNumber.from(10).pow(DEFAULT_DECIMALS));
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -245,7 +245,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchValue - Considering empty 
 
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
         const totalBorrow = totalSupply;
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         const utilization = await accumulator.stubFetchValue(USDC);
         const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -302,7 +302,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
         async function () {
             const totalBorrow = 0;
             const totalSupply = 0;
-            await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+            await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
             const [utilization, error] = await accumulator.stubFetchLiquidity(USDC);
             const expectedUtilization = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
@@ -324,7 +324,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
         async function () {
             const totalBorrow = 0;
             const totalSupply = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
-            await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+            await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
             const [utilization, error] = await accumulator.stubFetchLiquidity(USDC);
             const expectedUtilization = ethers.utils.parseUnits("0", DEFAULT_DECIMALS);
@@ -348,7 +348,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
 
             const totalBorrow = ethers.utils.parseUnits("1", DEFAULT_DECIMALS);
             const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
-            await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+            await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
             const [utilization, error] = await accumulator.stubFetchLiquidity(USDC);
             const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -372,7 +372,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
 
             const totalBorrow = ethers.utils.parseUnits("50", DEFAULT_DECIMALS);
             const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
-            await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+            await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
             const [utilization, error] = await accumulator.stubFetchLiquidity(USDC);
             const expectedUtilization = ethers.utils.parseUnits(utilizationStr, DEFAULT_DECIMALS);
@@ -394,7 +394,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
         async function () {
             const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
             const totalBorrow = DEFAULT_TARGET.mul(totalSupply).div(BigNumber.from(10).pow(DEFAULT_DECIMALS));
-            await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+            await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
             const [utilization, error] = await accumulator.stubFetchLiquidity(USDC);
             const expectedUtilization = DEFAULT_TARGET;
@@ -403,6 +403,51 @@ describe("AdrastiaUtilizationAndErrorAccumulator#fetchLiquidity", function () {
             expect(error).to.eq(ERROR_TARGET);
         }
     );
+});
+
+describe("AdrastiaUtilizationAndErrorAccumulator#consultLiquidity(token,maxAge=0)", function () {
+    var sbOracle;
+    var accumulator;
+
+    beforeEach(async function () {
+        const sbOracleStubFactory = await ethers.getContractFactory("MockOracle");
+        const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        const accumulatorFactory = await ethers.getContractFactory("AdrastiaUtilizationAndErrorAccumulatorStub");
+
+        sbOracle = await sbOracleStubFactory.deploy(AddressZero);
+        await sbOracle.deployed();
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        accumulator = await accumulatorFactory.deploy(
+            sbOracle.address,
+            true,
+            DEFAULT_TARGET,
+            averagingStrategy.address,
+            DEFAULT_DECIMALS,
+            DEFAULT_UPDATE_THRESHOLD,
+            DEFAULT_UPDATE_DELAY,
+            DEFAULT_HEARTBEAT
+        );
+
+        await accumulator.deployed();
+    });
+
+    it("Retrieves the instant utilization and error", async function () {
+        await timeAndMine.setTimeIncrease(1);
+
+        const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
+        const totalBorrow = ethers.utils.parseUnits("90", DEFAULT_DECIMALS);
+        await sbOracle.stubSetInstantRates(USDC, 0, totalBorrow, totalSupply);
+
+        // Consult the liquidity
+        const [utilization, error] = await accumulator["consultLiquidity(address,uint256)"](USDC, 0);
+
+        // Calculate expected values
+        const expectedUtilization = totalBorrow.mul(BigNumber.from(10).pow(DEFAULT_DECIMALS)).div(totalSupply);
+        const expectedError = calculateError(expectedUtilization, DEFAULT_TARGET);
+
+        expect(utilization).to.equal(expectedUtilization);
+        expect(error).to.equal(expectedError);
+    });
 });
 
 describe("AdrastiaUtilizationAndErrorAccumulator#update", function () {
@@ -435,7 +480,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#update", function () {
         // Set the SB oracle observation
         const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
         const totalBorrow = ethers.utils.parseUnits("90", DEFAULT_DECIMALS);
-        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, 1);
+        await sbOracle.stubSetObservationNow(USDC, 0, totalBorrow, totalSupply);
 
         // Update the accumulator
         const updateData = ethers.utils.defaultAbiCoder.encode(["address"], [USDC]);
@@ -457,5 +502,52 @@ describe("AdrastiaUtilizationAndErrorAccumulator#update", function () {
         await expect(updateTx)
             .to.emit(accumulator, "Updated")
             .withArgs(USDC, expectedUtilization, expectedError, timestamp);
+    });
+
+    it("Updates successfully when the underlying observation is just fresh enough", async function () {
+        await timeAndMine.setTimeIncrease(1);
+
+        // Set the SB oracle observation
+        const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
+        const totalBorrow = ethers.utils.parseUnits("90", DEFAULT_DECIMALS);
+        // The observation will be DEFAULT_HEARTBEAT seconds old when update is called
+        const oTimestamp = (await currentBlockTimestamp()) - DEFAULT_HEARTBEAT + 2;
+        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, oTimestamp);
+
+        // Update the accumulator
+        const updateData = ethers.utils.defaultAbiCoder.encode(["address"], [USDC]);
+        const updateTx = await accumulator.update(updateData);
+
+        // Wait for the transaction to be mined
+        const updateReceipt = await updateTx.wait();
+
+        // Get the mined block number
+        const blockNumber = updateReceipt.blockNumber;
+        const timestamp = await blockTimestamp(blockNumber);
+
+        // Calculate the expected utilization
+        const expectedUtilization = totalBorrow.mul(BigNumber.from(10).pow(DEFAULT_DECIMALS)).div(totalSupply);
+        // Calculate the expected error
+        const expectedError = calculateError(expectedUtilization, DEFAULT_TARGET);
+
+        // Ensure that the Updated event was emitted
+        await expect(updateTx)
+            .to.emit(accumulator, "Updated")
+            .withArgs(USDC, expectedUtilization, expectedError, timestamp);
+    });
+
+    it("Reverts when the underlying observation is too old", async function () {
+        await timeAndMine.setTimeIncrease(1);
+
+        // Set the SB oracle observation
+        const totalSupply = ethers.utils.parseUnits("100", DEFAULT_DECIMALS);
+        const totalBorrow = ethers.utils.parseUnits("90", DEFAULT_DECIMALS);
+        // The observation will be DEFAULT_HEARTBEAT + 1 seconds old when update is called
+        const oTimestamp = (await currentBlockTimestamp()) - DEFAULT_HEARTBEAT + 1;
+        await sbOracle.stubSetObservation(USDC, 0, totalBorrow, totalSupply, oTimestamp);
+
+        // Update the accumulator
+        const updateData = ethers.utils.defaultAbiCoder.encode(["address"], [USDC]);
+        await expect(accumulator.update(updateData)).to.be.revertedWith("AbstractOracle: RATE_TOO_OLD");
     });
 });

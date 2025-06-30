@@ -233,7 +233,7 @@ abstract contract LiquidityAccumulator is
     ) public view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         if (token == quoteTokenAddress()) return (0, 0);
 
-        if (maxAge == 0) return fetchLiquidity(abi.encode(token));
+        if (maxAge == 0) return fetchLiquidity(abi.encode(token), 0);
 
         ObservationLibrary.LiquidityObservation storage observation = observations[token];
 
@@ -387,7 +387,31 @@ abstract contract LiquidityAccumulator is
         return validated;
     }
 
+    /**
+     * @notice Fetches the liquidity for a token.
+     *
+     * @param data The encoded address of the token for which to fetch the liquidity.
+     * @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time liquidity.
+     *
+     * @return tokenLiquidity The liquidity of the token.
+     * @return quoteTokenLiquidity The liquidity of the quote token.
+     */
+    function fetchLiquidity(
+        bytes memory data,
+        uint256 maxAge
+    ) internal view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+
+    /**
+     * @notice Fetches the liquidity for a token.
+     * @dev This function is a convenience wrapper around `fetchLiquidity(data, _heartbeat())`.
+     *
+     * @param data The encoded address of the token for which to fetch the liquidity.
+     * @return tokenLiquidity The liquidity of the token.
+     * @return quoteTokenLiquidity The liquidity of the quote token.
+     */
     function fetchLiquidity(
         bytes memory data
-    ) internal view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity);
+    ) internal view virtual returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        return fetchLiquidity(data, _heartbeat());
+    }
 }

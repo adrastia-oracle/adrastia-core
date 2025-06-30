@@ -48,7 +48,7 @@ contract AlocUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
         return _liquidityDecimals;
     }
 
-    function fetchValue(bytes memory data) internal view virtual override returns (uint112) {
+    function fetchValue(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112) {
         address alocAddress = abi.decode(data, (address));
 
         uint256 utilization = IAloc(alocAddress).utilization();

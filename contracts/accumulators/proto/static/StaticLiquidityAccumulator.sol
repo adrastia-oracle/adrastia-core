@@ -94,7 +94,7 @@ contract StaticLiquidityAccumulator is LiquidityAccumulator {
         return (staticTokenLiquidity, staticQuoteTokenLiquidity);
     }
 
-    function fetchLiquidity(bytes memory) internal view virtual override returns (uint112, uint112) {
+    function fetchLiquidity(bytes memory, uint256) internal view virtual override returns (uint112, uint112) {
         return (staticTokenLiquidity, staticQuoteTokenLiquidity);
     }
 }

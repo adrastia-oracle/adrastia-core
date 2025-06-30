@@ -76,7 +76,16 @@ contract OffchainLiquidityAccumulator is LiquidityAccumulator {
         return _liquidityDecimals;
     }
 
-    function fetchLiquidity(bytes memory data) internal view virtual override returns (uint112, uint112) {
+    function fetchLiquidity(
+        bytes memory data
+    ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        return fetchLiquidity(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchLiquidity(
+        bytes memory data,
+        uint256 /* maxAge */
+    ) internal view virtual override returns (uint112, uint112) {
         (, uint112 tokenLiquidity, uint112 quoteTokenLiquidity) = abi.decode(data, (address, uint112, uint112));
 
         return (tokenLiquidity, quoteTokenLiquidity);
