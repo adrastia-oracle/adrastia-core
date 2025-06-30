@@ -1,6 +1,7 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 const { ethers, timeAndMine, network } = require("hardhat");
+const forkingConfig = require("../../../forking").default;
 
 const AddressZero = ethers.constants.AddressZero;
 
@@ -467,7 +468,17 @@ function testAggregationStrategy(contractName, deployFunction, aggregateObservat
                         });
 
                         after(async function () {
-                            await network.provider.send("hardhat_reset");
+                            // Reset the network to reset the time
+                            const newConfig = [
+                                {
+                                    forking: {
+                                        jsonRpcUrl: hre.network.config.forking.url,
+                                        blockNumber: hre.network.config.forking.blockNumber,
+                                    },
+                                },
+                            ];
+
+                            await hre.network.provider.send("hardhat_reset", newConfig);
                         });
 
                         it("Reverts when using a single observation with a large timestamp", async function () {
