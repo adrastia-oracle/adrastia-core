@@ -7,7 +7,13 @@ interface VToken {
     function badDebt() external view returns (uint256);
 }
 
-contract VenusIsolatedSBAccumulator is CompoundV2SBAccumulator {
+/**
+ * @title VenusSBAccumulator - Venus Supply & Borrow Accumulator
+ * @author Tyler Loewen, TRILEZ SOFTWARE INC. dba. Adrastia
+ * @notice A Supply & Borrow Accumulator for the Venus protocol, extending the CompoundV2SBAccumulator.
+ * @dev This contract is made for vTokens that implement the `badDebt` function.
+ */
+contract VenusSBAccumulator is CompoundV2SBAccumulator {
     constructor(
         IAveragingStrategy averagingStrategy_,
         address comptroller_,
