@@ -335,5 +335,26 @@ abstract contract PriceAccumulator is
         return validated;
     }
 
-    function fetchPrice(bytes memory data) internal view virtual returns (uint112 price);
+    /**
+     * @notice Fetches the price for a token.
+     * @dev In most cases, maxAge is ignored and this function always fetches the real-time price.
+     *
+     * @param data The encoded address of the token for which to fetch the price.
+     * @param maxAge The maximum age of the quotation, in seconds. If 0, fetches the real-time price.
+     *
+     * @return price The price of the token.
+     */
+    function fetchPrice(bytes memory data, uint256 maxAge) internal view virtual returns (uint112 price);
+
+    /**
+     * @notice Fetches the price for a token.
+     * @dev This function is a convenience wrapper around `fetchPrice(data, _heartbeat())`.
+     *
+     * @param data The encoded address of the token for which to fetch the price.
+     *
+     * @return price The price of the token.
+     */
+    function fetchPrice(bytes memory data) internal view virtual returns (uint112 price) {
+        return fetchPrice(data, _heartbeat());
+    }
 }

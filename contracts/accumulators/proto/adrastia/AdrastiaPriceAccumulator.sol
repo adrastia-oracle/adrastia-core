@@ -92,10 +92,10 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
      * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
      *   places.
      */
-    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+    function fetchPrice(bytes memory data, uint256 maxAge) internal view virtual override returns (uint112 price) {
         address token = abi.decode(data, (address));
 
-        return IPriceOracle(adrastiaOracle).consultPrice(token, _heartbeat());
+        return IPriceOracle(adrastiaOracle).consultPrice(token, maxAge);
     }
 
     function validateObservation(bytes memory updateData, uint112 price) internal virtual override returns (bool) {

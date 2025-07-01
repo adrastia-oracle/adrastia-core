@@ -69,7 +69,7 @@ contract StaticPriceAccumulator is PriceAccumulator {
         return staticPrice;
     }
 
-    function fetchPrice(bytes memory) internal view virtual override returns (uint112) {
+    function fetchPrice(bytes memory, uint256) internal view virtual override returns (uint112) {
         return staticPrice;
     }
 }

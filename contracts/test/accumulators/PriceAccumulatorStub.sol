@@ -97,7 +97,7 @@ contract PriceAccumulatorStub is PriceAccumulator {
         else return super.validateObservation(updateData, price);
     }
 
-    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+    function fetchPrice(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112) {
         address token = abi.decode(data, (address));
 
         return mockPrices[token];

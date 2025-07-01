@@ -363,7 +363,77 @@ describe("AdrastiaPriceAccumulator#fetchPrice", function () {
     });
 });
 
+describe("AdrastiaPriceAccumulator#consultPrice(token,maxAge=0)", function () {
+    var deployment;
+
+    beforeEach(async function () {
+        deployment = await createDefaultDeployment();
+    });
+
+    it("Retrieves the instant price from the oracle", async function () {
+        const quoteTokenDecimals = await deployment.accumulator.quoteTokenDecimals();
+
+        const price = ethers.utils.parseUnits("1.23", quoteTokenDecimals);
+        const token = GRT;
+
+        // Set the price
+        await deployment.oracle.stubSetObservationNow(token, price, 3, 5);
+
+        expect(await deployment.accumulator["consultPrice(address,uint256)"](token, 0)).to.equal(price);
+    });
+});
+
 describe("AdrastiaPriceAccumulator#update", function () {
+    describe("Standard tests", function () {
+        var deployment;
+
+        beforeEach(async function () {
+            deployment = await createDefaultDeployment({
+                validationDisabled: true,
+            });
+        });
+
+        it("Updates successfully when the underlying oracle is just fresh enough", async function () {
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+            // The observation will be DEFAULT_HEARTBEAT seconds old when update is called
+            const oTimestamp = (await currentBlockTimestamp()) - DEFAULT_HEARTBEAT + 2;
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, oTimestamp);
+
+            const updateTx = await deployment.accumulator.update(
+                ethers.utils.defaultAbiCoder.encode(["address"], [token])
+            );
+
+            // Wait for the transaction to be mined
+            const updateReceipt = await updateTx.wait();
+
+            // Get the mined block number
+            const blockNumber = updateReceipt.blockNumber;
+            const timestamp = await blockTimestamp(blockNumber);
+
+            // Expect it to emit Updated
+            expect(updateTx).to.emit(deployment.accumulator, "Updated").withArgs(token, price, timestamp);
+        });
+
+        it("Reverts when the underlying observation is too old", async function () {
+            const token = GRT;
+
+            const price = ethers.utils.parseUnits("1.23", await deployment.accumulator.quoteTokenDecimals());
+            // The observation will be DEFAULT_HEARTBEAT + 1 seconds old when update is called
+            const oTimestamp = (await currentBlockTimestamp()) - DEFAULT_HEARTBEAT + 1;
+
+            // Set the observation
+            await deployment.oracle.stubSetObservation(token, price, 3, 5, oTimestamp);
+
+            await expect(
+                deployment.accumulator.update(ethers.utils.defaultAbiCoder.encode(["address"], [token]))
+            ).to.be.revertedWith("AbstractOracle: RATE_TOO_OLD");
+        });
+    });
+
     describe("When validation is disabled", function () {
         var deployment;
 

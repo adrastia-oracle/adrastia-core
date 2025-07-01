@@ -60,7 +60,11 @@ contract AaveV3RateAccumulator is PriceAccumulator {
         aaveV3Pool = aaveV3Pool_;
     }
 
-    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 rate) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchPrice(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112 rate) {
         uint256 rateType = abi.decode(data, (uint256));
 
         IAaveV3Pool.ReserveData memory reserveData = IAaveV3Pool(aaveV3Pool).getReserveData(quoteTokenAddress());

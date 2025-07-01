@@ -84,6 +84,10 @@ contract SAVPriceAccumulator is PriceAccumulator {
     }
 
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchPrice(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112) {
         IERC4626 vault = IERC4626(abi.decode(data, (address)));
         uint256 vaultSupply = vault.totalSupply();
 

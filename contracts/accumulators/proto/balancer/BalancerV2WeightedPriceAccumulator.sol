@@ -123,6 +123,10 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
         return type(uint256).max;
     }
 
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
     /**
      * @notice Calculates the price of a token.
      * @dev When the price equals 0, a price of 1 is actually returned.
@@ -130,7 +134,10 @@ contract BalancerV2WeightedPriceAccumulator is PriceAccumulator {
      * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
      *   places.
      */
-    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+    function fetchPrice(
+        bytes memory data,
+        uint256 /* maxAge */
+    ) internal view virtual override returns (uint112 price) {
         // Ensure that the pool is not in recovery mode
         if (isPaused(poolAddress)) {
             revert PoolIsPaused(poolAddress);

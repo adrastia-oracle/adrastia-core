@@ -65,6 +65,10 @@ contract CurvePriceAccumulator is PriceAccumulator {
         return super.canUpdate(data);
     }
 
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
     /**
      * @notice Calculates the price of a token.
      * @dev When the price equals 0, a price of 1 is actually returned.
@@ -72,7 +76,10 @@ contract CurvePriceAccumulator is PriceAccumulator {
      * @return price The price of the specified token in terms of the quote token, scaled by the quote token decimal
      *   places.
      */
-    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 price) {
+    function fetchPrice(
+        bytes memory data,
+        uint256 /* maxAge */
+    ) internal view virtual override returns (uint112 price) {
         address token = abi.decode(data, (address));
 
         TokenConfig memory config = tokenIndices[token];

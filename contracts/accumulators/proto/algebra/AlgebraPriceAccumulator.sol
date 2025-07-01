@@ -110,6 +110,10 @@ contract AlgebraPriceAccumulator is PriceAccumulator {
     }
 
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchPrice(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112) {
         address token = abi.decode(data, (address));
         if (token == quoteToken || token == address(0)) {
             // Invalid token

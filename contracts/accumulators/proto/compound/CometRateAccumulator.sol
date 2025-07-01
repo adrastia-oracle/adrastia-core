@@ -40,7 +40,11 @@ contract CometRateAccumulator is PriceAccumulator {
         comet = comet_;
     }
 
-    function fetchPrice(bytes memory data) internal view virtual override returns (uint112 rate) {
+    function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchPrice(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112 rate) {
         uint256 rateType = abi.decode(data, (uint256));
 
         uint256 utilization = IComet(comet).getUtilization();
