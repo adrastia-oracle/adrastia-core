@@ -244,17 +244,26 @@ describe("StaticLiquidityAccumulator#getLastAccumulation", function () {
 
     it("Returns a valid accumulation for the zero address", async function () {
         const accumulation = [BigNumber.from(0), BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getLastAccumulation(AddressZero)).to.deep.eq(accumulation);
+        const [tokenAcc, quoteTokenAcc, timestamp] = await accumulator.getLastAccumulation(AddressZero);
+        expect(tokenAcc).to.equal(accumulation[0]);
+        expect(quoteTokenAcc).to.equal(accumulation[1]);
+        expect(timestamp).to.equal(accumulation[2]);
     });
 
     it("Returns a valid accumulation for the quote token", async function () {
         const accumulation = [BigNumber.from(0), BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getLastAccumulation(USDC)).to.deep.eq(accumulation);
+        const [tokenAcc, quoteTokenAcc, timestamp] = await accumulator.getLastAccumulation(USDC);
+        expect(tokenAcc).to.equal(accumulation[0]);
+        expect(quoteTokenAcc).to.equal(accumulation[1]);
+        expect(timestamp).to.equal(accumulation[2]);
     });
 
     it("Returns a valid accumulation for a valid token", async function () {
         const accumulation = [BigNumber.from(0), BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getLastAccumulation(GRT)).to.deep.eq(accumulation);
+        const [tokenAcc, quoteTokenAcc, timestamp] = await accumulator.getLastAccumulation(GRT);
+        expect(tokenAcc).to.equal(accumulation[0]);
+        expect(quoteTokenAcc).to.equal(accumulation[1]);
+        expect(timestamp).to.equal(accumulation[2]);
     });
 });
 
@@ -274,17 +283,26 @@ describe("StaticLiquidityAccumulator#getCurrentAccumulation", function () {
 
     it("Returns a valid accumulation for the zero address", async function () {
         const accumulation = [BigNumber.from(0), BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getCurrentAccumulation(AddressZero)).to.deep.eq(accumulation);
+        const [tokenAcc, quoteTokenAcc, timestamp] = await accumulator.getCurrentAccumulation(AddressZero);
+        expect(tokenAcc).to.equal(accumulation[0]);
+        expect(quoteTokenAcc).to.equal(accumulation[1]);
+        expect(timestamp).to.equal(accumulation[2]);
     });
 
     it("Returns a valid accumulation for the quote token", async function () {
         const accumulation = [BigNumber.from(0), BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getCurrentAccumulation(USDC)).to.deep.eq(accumulation);
+        const [tokenAcc, quoteTokenAcc, timestamp] = await accumulator.getCurrentAccumulation(USDC);
+        expect(tokenAcc).to.equal(accumulation[0]);
+        expect(quoteTokenAcc).to.equal(accumulation[1]);
+        expect(timestamp).to.equal(accumulation[2]);
     });
 
     it("Returns a valid accumulation for a valid token", async function () {
         const accumulation = [BigNumber.from(0), BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getCurrentAccumulation(GRT)).to.deep.eq(accumulation);
+        const [tokenAcc, quoteTokenAcc, timestamp] = await accumulator.getCurrentAccumulation(GRT);
+        expect(tokenAcc).to.equal(accumulation[0]);
+        expect(quoteTokenAcc).to.equal(accumulation[1]);
+        expect(timestamp).to.equal(accumulation[2]);
     });
 });
 
@@ -296,9 +314,12 @@ describe("StaticLiquidityAccumulator#calculateLiquidity", function () {
             it(`Returns tokenLiquidity=${tokenLiquidity.toString()} and quoteTokenLiquidity=${quoteTokenLiquidity.toString()}`, async function () {
                 const liquidity = [tokenLiquidity, quoteTokenLiquidity];
                 const accumulator = await createDefaultAccumulator(USDC, tokenLiquidity, quoteTokenLiquidity);
-                expect(await accumulator.calculateLiquidity(ZERO_ACCUMULATION, ZERO_ACCUMULATION)).to.deep.eq(
-                    liquidity
+                const [calcTokenLiquidity, calcQuoteTokenLiquidity] = await accumulator.calculateLiquidity(
+                    ZERO_ACCUMULATION,
+                    ZERO_ACCUMULATION
                 );
+                expect(calcTokenLiquidity).to.equal(tokenLiquidity);
+                expect(calcQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
             });
         }
     }
@@ -315,7 +336,11 @@ describe("StaticLiquidityAccumulator#consultLiquidity(token)", function () {
                     it(`Returns tokenLiquidity=${tokenLiquidity.toString()} and quoteTokenLiquidity=${quoteTokenLiquidity.toString()} for the zero address`, async function () {
                         const liquidity = [tokenLiquidity, quoteTokenLiquidity];
                         const accumulator = await createDefaultAccumulator(token, tokenLiquidity, quoteTokenLiquidity);
-                        expect(await accumulator["consultLiquidity(address)"](token)).to.deep.eq(liquidity);
+                        const [consultTokenLiquidity, consultQuoteTokenLiquidity] = await accumulator[
+                            "consultLiquidity(address)"
+                        ](token);
+                        expect(consultTokenLiquidity).to.equal(tokenLiquidity);
+                        expect(consultQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
                     });
                 }
             }
@@ -334,7 +359,11 @@ describe("StaticLiquidityAccumulator#consultLiquidity(token, maxAge = 0)", funct
                     it(`Returns tokenLiquidity=${tokenLiquidity.toString()} and quoteTokenLiquidity=${quoteTokenLiquidity.toString()} for the zero address`, async function () {
                         const liquidity = [tokenLiquidity, quoteTokenLiquidity];
                         const accumulator = await createDefaultAccumulator(token, tokenLiquidity, quoteTokenLiquidity);
-                        expect(await accumulator["consultLiquidity(address,uint256)"](token, 0)).to.deep.eq(liquidity);
+                        const [consultTokenLiquidity, consultQuoteTokenLiquidity] = await accumulator[
+                            "consultLiquidity(address,uint256)"
+                        ](token, 0);
+                        expect(consultTokenLiquidity).to.equal(tokenLiquidity);
+                        expect(consultQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
                     });
                 }
             }
@@ -353,7 +382,11 @@ describe("StaticLiquidityAccumulator#consultLiquidity(token, maxAge = 1)", funct
                     it(`Returns tokenLiquidity=${tokenLiquidity.toString()} and quoteTokenLiquidity=${quoteTokenLiquidity.toString()} for the zero address`, async function () {
                         const liquidity = [tokenLiquidity, quoteTokenLiquidity];
                         const accumulator = await createDefaultAccumulator(token, tokenLiquidity, quoteTokenLiquidity);
-                        expect(await accumulator["consultLiquidity(address,uint256)"](token, 1)).to.deep.eq(liquidity);
+                        const [consultTokenLiquidity, consultQuoteTokenLiquidity] = await accumulator[
+                            "consultLiquidity(address,uint256)"
+                        ](token, 1);
+                        expect(consultTokenLiquidity).to.equal(tokenLiquidity);
+                        expect(consultQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
                     });
                 }
             }
@@ -377,7 +410,11 @@ describe("StaticLiquidityAccumulator#fetchLiquidity", function () {
                             tokenLiquidity,
                             quoteTokenLiquidity
                         );
-                        expect(await accumulator.stubFetchLiquidity(updateData)).to.deep.eq(liquidity);
+                        const [fetchTokenLiquidity, fetchQuoteTokenLiquidity] = await accumulator.stubFetchLiquidity(
+                            updateData
+                        );
+                        expect(fetchTokenLiquidity).to.equal(tokenLiquidity);
+                        expect(fetchQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
                     });
                 }
             }
