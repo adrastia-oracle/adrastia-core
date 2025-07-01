@@ -1,5 +1,28 @@
 # Changelog
 
+## v4.10.0 (01-JUL-2025)
+### Accumulators
+- Update AdrastiaPriceAccumulator
+  - Use the heartbeat as the maximum observation age when consulting the underlying oracle.
+  - Support instant consultations when `maxAge` is set to 0.
+- Update AdrastiaUtilizationAndErrorAccumulator
+  - Use the heartbeat as the maximum observation age when consulting the underlying oracle.
+  - Support instant consultations when `maxAge` is set to 0.
+- Rename VenusIsolatedSBAccumulator to VenusSBAccumulator
+
+### Oracles
+- Add VenusOracleView: An oracle view that reads from Venus oracles.
+- Add OtfAggregatorOracle: An oracle aggregator that aggregates on-the-fly, rather than serving observations from storage.
+
+### Strategies
+#### Aggregation strategies
+- Add hardcoded timestamp strategies: Rather than always using the current block timestamp, aggregation strategies can now customize the aggregation timestamp.
+  - ThisBlock: Uses the current block timestamp.
+  - EarliestObservation: Uses the timestamp of the earliest (oldest) observation.
+  - LatestObservation: Uses the timestamp of the latest (newest) observation.
+  - FirstObservation: Uses the timestamp of the first observation.
+  - LastObservation: Uses the timestamp of the last observation.
+
 ## v4.9.1
 ### Accumulators
 - Improve SAVPriceAccumulator: Adds conditional underlying oracle heartbeat validation.
