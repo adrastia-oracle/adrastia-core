@@ -377,7 +377,7 @@ describe("AdrastiaPriceAccumulator#consultPrice(token,maxAge=0)", function () {
         const token = GRT;
 
         // Set the price
-        await deployment.oracle.stubSetObservationNow(token, price, 3, 5);
+        await deployment.oracle.stubSetInstantRates(token, price, 3, 5);
 
         expect(await deployment.accumulator["consultPrice(address,uint256)"](token, 0)).to.equal(price);
     });

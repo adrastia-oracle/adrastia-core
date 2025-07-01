@@ -210,7 +210,7 @@ abstract contract PriceAccumulator is
     function consultPrice(address token, uint256 maxAge) public view virtual override returns (uint112 price) {
         if (token == quoteTokenAddress()) return uint112(10 ** quoteTokenDecimals());
 
-        if (maxAge == 0) return fetchPrice(abi.encode(token));
+        if (maxAge == 0) return fetchPrice(abi.encode(token), 0);
 
         ObservationLibrary.PriceObservation storage observation = observations[token];
 
