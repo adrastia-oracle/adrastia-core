@@ -49,12 +49,16 @@ contract OtfAggregatorOracle is AbstractAggregatorOracle {
 
     function getLatestObservation(
         address token
-    ) public view virtual override returns (ObservationLibrary.Observation memory observation) {
-        uint256 validResponses;
-        (observation, validResponses) = aggregateUnderlying(token, _maximumResponseAge(token));
+    ) public view virtual override returns (ObservationLibrary.Observation memory) {
+        (ObservationLibrary.Observation memory observation, uint256 validResponses) = aggregateUnderlying(
+            token,
+            _maximumResponseAge(token)
+        );
 
         uint256 minResponses = _minimumResponses(token);
         require(validResponses >= minResponses, "AbstractAggregatorOracle: INVALID_NUM_CONSULTATIONS");
+
+        return observation;
     }
 
     /// @notice Not supported.
