@@ -75,6 +75,9 @@ abstract contract AbstractAggregator is IERC165, IAggregationStrategy {
 
     /**
      * @notice Calculates the final timestamp based on the provided timestamps and the configured timestamp strategy.
+     * @dev While uint256 is used for timestamps, the final timestamp is expected to be
+     * within the range of uint32, as it is stored in the Observation struct. Enforcement occurs during result
+     * preparation.
      * @param timestamps An array of timestamps from which to calculate the final timestamp. The order is expected to be
      * the same as the order of observations.
      * @return The final timestamp based on the configured strategy.
