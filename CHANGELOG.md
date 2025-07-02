@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.10.0 (01-JUL-2025)
+## v4.10.0 (02-JUL-2025)
 ### Accumulators
 - Update AdrastiaPriceAccumulator
   - Use the heartbeat as the maximum observation age when consulting the underlying oracle.
