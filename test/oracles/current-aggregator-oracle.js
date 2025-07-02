@@ -2534,13 +2534,13 @@ describe("CurrentAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         const updateTime = await blockTimestamp(receipt.blockNumber);
 
-        // Expect that the new observation is what we expect
-        expect(await oracle.getLatestObservation(token)).to.deep.equal([
-            newPrice,
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            updateTime,
-        ]);
+        const [observedPrice, observedTokenLiquidity, observedQuoteTokenLiquidity, observedUpdateTime] =
+            await oracle.getLatestObservation(token);
+
+        expect(observedPrice).to.equal(newPrice);
+        expect(observedTokenLiquidity).to.equal(tokenLiquidity);
+        expect(observedQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
+        expect(observedUpdateTime).to.equal(updateTime);
     });
 
     it("Should update when the price moves above the update threshold (with the price moving down)", async () => {
@@ -2575,13 +2575,13 @@ describe("CurrentAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         const updateTime = await blockTimestamp(receipt.blockNumber);
 
-        // Expect that the new observation is what we expect
-        expect(await oracle.getLatestObservation(token)).to.deep.equal([
-            newPrice,
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            updateTime,
-        ]);
+        const [observedPrice, observedTokenLiquidity, observedQuoteTokenLiquidity, observedUpdateTime] =
+            await oracle.getLatestObservation(token);
+
+        expect(observedPrice).to.equal(newPrice);
+        expect(observedTokenLiquidity).to.equal(tokenLiquidity);
+        expect(observedQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
+        expect(observedUpdateTime).to.equal(updateTime);
     });
 
     it("Should update when the price doesn't move at all, but a heartbeat is needed", async () => {
@@ -2609,13 +2609,13 @@ describe("CurrentAggregatorOracle#update w/ 1 underlying oracle", function () {
 
         const updateTime = await blockTimestamp(receipt.blockNumber);
 
-        // Expect that the new observation is what we expect
-        expect(await oracle.getLatestObservation(token)).to.deep.equal([
-            price,
-            tokenLiquidity,
-            quoteTokenLiquidity,
-            updateTime,
-        ]);
+        const [observedPrice, observedTokenLiquidity, observedQuoteTokenLiquidity, observedUpdateTime] =
+            await oracle.getLatestObservation(token);
+
+        expect(observedPrice).to.equal(price);
+        expect(observedTokenLiquidity).to.equal(tokenLiquidity);
+        expect(observedQuoteTokenLiquidity).to.equal(quoteTokenLiquidity);
+        expect(observedUpdateTime).to.equal(updateTime);
     });
 
     it("Shouldn't update when the price moves above the update threshold (with the price moving up), but the minimum delay hasn't been reached", async () => {

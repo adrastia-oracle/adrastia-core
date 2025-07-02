@@ -216,17 +216,23 @@ describe("StaticPriceAccumulator#getLastAccumulation", function () {
 
     it("Returns a valid accumulation for the zero address", async function () {
         const accumulation = [BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getLastAccumulation(AddressZero)).to.deep.eq(accumulation);
+        const [acc, timestamp] = await accumulator.getLastAccumulation(AddressZero);
+        expect(acc).to.deep.eq(accumulation[0]);
+        expect(timestamp).to.equal(accumulation[1]);
     });
 
     it("Returns a valid accumulation for the quote token", async function () {
         const accumulation = [BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getLastAccumulation(USDC)).to.deep.eq(accumulation);
+        const [acc, timestamp] = await accumulator.getLastAccumulation(USDC);
+        expect(acc).to.deep.eq(accumulation[0]);
+        expect(timestamp).to.equal(accumulation[1]);
     });
 
     it("Returns a valid accumulation for a valid token", async function () {
         const accumulation = [BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getLastAccumulation(GRT)).to.deep.eq(accumulation);
+        const [acc, timestamp] = await accumulator.getLastAccumulation(GRT);
+        expect(acc).to.deep.eq(accumulation[0]);
+        expect(timestamp).to.equal(accumulation[1]);
     });
 });
 
@@ -244,17 +250,23 @@ describe("StaticPriceAccumulator#getCurrentAccumulation", function () {
 
     it("Returns a valid accumulation for the zero address", async function () {
         const accumulation = [BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getCurrentAccumulation(AddressZero)).to.deep.eq(accumulation);
+        const [acc, timestamp] = await accumulator.getCurrentAccumulation(AddressZero);
+        expect(acc).to.deep.eq(accumulation[0]);
+        expect(timestamp).to.equal(accumulation[1]);
     });
 
     it("Returns a valid accumulation for the quote token", async function () {
         const accumulation = [BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getCurrentAccumulation(USDC)).to.deep.eq(accumulation);
+        const [acc, timestamp] = await accumulator.getCurrentAccumulation(USDC);
+        expect(acc).to.deep.eq(accumulation[0]);
+        expect(timestamp).to.equal(accumulation[1]);
     });
 
     it("Returns a valid accumulation for a valid token", async function () {
         const accumulation = [BigNumber.from(0), await currentBlockTimestamp()];
-        expect(await accumulator.getCurrentAccumulation(GRT)).to.deep.eq(accumulation);
+        const [acc, timestamp] = await accumulator.getCurrentAccumulation(GRT);
+        expect(acc).to.deep.eq(accumulation[0]);
+        expect(timestamp).to.equal(accumulation[1]);
     });
 });
 

@@ -19,12 +19,15 @@ abstract contract ValueAndErrorAccumulator is LiquidityAccumulator {
         uint256 maxUpdateDelay_
     ) LiquidityAccumulator(averagingStrategy_, quoteToken_, updateThreshold_, minUpdateDelay_, maxUpdateDelay_) {}
 
-    function fetchValue(bytes memory data) internal view virtual returns (uint112 value);
+    function fetchValue(bytes memory data, uint256 maxAge) internal view virtual returns (uint112 value);
 
     function fetchTarget(bytes memory data) internal view virtual returns (uint112 target);
 
-    function fetchLiquidity(bytes memory data) internal view virtual override returns (uint112 value, uint112 err) {
-        value = fetchValue(data);
+    function fetchLiquidity(
+        bytes memory data,
+        uint256 maxAge
+    ) internal view virtual override returns (uint112 value, uint112 err) {
+        value = fetchValue(data, maxAge);
         uint256 target = fetchTarget(data);
 
         if (target >= value) {

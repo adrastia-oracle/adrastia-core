@@ -1,12 +1,18 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const hre = require("hardhat");
+const forkingConfig = require("../../../forking").default;
+
+const { ethers, timeAndMine } = hre;
 
 const AddressZero = ethers.constants.AddressZero;
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const GRT = "0xc944E90C64B2c07662A292be6244BDf05Cda44a7";
 const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599";
+
+const NATIVE_BNB = "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB";
 
 const DEFAULT_CONFIDENCE_DECIMALS = 8;
 const DEFAULT_MIN_CONFIDENCE = ethers.utils.parseUnits("0.95", DEFAULT_CONFIDENCE_DECIMALS); // 95%
@@ -20,6 +26,40 @@ async function currentBlockTimestamp() {
 
 async function blockTimestamp(blockNum) {
     return (await ethers.provider.getBlock(blockNum)).timestamp;
+}
+
+async function deployVenusOracle(feedToken, quoteTokenDecimals) {
+    const oracleFactory = await ethers.getContractFactory("VenusOracleStub");
+    const oracle = await oracleFactory.deploy(feedToken, quoteTokenDecimals);
+    await oracle.deployed();
+
+    return oracle;
+}
+
+async function createDefaultVenusOracle(feedToken, quoteToken, contractName = "VenusOracleView", overrides = {}) {
+    let quoteTokenDecimals = overrides.quoteTokenDecimals;
+
+    if (quoteTokenDecimals == null) {
+        const quoteTokenContract = await ethers.getContractAt(
+            "@openzeppelin-v4/contracts/token/ERC20/ERC20.sol:ERC20",
+            quoteToken
+        );
+
+        quoteTokenDecimals = await quoteTokenContract.decimals();
+    }
+
+    let quoteTokenName = overrides.quoteTokenName ?? "NAME";
+    let quoteTokenSymbol = overrides.quoteTokenSymbol ?? "SYMBOL";
+
+    const feed = await deployVenusOracle(feedToken, quoteTokenDecimals);
+    const factory = await ethers.getContractFactory(contractName);
+    const oracle = await factory.deploy(feed.address, quoteTokenName, quoteToken, quoteTokenSymbol, quoteTokenDecimals);
+    await oracle.deployed();
+
+    return {
+        feed: feed,
+        oracle: oracle,
+    };
 }
 
 async function deployChainlinkFeed(quoteTokenDecimals) {
@@ -289,6 +329,166 @@ describe("DiaOracleView#constructor", function () {
     });
 });
 
+describe("VenusOracleView#constructor", function () {
+    it("Deploys correctly", async function () {
+        const feedToken = GRT;
+        const quoteToken = USDC;
+        const quoteTokenName = "NAME";
+        const quoteTokenSymbol = "SYMBOL";
+        const quoteTokenDecimals = 6;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken, "VenusOracleView", {
+            quoteTokenSymbol: quoteTokenSymbol,
+            quoteTokenName: quoteTokenName,
+            quoteTokenDecimals: quoteTokenDecimals,
+        });
+
+        const oracle = deployment.oracle;
+        const feed = deployment.feed;
+
+        expect(await oracle.getUnderlyingFeed()).to.equal(feed.address);
+        expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
+        expect(await oracle.quoteTokenAddress()).to.equal(quoteToken);
+        expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);
+        expect(await oracle.quoteTokenDecimals()).to.equal(quoteTokenDecimals);
+        expect(await oracle.liquidityDecimals()).to.equal(0);
+    });
+
+    it("Deploys correctly with alternative parameters", async function () {
+        const feedToken = WBTC;
+        const quoteToken = DAI;
+        const quoteTokenName = "NAME2";
+        const quoteTokenSymbol = "SYMBOL2";
+        const quoteTokenDecimals = 18;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken, "VenusOracleView", {
+            quoteTokenSymbol: quoteTokenSymbol,
+            quoteTokenName: quoteTokenName,
+            quoteTokenDecimals: quoteTokenDecimals,
+        });
+
+        const oracle = deployment.oracle;
+        const feed = deployment.feed;
+
+        expect(await oracle.getUnderlyingFeed()).to.equal(feed.address);
+        expect(await oracle.quoteTokenName()).to.equal(quoteTokenName);
+        expect(await oracle.quoteTokenAddress()).to.equal(quoteToken);
+        expect(await oracle.quoteTokenSymbol()).to.equal(quoteTokenSymbol);
+        expect(await oracle.quoteTokenDecimals()).to.equal(quoteTokenDecimals);
+        expect(await oracle.liquidityDecimals()).to.equal(0);
+    });
+});
+
+describe("VenusOracleView#getLatestObservation - special cases", function () {
+    var quoteToken;
+    var feedToken;
+    var oracle;
+    var feed;
+
+    afterEach(async function () {
+        // Reset the network to reset the time
+        const newConfig = [
+            {
+                forking: {
+                    jsonRpcUrl: hre.network.config.forking.url,
+                    blockNumber: hre.network.config.forking.blockNumber,
+                },
+            },
+        ];
+
+        await hre.network.provider.send("hardhat_reset", newConfig);
+    });
+
+    it("Works with native BNB as the feed token", async function () {
+        feedToken = NATIVE_BNB;
+        quoteToken = USDC;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = ethers.utils.parseUnits("3", 18);
+
+        await feed.setRoundDataNow(price);
+
+        const observation = await oracle.getLatestObservation(feedToken);
+        expect(observation.price).to.equal(price);
+    });
+
+    it("Uses 18 decimals if the feed token is invalid", async function () {
+        feedToken = ethers.constants.AddressZero;
+        quoteToken = USDC;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = ethers.utils.parseUnits("3", 18);
+
+        await feed.setRoundDataNow(price);
+
+        const observation = await oracle.getLatestObservation(feedToken);
+        expect(observation.price).to.equal(price);
+    });
+
+    it("Uses 18 decimals if the feed token has a bad decimals() function", async function () {
+        const badTokenFactory = await ethers.getContractFactory("Erc20InvalidDecimalFunc");
+        const feedTokenContract = await badTokenFactory.deploy();
+        await feedTokenContract.deployed();
+        feedToken = feedTokenContract.address;
+        quoteToken = USDC;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+        const price = ethers.utils.parseUnits("3", 18);
+        await feed.setRoundDataNow(price);
+        const observation = await oracle.getLatestObservation(feedToken);
+        expect(observation.price).to.equal(price);
+    });
+
+    it("Uses 18 decimals if the feed token doesn't implement a decimal func", async function () {
+        const badTokenFactory = await ethers.getContractFactory("Erc20NoDecimalFunc");
+        const feedTokenContract = await badTokenFactory.deploy();
+        await feedTokenContract.deployed();
+        feedToken = feedTokenContract.address;
+        quoteToken = USDC;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+        const price = ethers.utils.parseUnits("3", 18);
+        await feed.setRoundDataNow(price);
+        const observation = await oracle.getLatestObservation(feedToken);
+        expect(observation.price).to.equal(price);
+    });
+
+    it("Reverts if the block timestamp is too large", async function () {
+        feedToken = GRT;
+        quoteToken = USDC;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken);
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+        const price = ethers.utils.parseUnits("3", 6);
+
+        await timeAndMine.setTime(2 ** 32); // Set a timestamp that is too large
+
+        await feed.setRoundDataNow(price); // Set a timestamp that is too large
+        await expect(oracle.getLatestObservation(feedToken)).to.be.revertedWith("InvalidTimestamp");
+    });
+
+    it("Works when quote token decimals is larger than the feed decimals", async function () {
+        feedToken = GRT;
+        quoteToken = USDC;
+        const quoteTokenDecimals = 20;
+        const deployment = await createDefaultVenusOracle(feedToken, quoteToken, "VenusOracleView", {
+            quoteTokenDecimals: quoteTokenDecimals,
+        });
+        oracle = deployment.oracle;
+        feed = deployment.feed;
+
+        const price = ethers.utils.parseUnits("3", quoteTokenDecimals);
+
+        await feed.setRoundDataNow(price);
+        const observation = await oracle.getLatestObservation(feedToken);
+        expect(observation.price).to.equal(price);
+    });
+});
+
 describe("PythOracleView#getLatestObservation - special cases", function () {
     var quoteToken;
     var feedToken;
@@ -543,7 +743,29 @@ describe("PythOracleView#getLatestObservation - special cases", function () {
     });
 });
 
-function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsSigned) {
+function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsSigned, feedSupportsTimestamps) {
+    const feedTokens = [
+        {
+            name: "GRT (18 decimals)",
+            address: GRT,
+        },
+        {
+            name: "WBTC (8 decimals)",
+            address: WBTC,
+        },
+    ];
+
+    const quoteTokens = [
+        {
+            name: "USDC (6 decimals)",
+            address: USDC,
+        },
+        {
+            name: "DAI (18 decimals)",
+            address: DAI,
+        },
+    ];
+
     describe(contractName + "#canUpdate", function () {
         var quoteToken;
         var feedToken;
@@ -668,315 +890,397 @@ function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsS
     });
 
     describe(contractName + "#getLatestObservation", function () {
-        var quoteToken;
-        var feedToken;
-        var oracle;
-        var feed;
+        for (const feedToken_ of feedTokens) {
+            describe("with " + feedToken_.name + " as the feed token", function () {
+                for (const quoteToken_ of quoteTokens) {
+                    describe("With " + quoteToken_.name + " as the quote token", function () {
+                        var feedToken;
+                        var quoteToken;
+                        var oracle;
+                        var feed;
 
-        beforeEach(async function () {
-            quoteToken = USDC;
-            feedToken = GRT;
-            const deployment = await createDefaultOracle(feedToken, quoteToken);
-            oracle = deployment.oracle;
-            feed = deployment.feed;
-        });
+                        beforeEach(async function () {
+                            feedToken = feedToken_.address;
+                            quoteToken = quoteToken_.address;
+                            const deployment = await createDefaultOracle(feedToken, quoteToken);
+                            oracle = deployment.oracle;
+                            feed = deployment.feed;
+                        });
 
-        it("Reverts if the token address does not match the feed token address", async function () {
-            const token = AddressZero;
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("UnsupportedToken");
-        });
+                        it("Reverts if the token address does not match the feed token address", async function () {
+                            const token = AddressZero;
+                            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("UnsupportedToken");
+                        });
 
-        it("Reverts if the feed's timestamp is zero", async function () {
-            const token = feedToken;
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
-        });
+                        if (feedSupportsTimestamps) {
+                            it("Reverts if the feed's timestamp is zero", async function () {
+                                const token = feedToken;
+                                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
+                            });
 
-        it("Reverts if the feed's timestamp equals 2^32", async function () {
-            const token = feedToken;
-            const decimals = await feed.decimals();
-            const timestamp = BigNumber.from(2).pow(32);
-            await feed.setRoundData(1, ethers.utils.parseUnits("3", decimals), timestamp, timestamp, 1);
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
-        });
+                            it("Reverts if the feed's timestamp equals 2^32", async function () {
+                                const token = feedToken;
+                                const decimals = await feed.decimals();
+                                const timestamp = BigNumber.from(2).pow(32);
+                                await feed.setRoundData(
+                                    1,
+                                    ethers.utils.parseUnits("3", decimals),
+                                    timestamp,
+                                    timestamp,
+                                    1
+                                );
+                                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
+                            });
 
-        it("Reverts if the feed's timestamp exceeds 2^32", async function () {
-            const token = feedToken;
-            const decimals = await feed.decimals();
-            const timestamp = BigNumber.from(2).pow(32).add(1);
-            await feed.setRoundData(1, ethers.utils.parseUnits("3", decimals), timestamp, timestamp, 1);
-            await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
-        });
+                            it("Reverts if the feed's timestamp exceeds 2^32", async function () {
+                                const token = feedToken;
+                                const decimals = await feed.decimals();
+                                const timestamp = BigNumber.from(2).pow(32).add(1);
+                                await feed.setRoundData(
+                                    1,
+                                    ethers.utils.parseUnits("3", decimals),
+                                    timestamp,
+                                    timestamp,
+                                    1
+                                );
+                                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("InvalidTimestamp");
+                            });
 
-        if (priceIsSigned) {
-            it("Reverts if the answer is negative", async function () {
-                const token = feedToken;
-                const decimals = await feed.decimals();
-                await feed.setRoundDataNow(ethers.utils.parseUnits("-3", decimals));
-                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerCannotBeNegative");
+                            it("The timestamp equals the feed's timestamp", async function () {
+                                const token = feedToken;
+                                const decimals = await feed.decimals();
+                                const answer = ethers.utils.parseUnits("1", decimals);
+                                const timestamp = (await currentBlockTimestamp()) - 100;
+                                await feed.setRoundData(1, answer, timestamp, timestamp, 1);
+                                const observation = await oracle.getLatestObservation(token);
+                                expect(observation.timestamp).to.equal(timestamp);
+                            });
+                        }
+
+                        if (priceIsSigned) {
+                            it("Reverts if the answer is negative", async function () {
+                                const token = feedToken;
+                                const decimals = await feed.decimals();
+                                await feed.setRoundDataNow(ethers.utils.parseUnits("-3", decimals));
+                                await expect(oracle.getLatestObservation(token)).to.be.revertedWith(
+                                    "AnswerCannotBeNegative"
+                                );
+                            });
+                        }
+
+                        // Prices stored using 112 bits, so we test this boundary
+                        if (maxPriceBits > 112) {
+                            it("Reverts if the answer equals 2^112", async function () {
+                                const token = feedToken;
+                                const answer = BigNumber.from(2).pow(112);
+                                await feed.setRoundDataNow(answer);
+                                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
+                            });
+
+                            it("Reverts if the answer exceeds 2^112", async function () {
+                                const token = feedToken;
+                                const answer = BigNumber.from(2).pow(112).add(1);
+                                await feed.setRoundDataNow(answer);
+                                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
+                            });
+                        }
+
+                        it("The price is correct when the answer is zero", async function () {
+                            const token = feedToken;
+                            const answer = BigNumber.from(0);
+                            await feed.setRoundDataNow(answer);
+                            const observation = await oracle.getLatestObservation(token);
+                            expect(observation.price).to.equal(answer);
+                        });
+
+                        it("The price is correct when the answer is one", async function () {
+                            const token = feedToken;
+                            const answer = BigNumber.from(1);
+                            await feed.setRoundDataNow(answer);
+                            const observation = await oracle.getLatestObservation(token);
+                            expect(observation.price).to.equal(answer);
+                        });
+
+                        if (maxPriceBits > 112) {
+                            it("The price is correct when the answer equals 2^112 - 1", async function () {
+                                const token = feedToken;
+                                const answer = BigNumber.from(2).pow(112).sub(1);
+                                await feed.setRoundDataNow(answer);
+                                const observation = await oracle.getLatestObservation(token);
+                                expect(observation.price).to.equal(answer);
+                            });
+                        } else {
+                            const maxPow = priceIsSigned ? maxPriceBits - 1 : maxPriceBits;
+
+                            it("The price is correct when the answer equals 2^" + maxPow + " - 1", async function () {
+                                const token = feedToken;
+                                const answer = BigNumber.from(2).pow(maxPow).sub(1);
+                                await feed.setRoundDataNow(answer);
+                                const observation = await oracle.getLatestObservation(token);
+                                expect(observation.price).to.equal(answer);
+                            });
+                        }
+
+                        it("The price is correct when the answer equals a common price (one whole quote token)", async function () {
+                            const token = feedToken;
+                            const decimals = await feed.decimals();
+                            const answer = ethers.utils.parseUnits("1", decimals);
+                            await feed.setRoundDataNow(answer);
+                            const observation = await oracle.getLatestObservation(token);
+                            expect(observation.price).to.equal(answer);
+                        });
+
+                        it("Token liquidity and quote token liquidity are zero", async function () {
+                            const token = feedToken;
+                            const decimals = await feed.decimals();
+                            const answer = ethers.utils.parseUnits("1", decimals);
+                            await feed.setRoundDataNow(answer);
+                            const observation = await oracle.getLatestObservation(token);
+                            expect(observation.tokenLiquidity).to.equal(0);
+                            expect(observation.quoteTokenLiquidity).to.equal(0);
+                        });
+                    });
+                }
             });
         }
-
-        // Prices stored using 112 bits, so we test this boundary
-        if (maxPriceBits > 112) {
-            it("Reverts if the answer equals 2^112", async function () {
-                const token = feedToken;
-                const answer = BigNumber.from(2).pow(112);
-                await feed.setRoundDataNow(answer);
-                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
-            });
-
-            it("Reverts if the answer exceeds 2^112", async function () {
-                const token = feedToken;
-                const answer = BigNumber.from(2).pow(112).add(1);
-                await feed.setRoundDataNow(answer);
-                await expect(oracle.getLatestObservation(token)).to.be.revertedWith("AnswerTooLarge");
-            });
-        }
-
-        it("The price is correct when the answer is zero", async function () {
-            const token = feedToken;
-            const answer = BigNumber.from(0);
-            await feed.setRoundDataNow(answer);
-            const observation = await oracle.getLatestObservation(token);
-            expect(observation.price).to.equal(answer);
-        });
-
-        it("The price is correct when the answer is one", async function () {
-            const token = feedToken;
-            const answer = BigNumber.from(1);
-            await feed.setRoundDataNow(answer);
-            const observation = await oracle.getLatestObservation(token);
-            expect(observation.price).to.equal(answer);
-        });
-
-        if (maxPriceBits > 112) {
-            it("The price is correct when the answer equals 2^112 - 1", async function () {
-                const token = feedToken;
-                const answer = BigNumber.from(2).pow(112).sub(1);
-                await feed.setRoundDataNow(answer);
-                const observation = await oracle.getLatestObservation(token);
-                expect(observation.price).to.equal(answer);
-            });
-        } else {
-            const maxPow = priceIsSigned ? maxPriceBits - 1 : maxPriceBits;
-
-            it("The price is correct when the answer equals 2^" + maxPow + " - 1", async function () {
-                const token = feedToken;
-                const answer = BigNumber.from(2).pow(maxPow).sub(1);
-                await feed.setRoundDataNow(answer);
-                const observation = await oracle.getLatestObservation(token);
-                expect(observation.price).to.equal(answer);
-            });
-        }
-
-        it("The price is correct when the answer equals a common price (one whole quote token)", async function () {
-            const token = feedToken;
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("1", decimals);
-            await feed.setRoundDataNow(answer);
-            const observation = await oracle.getLatestObservation(token);
-            expect(observation.price).to.equal(answer);
-        });
-
-        it("The timestamp equals the feed's timestamp", async function () {
-            const token = feedToken;
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("1", decimals);
-            const timestamp = (await currentBlockTimestamp()) - 100;
-            await feed.setRoundData(1, answer, timestamp, timestamp, 1);
-            const observation = await oracle.getLatestObservation(token);
-            expect(observation.timestamp).to.equal(timestamp);
-        });
-
-        it("Token liquidity and quote token liquidity are zero", async function () {
-            const token = feedToken;
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("1", decimals);
-            await feed.setRoundDataNow(answer);
-            const observation = await oracle.getLatestObservation(token);
-            expect(observation.tokenLiquidity).to.equal(0);
-            expect(observation.quoteTokenLiquidity).to.equal(0);
-        });
     });
 
     describe(contractName + "#consultPrice(token, maxAge = 0)", function () {
-        var quoteToken;
-        var feedToken;
-        var oracle;
-        var feed;
+        for (const feedToken_ of feedTokens) {
+            describe("with " + feedToken_.name + " as the feed token", function () {
+                for (const quoteToken_ of quoteTokens) {
+                    describe("With " + quoteToken_.name + " as the quote token", function () {
+                        var quoteToken;
+                        var feedToken;
+                        var oracle;
+                        var feed;
 
-        beforeEach(async function () {
-            quoteToken = USDC;
-            feedToken = GRT;
-            const deployment = await createDefaultOracle(feedToken, quoteToken);
-            oracle = deployment.oracle;
-            feed = deployment.feed;
-        });
+                        beforeEach(async function () {
+                            quoteToken = USDC;
+                            feedToken = GRT;
+                            const deployment = await createDefaultOracle(feedToken, quoteToken);
+                            oracle = deployment.oracle;
+                            feed = deployment.feed;
+                        });
 
-        it("Returns the feed's current price", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundDataNow(answer);
+                        it("Returns the feed's current price", async function () {
+                            const decimals = await feed.decimals();
+                            const answer = ethers.utils.parseUnits("3", decimals);
+                            await feed.setRoundDataNow(answer);
 
-            expect(await oracle["consultPrice(address,uint256)"](feedToken, 0)).to.equal(answer);
-        });
+                            expect(await oracle["consultPrice(address,uint256)"](feedToken, 0)).to.equal(answer);
+                        });
 
-        it("Returns one whole quote token if the token is the quote token", async function () {
-            const decimals = await feed.decimals();
+                        it("Returns one whole quote token if the token is the quote token", async function () {
+                            const decimals = await feed.decimals();
 
-            expect(await oracle["consultPrice(address,uint256)"](quoteToken, 0)).to.equal(
-                ethers.utils.parseUnits("1", decimals)
-            );
-        });
+                            expect(await oracle["consultPrice(address,uint256)"](quoteToken, 0)).to.equal(
+                                ethers.utils.parseUnits("1", decimals)
+                            );
+                        });
 
-        it("Reverts if the token does not match the feed token", async function () {
-            const token = DAI;
-            await expect(oracle["consultPrice(address,uint256)"](token, 0)).to.be.revertedWith("UnsupportedToken");
-        });
+                        it("Reverts if the token does not match the feed token", async function () {
+                            const token = DAI;
+                            await expect(oracle["consultPrice(address,uint256)"](token, 0)).to.be.revertedWith(
+                                "UnsupportedToken"
+                            );
+                        });
 
-        it("Reverts if the feed's timestamp is zero", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundData(1, answer, 0, 0, 1);
+                        if (feedSupportsTimestamps) {
+                            it("Reverts if the feed's timestamp is zero", async function () {
+                                const decimals = await feed.decimals();
+                                const answer = ethers.utils.parseUnits("3", decimals);
+                                await feed.setRoundData(1, answer, 0, 0, 1);
 
-            await expect(oracle["consultPrice(address,uint256)"](feedToken, 0)).to.be.revertedWith("InvalidTimestamp");
-        });
+                                await expect(oracle["consultPrice(address,uint256)"](feedToken, 0)).to.be.revertedWith(
+                                    "InvalidTimestamp"
+                                );
+                            });
+                        }
+                    });
+                }
+            });
+        }
     });
 
     describe(contractName + "#consultLiquidity(token, maxAge = 0)", function () {
-        var quoteToken;
-        var feedToken;
-        var oracle;
-        var feed;
+        for (const feedToken_ of feedTokens) {
+            describe("with " + feedToken_.name + " as the feed token", function () {
+                for (const quoteToken_ of quoteTokens) {
+                    describe("With " + quoteToken_.name + " as the quote token", function () {
+                        var quoteToken;
+                        var feedToken;
+                        var oracle;
+                        var feed;
 
-        beforeEach(async function () {
-            quoteToken = USDC;
-            feedToken = GRT;
-            const deployment = await createDefaultOracle(feedToken, quoteToken);
-            oracle = deployment.oracle;
-            feed = deployment.feed;
-        });
+                        beforeEach(async function () {
+                            quoteToken = USDC;
+                            feedToken = GRT;
+                            const deployment = await createDefaultOracle(feedToken, quoteToken);
+                            oracle = deployment.oracle;
+                            feed = deployment.feed;
+                        });
 
-        it("Returns zero liquidity for the token and quote token, when the feed has data that describes the token", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundDataNow(answer);
+                        it("Returns zero liquidity for the token and quote token, when the feed has data that describes the token", async function () {
+                            const decimals = await feed.decimals();
+                            const answer = ethers.utils.parseUnits("3", decimals);
+                            await feed.setRoundDataNow(answer);
 
-            expect(await oracle["consultLiquidity(address,uint256)"](feedToken, 0)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
-        });
+                            const [tokenLiquidity, quoteTokenLiquidity] = await oracle[
+                                "consultLiquidity(address,uint256)"
+                            ](feedToken, 0);
+                            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+                            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
+                        });
 
-        it("Returns zero liquidity for the token and quote token, when the token is the quote token", async function () {
-            expect(await oracle["consultLiquidity(address,uint256)"](quoteToken, 0)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
-        });
+                        it("Returns zero liquidity for the token and quote token, when the token is the quote token", async function () {
+                            const [tokenLiquidity, quoteTokenLiquidity] = await oracle[
+                                "consultLiquidity(address,uint256)"
+                            ](quoteToken, 0);
+                            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+                            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
+                        });
 
-        it("Reverts if the token does not match the feed token", async function () {
-            const token = DAI;
-            await expect(oracle["consultLiquidity(address,uint256)"](token, 0)).to.be.revertedWith("UnsupportedToken");
-        });
+                        it("Reverts if the token does not match the feed token", async function () {
+                            const token = DAI;
+                            await expect(oracle["consultLiquidity(address,uint256)"](token, 0)).to.be.revertedWith(
+                                "UnsupportedToken"
+                            );
+                        });
 
-        it("Reverts if the feed's timestamp is zero", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundData(1, answer, 0, 0, 1);
+                        if (feedSupportsTimestamps) {
+                            it("Reverts if the feed's timestamp is zero", async function () {
+                                const decimals = await feed.decimals();
+                                const answer = ethers.utils.parseUnits("3", decimals);
+                                await feed.setRoundData(1, answer, 0, 0, 1);
 
-            await expect(oracle["consultLiquidity(address,uint256)"](feedToken, 0)).to.be.revertedWith(
-                "InvalidTimestamp"
-            );
-        });
+                                await expect(
+                                    oracle["consultLiquidity(address,uint256)"](feedToken, 0)
+                                ).to.be.revertedWith("InvalidTimestamp");
+                            });
+                        }
+                    });
+                }
+            });
+        }
     });
 
     describe(contractName + "#consultPrice(token)", function () {
-        var quoteToken;
-        var feedToken;
-        var oracle;
-        var feed;
+        for (const feedToken_ of feedTokens) {
+            describe("with " + feedToken_.name + " as the feed token", function () {
+                for (const quoteToken_ of quoteTokens) {
+                    describe("With " + quoteToken_.name + " as the quote token", function () {
+                        var quoteToken;
+                        var feedToken;
+                        var oracle;
+                        var feed;
 
-        beforeEach(async function () {
-            quoteToken = USDC;
-            feedToken = GRT;
-            const deployment = await createDefaultOracle(feedToken, quoteToken);
-            oracle = deployment.oracle;
-            feed = deployment.feed;
-        });
+                        beforeEach(async function () {
+                            quoteToken = USDC;
+                            feedToken = GRT;
+                            const deployment = await createDefaultOracle(feedToken, quoteToken);
+                            oracle = deployment.oracle;
+                            feed = deployment.feed;
+                        });
 
-        it("Returns the feed's current price", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundDataNow(answer);
+                        it("Returns the feed's current price", async function () {
+                            const decimals = await feed.decimals();
+                            const answer = ethers.utils.parseUnits("3", decimals);
+                            await feed.setRoundDataNow(answer);
 
-            expect(await oracle["consultPrice(address)"](feedToken)).to.equal(answer);
-        });
+                            expect(await oracle["consultPrice(address)"](feedToken)).to.equal(answer);
+                        });
 
-        it("Returns one whole quote token if the token is the quote token", async function () {
-            const decimals = await feed.decimals();
+                        it("Returns one whole quote token if the token is the quote token", async function () {
+                            const decimals = await feed.decimals();
 
-            expect(await oracle["consultPrice(address)"](quoteToken)).to.equal(ethers.utils.parseUnits("1", decimals));
-        });
+                            expect(await oracle["consultPrice(address)"](quoteToken)).to.equal(
+                                ethers.utils.parseUnits("1", decimals)
+                            );
+                        });
 
-        it("Reverts if the token does not match the feed token", async function () {
-            const token = DAI;
-            await expect(oracle["consultPrice(address)"](token)).to.be.revertedWith("UnsupportedToken");
-        });
+                        it("Reverts if the token does not match the feed token", async function () {
+                            const token = DAI;
+                            await expect(oracle["consultPrice(address)"](token)).to.be.revertedWith("UnsupportedToken");
+                        });
 
-        it("Reverts if the feed's timestamp is zero", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundData(1, answer, 0, 0, 1);
+                        if (feedSupportsTimestamps) {
+                            it("Reverts if the feed's timestamp is zero", async function () {
+                                const decimals = await feed.decimals();
+                                const answer = ethers.utils.parseUnits("3", decimals);
+                                await feed.setRoundData(1, answer, 0, 0, 1);
 
-            await expect(oracle["consultPrice(address)"](feedToken)).to.be.revertedWith("InvalidTimestamp");
-        });
+                                await expect(oracle["consultPrice(address)"](feedToken)).to.be.revertedWith(
+                                    "InvalidTimestamp"
+                                );
+                            });
+                        }
+                    });
+                }
+            });
+        }
     });
 
     describe(contractName + "#consultLiquidity(token)", function () {
-        var quoteToken;
-        var feedToken;
-        var oracle;
-        var feed;
+        for (const feedToken_ of feedTokens) {
+            describe("with " + feedToken_.name + " as the feed token", function () {
+                for (const quoteToken_ of quoteTokens) {
+                    describe("With " + quoteToken_.name + " as the quote token", function () {
+                        var quoteToken;
+                        var feedToken;
+                        var oracle;
+                        var feed;
 
-        beforeEach(async function () {
-            quoteToken = USDC;
-            feedToken = GRT;
-            const deployment = await createDefaultOracle(feedToken, quoteToken);
-            oracle = deployment.oracle;
-            feed = deployment.feed;
-        });
+                        beforeEach(async function () {
+                            quoteToken = USDC;
+                            feedToken = GRT;
+                            const deployment = await createDefaultOracle(feedToken, quoteToken);
+                            oracle = deployment.oracle;
+                            feed = deployment.feed;
+                        });
 
-        it("Returns zero liquidity for the token and quote token, when the feed has data that describes the token", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundDataNow(answer);
+                        it("Returns zero liquidity for the token and quote token, when the feed has data that describes the token", async function () {
+                            const decimals = await feed.decimals();
+                            const answer = ethers.utils.parseUnits("3", decimals);
+                            await feed.setRoundDataNow(answer);
 
-            expect(await oracle["consultLiquidity(address)"](feedToken)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
-        });
+                            const [tokenLiquidity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](
+                                feedToken
+                            );
+                            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+                            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
+                        });
 
-        it("Returns zero liquidity for the token and quote token, when the token is the quote token", async function () {
-            expect(await oracle["consultLiquidity(address)"](quoteToken)).to.deep.equal([
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-            ]);
-        });
+                        it("Returns zero liquidity for the token and quote token, when the token is the quote token", async function () {
+                            const [tokenLiquidity, quoteTokenLiquidity] = await oracle["consultLiquidity(address)"](
+                                quoteToken
+                            );
+                            expect(tokenLiquidity).to.equal(ethers.constants.Zero);
+                            expect(quoteTokenLiquidity).to.equal(ethers.constants.Zero);
+                        });
 
-        it("Reverts if the token does not match the feed token", async function () {
-            const token = DAI;
-            await expect(oracle["consultLiquidity(address)"](token)).to.be.revertedWith("UnsupportedToken");
-        });
+                        it("Reverts if the token does not match the feed token", async function () {
+                            const token = DAI;
+                            await expect(oracle["consultLiquidity(address)"](token)).to.be.revertedWith(
+                                "UnsupportedToken"
+                            );
+                        });
 
-        it("Reverts if the feed's timestamp is zero", async function () {
-            const decimals = await feed.decimals();
-            const answer = ethers.utils.parseUnits("3", decimals);
-            await feed.setRoundData(1, answer, 0, 0, 1);
+                        if (feedSupportsTimestamps) {
+                            it("Reverts if the feed's timestamp is zero", async function () {
+                                const decimals = await feed.decimals();
+                                const answer = ethers.utils.parseUnits("3", decimals);
+                                await feed.setRoundData(1, answer, 0, 0, 1);
 
-            await expect(oracle["consultLiquidity(address)"](feedToken)).to.be.revertedWith("InvalidTimestamp");
-        });
+                                await expect(oracle["consultLiquidity(address)"](feedToken)).to.be.revertedWith(
+                                    "InvalidTimestamp"
+                                );
+                            });
+                        }
+                    });
+                }
+            });
+        }
     });
 
     describe(contractName + "#supportsInterface", function () {
@@ -1017,6 +1321,7 @@ function describeTests(contractName, createDefaultOracle, maxPriceBits, priceIsS
     });
 }
 
-describeTests("ChainlinkOracleView", createDefaultChainlinkOracle, 256, true);
-describeTests("PythOracleView", createDefaultPythOracle, 64, true);
-describeTests("DiaOracleView", createDefaultDiaOracle, 128, false);
+describeTests("ChainlinkOracleView", createDefaultChainlinkOracle, 256, true, true);
+describeTests("PythOracleView", createDefaultPythOracle, 64, true, true);
+describeTests("DiaOracleView", createDefaultDiaOracle, 128, false, true);
+describeTests("VenusOracleView", createDefaultVenusOracle, 256, false, false);

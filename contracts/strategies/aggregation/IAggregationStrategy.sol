@@ -14,6 +14,17 @@ import "../../libraries/ObservationLibrary.sol";
  */
 interface IAggregationStrategy {
     /**
+     * @notice Enum representing the strategy for determining the timestamp of the aggregated observation.
+     */
+    enum TimestampStrategy {
+        ThisBlock,
+        EarliestObservation,
+        LatestObservation,
+        FirstObservation,
+        LastObservation
+    }
+
+    /**
      * @notice Aggregate the observations within the specified range and return the result
      * as a single Observation.
      *

@@ -587,9 +587,9 @@ function createDescribeCompoundV2FetchLiquidityTests(typicalSupplyCalculation) {
     };
 }
 
-function createDescribeSpecificVenusIsolatedFetchLiquidityTests() {
-    return function describeVenusIsolatedFetchLiquidityTests(contractName, deployContracts) {
-        describe("Venus isolated special cases", function () {
+function createDescribeSpecificVenusFetchLiquidityTests() {
+    return function describeVenusFetchLiquidityTests(contractName, deployContracts) {
+        describe("Venus special cases", function () {
             var poolStub;
             var accumulator;
             var decimals;
@@ -657,13 +657,13 @@ function createDescribeIonicFetchLiquidityTests() {
     return createDescribeCompoundV2FetchLiquidityTests(false);
 }
 
-function createDescribeVenusIsolatedFetchLiquidityTests() {
+function createDescribeVenusFetchLiquidityTests() {
     const stdDescribe = createDescribeCompoundV2FetchLiquidityTests(true);
-    const venusIsolatedDescribe = createDescribeSpecificVenusIsolatedFetchLiquidityTests();
+    const venusDescribe = createDescribeSpecificVenusFetchLiquidityTests();
 
     return (contractName, deployContracts) => {
         stdDescribe(contractName, deployContracts);
-        venusIsolatedDescribe(contractName, deployContracts);
+        venusDescribe(contractName, deployContracts);
     };
 }
 
@@ -974,10 +974,10 @@ async function deployIonicContracts(baseToken, decimals) {
     };
 }
 
-async function deployVenusIsolatedContracts(baseToken, decimals) {
+async function deployVenusContracts(baseToken, decimals) {
     const poolStubFactory = await ethers.getContractFactory("IonicStub");
     const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
-    const accumulatorFactory = await ethers.getContractFactory("VenusIsolatedSBAccumulatorStub");
+    const accumulatorFactory = await ethers.getContractFactory("VenusSBAccumulatorStub");
     const cTokenFactory = await ethers.getContractFactory("IonicCTokenStub");
 
     const poolStub = await poolStubFactory.deploy();
@@ -1188,12 +1188,12 @@ describeSBAccumulatorTests(
     createDescribeCompoundV2FetchLiquidityTests(true)
 );
 describeSBAccumulatorTests(
-    "VenusIsolatedSBAccumulator",
-    deployVenusIsolatedContracts,
+    "VenusSBAccumulator",
+    deployVenusContracts,
     ionicSetSupply,
     ionicSetBorrow,
     [_WETH, _USDC],
     true,
     false,
-    createDescribeVenusIsolatedFetchLiquidityTests()
+    createDescribeVenusFetchLiquidityTests()
 );

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity =0.8.13;
 
-import "../../accumulators/proto/venus/VenusIsolatedSBAccumulator.sol";
+import "../../accumulators/proto/venus/VenusSBAccumulator.sol";
 
-contract VenusIsolatedSBAccumulatorStub is VenusIsolatedSBAccumulator {
+contract VenusSBAccumulatorStub is VenusSBAccumulator {
     constructor(
         IAveragingStrategy averagingStrategy_,
         address comptroller_,
@@ -12,7 +12,7 @@ contract VenusIsolatedSBAccumulatorStub is VenusIsolatedSBAccumulator {
         uint256 minUpdateDelay_,
         uint256 maxUpdateDelay_
     )
-        VenusIsolatedSBAccumulator(
+        VenusSBAccumulator(
             averagingStrategy_,
             comptroller_,
             decimals_,

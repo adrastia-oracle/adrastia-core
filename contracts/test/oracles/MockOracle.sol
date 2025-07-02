@@ -71,6 +71,20 @@ contract MockOracle is AbstractOracle {
         observation.timestamp = timestamp;
     }
 
+    function stubSetObservationNow(
+        address token,
+        uint112 price,
+        uint112 tokenLiquidity,
+        uint112 quoteTokenLiquidity
+    ) public {
+        ObservationLibrary.Observation storage observation = observations[token];
+
+        observation.price = price;
+        observation.tokenLiquidity = tokenLiquidity;
+        observation.quoteTokenLiquidity = quoteTokenLiquidity;
+        observation.timestamp = uint32(block.timestamp);
+    }
+
     function stubSetInstantRates(
         address token,
         uint112 price,

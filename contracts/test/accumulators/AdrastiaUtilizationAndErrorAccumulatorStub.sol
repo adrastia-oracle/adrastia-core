@@ -35,7 +35,7 @@ contract AdrastiaUtilizationAndErrorAccumulatorStub is AdrastiaUtilizationAndErr
     }
 
     function stubFetchValue(address token) public view returns (uint112) {
-        return fetchValue(abi.encode(token));
+        return fetchValue(abi.encode(token), _heartbeat());
     }
 
     function stubFetchTarget(address token) public view returns (uint112) {

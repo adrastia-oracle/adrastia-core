@@ -67,6 +67,13 @@ contract UniswapV2LiquidityAccumulator is LiquidityAccumulator {
     function fetchLiquidity(
         bytes memory data
     ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
+        return fetchLiquidity(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchLiquidity(
+        bytes memory data,
+        uint256 /* maxAge */ // maxAge is not used in this implementation
+    ) internal view virtual override returns (uint112 tokenLiquidity, uint112 quoteTokenLiquidity) {
         address token = abi.decode(data, (address));
 
         address pairAddress = pairFor(uniswapFactory, initCodeHash, token, quoteToken);

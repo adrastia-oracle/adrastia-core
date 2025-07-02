@@ -12,8 +12,12 @@ contract TokenWeightedMeanAggregator is MeanAggregator {
     /**
      * @notice Constructor for the TokenWeightedMeanAggregator contract.
      * @param averagingStrategy_ The averaging strategy to use for calculating the weighted mean.
+     * @param timestampStrategy_ The strategy used to handle timestamps in the aggregated observations.
      */
-    constructor(IAveragingStrategy averagingStrategy_) MeanAggregator(averagingStrategy_) {}
+    constructor(
+        IAveragingStrategy averagingStrategy_,
+        TimestampStrategy timestampStrategy_
+    ) MeanAggregator(averagingStrategy_, timestampStrategy_) {}
 
     /**
      * @notice Extracts the weight from the provided observation using the token liquidity.

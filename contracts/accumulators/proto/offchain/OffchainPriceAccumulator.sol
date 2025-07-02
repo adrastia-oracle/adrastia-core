@@ -47,6 +47,10 @@ contract OffchainPriceAccumulator is PriceAccumulator {
     }
 
     function fetchPrice(bytes memory data) internal view virtual override returns (uint112) {
+        return fetchPrice(data, 0 /* not used - save on gas */);
+    }
+
+    function fetchPrice(bytes memory data, uint256 /* maxAge */) internal view virtual override returns (uint112) {
         (, uint112 price) = abi.decode(data, (address, uint112));
 
         return price;

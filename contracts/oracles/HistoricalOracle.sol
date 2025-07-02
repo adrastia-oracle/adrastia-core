@@ -109,12 +109,12 @@ abstract contract HistoricalOracle is IHistoricalOracle {
         uint256 amount,
         uint256 offset,
         uint256 increment
-    ) external view virtual returns (ObservationLibrary.Observation[] memory) {
+    ) external view virtual override returns (ObservationLibrary.Observation[] memory) {
         return getObservationsInternal(token, amount, offset, increment);
     }
 
     /// @inheritdoc IHistoricalOracle
-    function getObservationsCount(address token) external view override returns (uint256) {
+    function getObservationsCount(address token) external view virtual override returns (uint256) {
         return observationBufferMetadata[token].size;
     }
 
