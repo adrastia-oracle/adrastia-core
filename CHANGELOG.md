@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.10.1 (04-JUL-2025)
+### Accumulators
+- Update AdrastiaPriceAccumulator
+  - Make `adrastiaOracle` a virtual function.
+- Update AdrastiaUtilizationAndErrorAccumulator
+  - Add `adrastiaOracle` as a virtual function.
+
 ## v4.10.0 (02-JUL-2025)
 ### Accumulators
 - Update AdrastiaPriceAccumulator
