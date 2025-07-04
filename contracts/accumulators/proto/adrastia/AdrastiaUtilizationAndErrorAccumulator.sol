@@ -43,13 +43,14 @@ contract AdrastiaUtilizationAndErrorAccumulator is ValueAndErrorAccumulator {
         return _liquidityDecimals;
     }
 
+    function adrastiaOracle() public view virtual returns (address) {
+        return _supplyAndBorrowOracle;
+    }
+
     function fetchValue(bytes memory data, uint256 maxAge) internal view virtual override returns (uint112) {
         address token = abi.decode(data, (address));
 
-        (uint256 totalBorrow, uint256 totalSupply) = ILiquidityOracle(_supplyAndBorrowOracle).consultLiquidity(
-            token,
-            maxAge
-        );
+        (uint256 totalBorrow, uint256 totalSupply) = ILiquidityOracle(adrastiaOracle()).consultLiquidity(token, maxAge);
 
         if (totalSupply == 0) {
             if (_considerEmptyAs100Percent) {

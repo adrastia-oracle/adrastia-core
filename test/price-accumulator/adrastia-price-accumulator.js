@@ -84,6 +84,7 @@ describe("AdrastiaPriceAccumulator#constructor", function () {
             updateDelay,
             heartbeat,
             validationDisabled,
+            oracle,
         } = await createDefaultDeployment();
 
         expect(await accumulator.averagingStrategy()).to.equal(averagingStrategy);
@@ -93,6 +94,7 @@ describe("AdrastiaPriceAccumulator#constructor", function () {
         expect(await accumulator.updateDelay()).to.equal(updateDelay);
         expect(await accumulator.heartbeat()).to.equal(heartbeat);
         expect(await accumulator.validationDisabled()).to.equal(validationDisabled);
+        expect(await accumulator.adrastiaOracle()).to.equal(oracle.address);
     });
 
     it("Reverts if the averaging strategy address is zero", async function () {

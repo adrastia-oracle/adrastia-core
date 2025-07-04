@@ -10,7 +10,7 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
     using AddressLibrary for address;
     using SafeCast for uint256;
 
-    address public immutable adrastiaOracle;
+    address public immutable _adrastiaOracle;
 
     bool public immutable validationDisabled;
 
@@ -37,7 +37,11 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
         }
 
         validationDisabled = validationDisabled_;
-        adrastiaOracle = adrastiaOracle_;
+        _adrastiaOracle = adrastiaOracle_;
+    }
+
+    function adrastiaOracle() public view virtual returns (address) {
+        return _adrastiaOracle;
     }
 
     /// @inheritdoc PriceAccumulator
@@ -49,7 +53,7 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
             return false;
         }
 
-        uint256 timeSinceLastUpdate = IPriceOracle(adrastiaOracle).timeSinceLastUpdate(data);
+        uint256 timeSinceLastUpdate = IPriceOracle(adrastiaOracle()).timeSinceLastUpdate(data);
         uint256 heartbeat = _heartbeat();
         if (timeSinceLastUpdate > heartbeat) {
             return false;
@@ -66,7 +70,7 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
         override(IQuoteToken, SimpleQuotationMetadata)
         returns (string memory)
     {
-        return IPriceOracle(adrastiaOracle).quoteTokenName();
+        return IPriceOracle(adrastiaOracle()).quoteTokenName();
     }
 
     /// @inheritdoc IQuoteToken
@@ -77,12 +81,12 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
         override(IQuoteToken, SimpleQuotationMetadata)
         returns (string memory)
     {
-        return IPriceOracle(adrastiaOracle).quoteTokenSymbol();
+        return IPriceOracle(adrastiaOracle()).quoteTokenSymbol();
     }
 
     /// @inheritdoc IQuoteToken
     function quoteTokenDecimals() public view virtual override(IQuoteToken, SimpleQuotationMetadata) returns (uint8) {
-        return IPriceOracle(adrastiaOracle).quoteTokenDecimals();
+        return IPriceOracle(adrastiaOracle()).quoteTokenDecimals();
     }
 
     /**
@@ -95,7 +99,7 @@ contract AdrastiaPriceAccumulator is PriceAccumulator {
     function fetchPrice(bytes memory data, uint256 maxAge) internal view virtual override returns (uint112 price) {
         address token = abi.decode(data, (address));
 
-        return IPriceOracle(adrastiaOracle).consultPrice(token, maxAge);
+        return IPriceOracle(adrastiaOracle()).consultPrice(token, maxAge);
     }
 
     function validateObservation(bytes memory updateData, uint112 price) internal virtual override returns (bool) {

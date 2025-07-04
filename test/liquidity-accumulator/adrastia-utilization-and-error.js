@@ -59,6 +59,7 @@ describe("AdrastiaUtilizationAndErrorAccumulator#constructor", function () {
         expect(await accumulator.quoteTokenDecimals()).to.equal(DEFAULT_DECIMALS);
         expect(await accumulator.liquidityDecimals()).to.equal(DEFAULT_DECIMALS);
         expect(await accumulator.getTarget(USDC)).to.equal(DEFAULT_TARGET);
+        expect(await accumulator.adrastiaOracle()).to.equal(sbOracle.address);
     });
 });
 
