@@ -52,7 +52,8 @@ module.exports = {
     networks: {
         hardhat: {
             gas: 10000000,
-            hardfork: process.env.HARDHAT_HARDFORK || "berlin",
+            hardfork: process.env.HARDHAT_HARDFORK || "cancun",
+            initialBaseFeePerGas: 0, // disables EIP-1559 base fee entirely
             forking: forkingConfig,
             mining: {
                 auto: true,
