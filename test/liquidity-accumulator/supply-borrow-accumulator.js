@@ -1,6 +1,7 @@
 const { BigNumber } = require("ethers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseUnits } = require("ethers/lib/utils");
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -555,9 +556,12 @@ describe("VenusSBAccumulator#constructor", function () {
         const averagingStrategy = await averagingStrategyFactory.deploy();
         await poolStub.deployed();
 
+        const supportsBadDebt = true;
+
         const accumulator = await accumulatorFactory.deploy(
             averagingStrategy.address,
             poolStub.address,
+            supportsBadDebt,
             DEFAULT_DECIMALS,
             DEFAULT_UPDATE_THRESHOLD,
             DEFAULT_UPDATE_DELAY,
@@ -572,6 +576,7 @@ describe("VenusSBAccumulator#constructor", function () {
         expect(await accumulator.quoteTokenDecimals()).to.equal(DEFAULT_DECIMALS);
         expect(await accumulator.liquidityDecimals()).to.equal(DEFAULT_DECIMALS);
         expect(await accumulator.nativePseudoAddress()).to.equal(PSEUDO_BNB);
+        expect(await accumulator.supportsBadDebt()).to.equal(supportsBadDebt);
     });
 });
 
@@ -742,6 +747,51 @@ function createDescribeSpecificVenusFetchLiquidityTests() {
                     expect(result.tokenLiquidity).to.be.closeTo(totalBorrow, totalBorrow.div(10000000));
                     expect(result.quoteTokenLiquidity).to.be.closeTo(totalSupply, totalSupply.div(10000000));
                 }
+            });
+
+            it("Bad debt toggle works", async function () {
+                const token = WETH;
+                const updateData = ethers.utils.hexZeroPad(token, 32);
+                const tokenContract = await ethers.getContractAt("IERC20Metadata", token);
+                const tokenDecimals = await tokenContract.decimals();
+
+                const cash = parseUnits("1000", tokenDecimals);
+                const borrow = parseUnits("500", tokenDecimals);
+                const reserves = parseUnits("50", tokenDecimals);
+                const badDebt = parseUnits("10", tokenDecimals);
+
+                const totalSupplyWithoutBadDebt = cash.add(borrow).sub(reserves);
+                const totalBorrowWithoutBadDebt = borrow;
+
+                const totalSupplyWithBadDebt = totalSupplyWithoutBadDebt.add(badDebt);
+                const totalBorrowWithBadDebt = totalBorrowWithoutBadDebt.add(badDebt);
+
+                const rawCash = ethers.utils.parseUnits(cash.toString(), tokenDecimals - decimals);
+                const rawBorrow = ethers.utils.parseUnits(borrow.toString(), tokenDecimals - decimals);
+                const rawReserves = ethers.utils.parseUnits(reserves.toString(), tokenDecimals - decimals);
+                const rawBadDebt = ethers.utils.parseUnits(badDebt.toString(), tokenDecimals - decimals);
+
+                // Get the cToken
+                const cTokenAddress = await poolStub.cTokensByUnderlying(token);
+                const cToken = await cTokenFactory.attach(cTokenAddress);
+
+                await cToken.stubSetCash(rawCash);
+                await cToken.stubSetTotalBorrows(rawBorrow);
+                await cToken.stubSetTotalReserves(rawReserves);
+                await cToken.stubSetBadDebt(rawBadDebt);
+
+                const result = await accumulator.stubFetchLiquidity(updateData);
+
+                expect(result.tokenLiquidity).to.equal(totalBorrowWithBadDebt);
+                expect(result.quoteTokenLiquidity).to.equal(totalSupplyWithBadDebt);
+
+                // Now disable bad debt
+                await accumulator.stubSetSupportsBadDebt(false);
+
+                const result2 = await accumulator.stubFetchLiquidity(updateData);
+
+                expect(result2.tokenLiquidity).to.equal(totalBorrowWithoutBadDebt);
+                expect(result2.quoteTokenLiquidity).to.equal(totalSupplyWithoutBadDebt);
             });
         });
     };
@@ -1068,7 +1118,7 @@ async function deployIonicContracts(baseToken, decimals) {
     };
 }
 
-async function deployVenusContracts(baseToken, decimals) {
+async function deployVenusContracts(baseToken, decimals, supportsBadDebt = true) {
     const poolStubFactory = await ethers.getContractFactory("IonicStub");
     const averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
     const accumulatorFactory = await ethers.getContractFactory("VenusSBAccumulatorStub");
@@ -1083,6 +1133,7 @@ async function deployVenusContracts(baseToken, decimals) {
     const accumulator = await accumulatorFactory.deploy(
         averagingStrategy.address,
         poolStub.address,
+        supportsBadDebt,
         decimals,
         DEFAULT_UPDATE_THRESHOLD,
         DEFAULT_UPDATE_DELAY,
