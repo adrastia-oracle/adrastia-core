@@ -1,5 +1,11 @@
 # Changelog
 
+## v4.10.2 (07-JUL-2025)
+### Accumulators
+- Update VenusSBAccumulator
+  - Use the pseudo BNB address for the native currency address.
+  - Add a constructor parameter to toggle the use of the vToken `badDebt` function and corresponding logic.
+
 ## v4.10.1 (04-JUL-2025)
 ### Accumulators
 - Update AdrastiaPriceAccumulator

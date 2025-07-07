@@ -14,9 +14,12 @@ interface VToken {
  * @dev This contract is made for vTokens that implement the `badDebt` function.
  */
 contract VenusSBAccumulator is CompoundV2SBAccumulator {
+    bool public immutable _supportsBadDebt;
+
     constructor(
         IAveragingStrategy averagingStrategy_,
         address comptroller_,
+        bool supportsBadDebt_,
         uint8 decimals_,
         uint256 updateTheshold_,
         uint256 minUpdateDelay_,
@@ -30,11 +33,27 @@ contract VenusSBAccumulator is CompoundV2SBAccumulator {
             minUpdateDelay_,
             maxUpdateDelay_
         )
-    {}
+    {
+        _supportsBadDebt = supportsBadDebt_;
+    }
+
+    function nativePseudoAddress() public view virtual override returns (address) {
+        // Note: Venus uses WETH on non-BSC networks, so we only return the pseudo-BNB address.
+        return 0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB;
+    }
+
+    function supportsBadDebt() public view virtual returns (bool) {
+        return _supportsBadDebt;
+    }
 
     function borrowsForCToken(ICToken cToken) internal view virtual override returns (uint256) {
         uint256 totalBorrows = super.borrowsForCToken(cToken);
 
-        return totalBorrows + VToken(address(cToken)).badDebt();
+        uint256 badDebt = 0;
+        if (supportsBadDebt()) {
+            badDebt = VToken(address(cToken)).badDebt();
+        }
+
+        return totalBorrows + badDebt;
     }
 }
