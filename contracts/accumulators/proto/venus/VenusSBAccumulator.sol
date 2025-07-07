@@ -32,6 +32,11 @@ contract VenusSBAccumulator is CompoundV2SBAccumulator {
         )
     {}
 
+    function nativePseudoAddress() public view virtual override returns (address) {
+        // Note: Venus uses WETH on non-BSC networks, so we only return the pseudo-BNB address.
+        return 0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB;
+    }
+
     function borrowsForCToken(ICToken cToken) internal view virtual override returns (uint256) {
         uint256 totalBorrows = super.borrowsForCToken(cToken);
 

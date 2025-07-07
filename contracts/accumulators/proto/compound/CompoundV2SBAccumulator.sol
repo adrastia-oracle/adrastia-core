@@ -128,7 +128,7 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
                     tokenDecimals = IERC20Metadata(token).decimals();
                 } else {
                     // CEther
-                    token = EtherAsTokenLibrary.ETHER_AS_TOKEN;
+                    token = nativePseudoAddress();
                     tokenDecimals = 18;
                 }
 
@@ -182,6 +182,10 @@ contract CompoundV2SBAccumulator is LiquidityAccumulator {
 
         cToken = info.cToken;
         underlyingDecimals = info.underlyingDecimals;
+    }
+
+    function nativePseudoAddress() public view virtual returns (address) {
+        return EtherAsTokenLibrary.ETHER_AS_TOKEN;
     }
 
     function supplyForCToken(ICToken cToken) internal view virtual returns (uint256) {

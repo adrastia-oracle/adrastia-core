@@ -11,6 +11,9 @@ const DEFAULT_UPDATE_DELAY = 5; // At least 5 seconds between every update
 const DEFAULT_HEARTBEAT = 60; // At most (optimistically) 60 seconds between every update
 const DEFAULT_DECIMALS = 0;
 
+const PSEUDO_BNB = "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB";
+const PSEUDO_ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
 async function currentBlockTimestamp() {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
 
@@ -183,6 +186,7 @@ describe("CompoundV2SBAccumulator#constructor", function () {
         expect(await accumulator.heartbeat()).to.equal(DEFAULT_HEARTBEAT);
         expect(await accumulator.quoteTokenDecimals()).to.equal(DEFAULT_DECIMALS);
         expect(await accumulator.liquidityDecimals()).to.equal(DEFAULT_DECIMALS);
+        expect(await accumulator.nativePseudoAddress()).to.equal(PSEUDO_ETH);
     });
 });
 
@@ -515,6 +519,96 @@ describe("CompoundV2SBAccumulator#refreshTokenMappings", function () {
         await poolStub["stubAddMarket(address)"](cEther2.address);
 
         await expect(accumulator.refreshTokenMappings()).to.be.revertedWith("DuplicateMarket");
+    });
+
+    it("Maps cEther to the ETH pseudo address", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther = await cEtherFactory.deploy();
+
+        await poolStub["stubAddMarket(address)"](cEther.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cEther.address);
+        expect(receipt.events.length).to.equal(2);
+
+        const tokenInfo = await accumulator.tokenInfo(PSEUDO_ETH);
+        expect(tokenInfo.cToken).to.equal(cEther.address);
+        expect(tokenInfo.underlyingDecimals).to.equal(18);
+    });
+});
+
+describe("VenusSBAccumulator#constructor", function () {
+    var poolStubFactory;
+    var averagingStrategyFactory;
+    var accumulatorFactory;
+
+    beforeEach(async function () {
+        poolStubFactory = await ethers.getContractFactory("IonicStub");
+        averagingStrategyFactory = await ethers.getContractFactory("ArithmeticAveraging");
+        accumulatorFactory = await ethers.getContractFactory("VenusSBAccumulator");
+    });
+
+    it("Works", async function () {
+        const poolStub = await poolStubFactory.deploy();
+        const averagingStrategy = await averagingStrategyFactory.deploy();
+        await poolStub.deployed();
+
+        const accumulator = await accumulatorFactory.deploy(
+            averagingStrategy.address,
+            poolStub.address,
+            DEFAULT_DECIMALS,
+            DEFAULT_UPDATE_THRESHOLD,
+            DEFAULT_UPDATE_DELAY,
+            DEFAULT_HEARTBEAT
+        );
+
+        expect(await accumulator.averagingStrategy()).to.equal(averagingStrategy.address);
+        expect(await accumulator.comptroller()).to.equal(poolStub.address);
+        expect(await accumulator.updateThreshold()).to.equal(DEFAULT_UPDATE_THRESHOLD);
+        expect(await accumulator.updateDelay()).to.equal(DEFAULT_UPDATE_DELAY);
+        expect(await accumulator.heartbeat()).to.equal(DEFAULT_HEARTBEAT);
+        expect(await accumulator.quoteTokenDecimals()).to.equal(DEFAULT_DECIMALS);
+        expect(await accumulator.liquidityDecimals()).to.equal(DEFAULT_DECIMALS);
+        expect(await accumulator.nativePseudoAddress()).to.equal(PSEUDO_BNB);
+    });
+});
+
+describe("VenusSBAccumulator#refreshTokenMappings", function () {
+    var poolStub;
+    var accumulator;
+    var cTokenFactory;
+
+    before(async function () {
+        cTokenFactory = await ethers.getContractFactory("IonicCTokenStub");
+    });
+
+    beforeEach(async function () {
+        const contracts = await deployVenusContracts(WETH, DEFAULT_DECIMALS);
+        poolStub = contracts.poolStub;
+        accumulator = contracts.accumulator;
+
+        // Remove all markets and refresh the mapping
+        await poolStub.stubRemoveAllMarkets();
+        await accumulator.refreshTokenMappings();
+    });
+
+    it("Maps vEther to the BNB pseudo address", async function () {
+        const cEtherFactory = await ethers.getContractFactory("CEtherStub");
+        const cEther = await cEtherFactory.deploy();
+
+        await poolStub["stubAddMarket(address)"](cEther.address);
+        const refreshTx = await accumulator.refreshTokenMappings();
+        const receipt = await refreshTx.wait();
+
+        expect(refreshTx).to.emit(accumulator, "TokenMappingsRefreshed").withArgs(1, 0);
+        expect(refreshTx).to.emit(accumulator, "CTokenAdded").withArgs(cEther.address);
+        expect(receipt.events.length).to.equal(2);
+
+        const tokenInfo = await accumulator.tokenInfo(PSEUDO_BNB);
+        expect(tokenInfo.cToken).to.equal(cEther.address);
+        expect(tokenInfo.underlyingDecimals).to.equal(18);
     });
 });
 
